@@ -1,0 +1,15 @@
+node_modules/
+
+# Environment files - don't upload secrets
+.env
+.env.*
+!.env.example
+
+# Build files
+dist/
+build/
+.next/
+coverage/
+
+# OS files
+.DS_Store
