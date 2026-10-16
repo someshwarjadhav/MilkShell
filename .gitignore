@@ -1,10 +1,5 @@
 node_modules/
 
-# Environment files - don't upload secrets
-.env
-.env.*
-!.env.example
-
 # Build files
 dist/
 build/
