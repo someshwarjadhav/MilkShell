@@ -16,11 +16,13 @@ import { Logo, AnimalHead } from "../components/Illustrations";
 import { MilkTank } from "../components/MilkTank";
 import { Button } from "../components/ui/Button";
 import { Field, Input } from "../components/ui/Fields";
+import { DEV_EMAIL, DEV_PASSWORD } from '../services/config';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // In `npm run dev` the form is pre-filled from VITE_DEV_EMAIL / VITE_DEV_PASSWORD (.env.local). Never in a production build.
+  const [email, setEmail] = useState(DEV_EMAIL);
+  const [password, setPassword] = useState(DEV_PASSWORD);
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -108,9 +110,6 @@ const Login: React.FC = () => {
               Sign in
             </Button>
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm font-semibold">
-              <Link to="/create-account" className="text-brand hover:underline">
-                Create an account
-              </Link>
               <Link to="/contact" className="text-mute hover:text-brand">
                 Contact support
               </Link>
@@ -118,7 +117,7 @@ const Login: React.FC = () => {
           </div>
         </motion.form>
         <p className="text-xs text-mute">
-          © {new Date().getFullYear()} Dhara dairy cloud
+          © {new Date().getFullYear()} Dhara Dairy
         </p>
       </div>
 
@@ -147,12 +146,12 @@ const Login: React.FC = () => {
             >
               <div className="flex items-center gap-2">
                 <Cpu size={16} />
-                <span className="text-sm font-semibold">Analyzer 7010101</span>
+                <span className="text-sm font-semibold">Milk analyzer</span>
               </div>
-              <p className="mt-2 font-display text-3xl font-extrabold tnum">
-                Fat 4.2
+              <p className="mt-2 font-display text-2xl font-extrabold">
+                Fat · SNF · CLR
               </p>
-              <p className="text-sm text-white/70">SNF 8.6 · 18.5 L cow</p>
+              <p className="text-sm text-white/70">Measured at every can</p>
             </motion.div>
             <motion.div
               className="absolute -right-44 top-40 w-56 rounded-3xl bg-white/10 p-4 backdrop-blur-md"
@@ -175,7 +174,7 @@ const Login: React.FC = () => {
                 ))}
               </div>
               <p className="mt-2 text-sm text-white/70">
-                3 milk types, 3 rate charts, one ledger.
+                Cow, buffalo and mix, kept apart.
               </p>
             </motion.div>
             <motion.div
@@ -185,7 +184,7 @@ const Login: React.FC = () => {
               transition={{ delay: 1.2 }}
             >
               <ShieldCheck size={18} className="text-ok" />
-              <span className="text-sm font-bold">0 adulteration alerts</span>
+              <span className="text-sm font-bold">Live from SmartX</span>
             </motion.div>
           </div>
         </div>

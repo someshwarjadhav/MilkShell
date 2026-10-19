@@ -5,6 +5,7 @@ import { Card } from './Card';
 import { useCountUp } from '../hooks';
 import { cn } from '../../lib/cn';
 import { nf } from '../../lib/format';
+import { Skeleton } from '../Widget';
 
 export const Sparkline: React.FC<{ values: number[]; color?: string; height?: number }> = ({ values, color = 'currentColor', height = 36 }) => {
   if (values.length < 2) return null;
@@ -32,9 +33,13 @@ interface Props {
   delta?: number;
   spark?: number[];
   hint?: string;
+  /** Data layer states: show a skeleton while loading, or a message + retry when the request failed. */
+  loading?: boolean;
+  error?: string;
+  onRetry?: () => void;
 }
 
-export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix = '', suffix = '', icon, tone = 'text-brand', delta, spark, hint }) => {
+export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix = '', suffix = '', icon, tone = 'text-brand', delta, spark, hint, loading, error, onRetry }) => {
   const v = useCountUp(value);
   const up = (delta ?? 0) >= 0;
   return (
@@ -45,6 +50,9 @@ export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix =
           <span className={tone}>{icon}</span>
         </span>
       </div>
+      {loading ? <Skeleton className="h-9 w-32" /> : error ? (
+        <p className="text-sm text-mute">{error} {onRetry && <button onClick={onRetry} className="font-semibold text-brand underline">Retry</button>}</p>
+      ) : (
       <div className="flex items-end justify-between gap-2">
         <p className="font-display text-3xl font-extrabold leading-none tnum">{prefix}{nf(v, decimals)}<span className="ml-1 text-base font-semibold text-mute">{suffix}</span></p>
         {delta !== undefined && (
@@ -53,7 +61,8 @@ export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix =
           </span>
         )}
       </div>
-      {spark && <div className={tone}><Sparkline values={spark} /></div>}
+      )}
+      {spark && !loading && !error && <div className={tone}><Sparkline values={spark} /></div>}
       {hint && <p className="-mt-1 text-xs text-mute">{hint}</p>}
     </Card>
   );

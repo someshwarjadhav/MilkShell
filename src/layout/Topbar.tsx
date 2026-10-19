@@ -6,8 +6,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { useSamples } from '../hooks/useSmartxData';
+import { isoFromTrdate } from '../services/utils/date';
+import { sampleStamp } from '../services/farmer/farmerBook';
 import { flagOf, FLAG_META } from '../lib/quality';
-import { initials, todayISO, timeAgo } from '../lib/format';
+import { initials, todayISO } from '../lib/format';
 import { Badge } from '../components/ui/Badge';
 
 interface Props { onMenu: () => void; onSearch: () => void }
@@ -23,7 +26,9 @@ function useOutside(ref: React.RefObject<HTMLElement>, fn: () => void) {
 export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
   const { theme, toggle } = useTheme();
   const { user, logout } = useAuth();
-  const { collections, thresholds, farmerById, centers } = useData();
+  const { thresholds } = useData();
+  // Background (priority 2): the alert bell fills in when the portal has nothing more urgent to answer.
+  const { rows: samples } = useSamples(todayISO(), todayISO(), true, 2);
   const [bell, setBell] = useState(false);
   const [menu, setMenu] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
@@ -33,15 +38,14 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
 
   const alerts = useMemo(() => {
     const today = todayISO();
-    return collections
-      .filter((c) => c.date === today)
+    return samples
+      .filter((c) => isoFromTrdate(c.date) === today)
       .map((c) => ({ c, f: flagOf(c, thresholds) }))
       .filter((x) => x.f)
-      .slice(-6)
-      .reverse();
-  }, [collections, thresholds]);
-  const offline = centers.filter((c) => c.status === 'offline');
-  const count = alerts.length + offline.length;
+      .sort((a, b) => (sampleStamp(a.c) < sampleStamp(b.c) ? 1 : -1))
+      .slice(0, 6);
+  }, [samples, thresholds]);
+  const count = alerts.length;
   const hour = new Date().getHours();
   const shift = hour < 12 ? 'Morning shift' : 'Evening shift';
 
@@ -67,11 +71,8 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
               <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6 }} className="absolute right-0 top-12 w-80 overflow-hidden rounded-3xl border border-line bg-panel shadow-pop">
                 <p className="border-b border-line px-5 py-3 text-sm font-bold">Needs attention</p>
                 <ul className="max-h-80 divide-y divide-line/70 overflow-y-auto">
-                  {offline.map((c) => (
-                    <li key={c.id} className="px-5 py-3 text-sm"><p className="font-semibold">{c.name} is offline</p><p className="text-xs text-mute">Last sync {timeAgo(c.lastSync)}</p></li>
-                  ))}
                   {alerts.map(({ c, f }) => (
-                    <li key={c.id} className="px-5 py-3 text-sm"><p className="font-semibold">{FLAG_META[f!].label}: {farmerById.get(c.farmerId)?.name}</p><p className="text-xs text-mute">Fat {c.fat} · SNF {c.snf} · {c.time}</p></li>
+                    <li key={c.key} className="px-5 py-3 text-sm"><p className="font-semibold">{FLAG_META[f!].label}: {c.farmerName}</p><p className="text-xs text-mute">Fat {c.fat} · SNF {c.snf} · {c.time}</p></li>
                   ))}
                   {count === 0 && <li className="px-5 py-8 text-center text-sm text-mute">All clear for now.</li>}
                 </ul>

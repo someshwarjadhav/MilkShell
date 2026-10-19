@@ -39,23 +39,21 @@ function tableHTML<T>(title: string, cols: ExportCol<T>[], rows: T[]) {
     <header class="report-header">
       <div class="brand-mark" aria-hidden="true">D</div>
       <div class="report-heading">
-        <p class="eyebrow">DHARA DAIRY CLOUD</p>
+        <p class="eyebrow">DHARA DAIRY</p>
         <h1>${htmlEsc(title)}</h1>
-        <p class="generated">Generated ${htmlEsc(generated)} · Demo report</p>
+        <p class="generated">Generated ${htmlEsc(generated)}</p>
       </div>
     </header>
     <table><thead><tr>${th}</tr></thead><tbody>${tr || `<tr><td colspan="${cols.length}">No records in this report.</td></tr>`}</tbody></table>
-    <footer>Dhara dairy cloud · Sample data — verify figures before operational use</footer>
+    <footer>Dhara Dairy · Data from the SmartX portal</footer>
   `;
 }
 
-/** Opens a formatted sheet in Excel-compatible HTML format. */
 export function exportExcel<T>(name: string, cols: ExportCol<T>[], rows: T[]) {
   const html = `<html><head><meta charset="utf-8"></head><body>${tableHTML(name, cols, rows)}</body></html>`;
   download(`${name}.xls`, 'application/vnd.ms-excel', html);
 }
 
-/** Opens a branded print view; choose Save as PDF in the browser print dialog. */
 export function exportPDF<T>(title: string, cols: ExportCol<T>[], rows: T[]) {
   const report = window.open('', '_blank', 'width=1000,height=700');
   if (!report) return;

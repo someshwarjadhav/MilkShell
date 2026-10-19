@@ -33,7 +33,7 @@ const Contact: React.FC = () => {
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <section className="rounded-[2rem] bg-deep p-6 text-white sm:p-8">
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-white"><MessageSquareText size={22} /></span>
-            <p className="mt-5 text-sm font-semibold text-white/65">Dhara dairy cloud</p>
+            <p className="mt-5 text-sm font-semibold text-white/65">Dhara Dairy</p>
             <h1 className="mt-1 font-display text-3xl font-extrabold sm:text-4xl">Contact support</h1>
             <p className="mt-4 text-sm leading-6 text-white/75">Use this form to prepare a support request. Message delivery becomes available after the dairy connects a support backend.</p>
             <div className="mt-7 rounded-2xl border border-white/15 bg-white/5 p-4">

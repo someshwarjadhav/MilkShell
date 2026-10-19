@@ -4,7 +4,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: ['.manus.computer'],
     // Dev-only replacement for Angular's proxy.conf.json:
     // /api/home/userlogin  ->  https://smartx.shivinfotech.co.in/home/userlogin
     proxy: {

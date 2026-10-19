@@ -1,0 +1,113 @@
+/**
+ * Global.ts port (from the Angular app) for React.
+ * Angular's `GLOBALS`, page size, milk and shift options live here, in one place.
+ * GLOBALS is filled from the login response in smartx/session.ts (setSession), so every page reads the same ids.
+ */
+
+export interface GlobalData {
+  [key: string]: any;
+  plantid: any;
+  sessionid: any; // first VLC id (the Angular app sends this as `vlccid` / `id`)
+  customsessionid: any; // all VLC ids, comma separated (used as VillageIds in /home/farmermaster)
+  mccid: any;
+  centerdata: any;
+  id: any;
+}
+
+export const GLOBALS: GlobalData = {
+  plantid: null,
+  sessionid: null,
+  customsessionid: null,
+  mccid: null,
+  centerdata: null,
+  id: null,
+};
+
+export const GLOBALPAGESIZE = {
+  defaultPageSize: [{ size: 100 }],
+};
+
+export const GLOBALSMILK = {
+  milkOptions: [
+    { Id: 'C', Name: 'Cow' },
+    { Id: 'B', Name: 'Buffalo' },
+    { Id: 'Z', Name: 'Both' },
+    { Id: 'M', Name: 'Mix Milk' },
+  ],
+};
+
+export const GLOBALSSHIFT = {
+  shiftOptions: [
+    { Id: 'M', Name: 'Morning' },
+    { Id: 'E', Name: 'Evening' },
+    { Id: 'Z', Name: 'Both' },
+  ],
+};
+
+export const DEFAULT_PAGE_SIZE: number = GLOBALPAGESIZE.defaultPageSize[0].size;
+
+export const limitLength = (value: string, max: number) => (value.length > max ? value.slice(0, max) : value);
+
+export class Pagination<T = any> {
+  data: T[];
+  pageSize: number;
+  currentPage: number;
+  paginatedData: T[];
+
+  constructor(data: T[], pageSize: number = DEFAULT_PAGE_SIZE) {
+    this.data = data;
+    this.pageSize = pageSize;
+    this.currentPage = 1;
+    this.paginatedData = [];
+    this.setPage(1);
+  }
+
+  setPage(page: number) {
+    if (page < 1) return;
+    if (page > this.totalPages) return;
+    this.currentPage = page;
+    const startIndex = (page - 1) * this.pageSize;
+    this.paginatedData = this.data.slice(startIndex, startIndex + this.pageSize);
+  }
+
+  setPageSize(size: number) {
+    this.pageSize = size;
+    this.setPage(1);
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.data.length / this.pageSize);
+  }
+
+  get startIndex(): number {
+    return (this.currentPage - 1) * this.pageSize + 1;
+  }
+
+  get endIndex(): number {
+    return Math.min(this.startIndex + this.pageSize - 1, this.data.length);
+  }
+
+  get totalItems(): number {
+    return this.data.length;
+  }
+
+  get pageNumbers(): number[] {
+    const totalPages = this.totalPages;
+    const currentPage = this.currentPage;
+    let startPage: number, endPage: number;
+    if (totalPages <= 3) {
+      startPage = 1;
+      endPage = totalPages;
+    } else if (currentPage <= 2) {
+      startPage = 1;
+      endPage = 3;
+    } else if (currentPage + 1 >= totalPages) {
+      startPage = totalPages - 2;
+      endPage = totalPages;
+    } else {
+      startPage = currentPage - 1;
+      endPage = currentPage + 1;
+    }
+    return Array.from(Array(endPage + 1 - startPage).keys()).map((i) => startPage + i);
+  }
+}

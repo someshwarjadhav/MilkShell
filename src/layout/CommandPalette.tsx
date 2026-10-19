@@ -4,20 +4,27 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CornerDownLeft, Search } from 'lucide-react';
 import { ALL_ITEMS } from './nav';
-import { useData } from '../context/DataContext';
+import { useFarmerMaster, useSamples } from '../hooks/useSmartxData';
+import { buildFarmerBook } from '../services/farmer/farmerBook';
+import { addDays, todayISO } from '../lib/format';
 import { cn } from '../lib/cn';
+import { vlccOption } from '../services/vlcc/names';
 
 export const CommandPalette: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const [q, setQ] = useState('');
   const [i, setI] = useState(0);
   const nav = useNavigate();
-  const { farmers } = useData();
+  // Farmers are only loaded once the palette is opened, so the slow portal is not asked on every page.
+  const today = todayISO();
+  const master = useFarmerMaster(open);
+  const samples = useSamples(addDays(today, -29), today, open);
+  const farmers = useMemo(() => (open ? buildFarmerBook(master.rows, samples.rows, today) : []), [open, master.rows, samples.rows, today]);
 
   const results = useMemo(() => {
     const s = q.trim().toLowerCase();
     const pages = ALL_ITEMS.filter((p) => !s || p.label.toLowerCase().includes(s) || p.hint.toLowerCase().includes(s)).map((p) => ({ key: p.to, label: p.label, hint: p.hint, to: p.to }));
     const people = s.length > 1
-      ? farmers.filter((f) => f.name.toLowerCase().includes(s) || f.code.includes(s)).slice(0, 4).map((f) => ({ key: f.id, label: f.name, hint: `Farmer ${f.code} · ${f.village}`, to: `/farmers?open=${f.id}` }))
+      ? farmers.filter((f) => f.name.toLowerCase().includes(s) || f.farmerId.includes(s)).slice(0, 4).map((f) => ({ key: f.key, label: f.name, hint: `Farmer ${f.farmerId} · ${vlccOption(f.vlccid)}${f.village ? ` · ${f.village}` : ''}`, to: `/farmers?open=${encodeURIComponent(f.key)}` }))
       : [];
     return [...pages, ...people];
   }, [q, farmers]);

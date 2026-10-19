@@ -1,13 +1,25 @@
 import type * as React from 'react';
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import { ApiError, loginApi } from '../lib/api';
+import { ApiError } from '../services/http/errors';
+import { loginApi } from '../services/auth/auth.service';
+import { applySession, clearSessionData, loadSessionData, restoreSession, saveLogin } from '../services/bootstrap';
+import { vaultDropLegacy } from '../lib/vault';
+import { setSession } from '../services/session';
+import { clearSmartxCache } from '../hooks/useQuery';
 
 export interface User {
   name: string;
   email: string;
   role: string;
-  
+  dairyName?: string;
   token?: string;
+  vlccIds?: string[];
+  vlccNames?: Record<string, string>;
+  stationId?: string;
+  plantId?: string;
+  mccId?: string;
+  userId?: string;
+  centerStationId?: string;
 }
 
 export type LoginResult = { ok: true } | { ok: false; message: string };
@@ -15,26 +27,16 @@ export type LoginResult = { ok: true } | { ok: false; message: string };
 interface AuthCtx {
   user: User | null;
   login: (username: string, password: string) => Promise<LoginResult>;
-  createAccount: (name: string, email: string) => boolean;
   logout: () => void;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
-const KEY = 'dhara-user';
-
-function saveUser(user: User) {
-  localStorage.setItem(KEY, JSON.stringify(user));
-  return user;
-}
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // The login is saved ENCRYPTED. Here it is decrypted into memory; no readable copy is kept in localStorage.
   const [user, setUser] = useState<User | null>(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      return raw ? (JSON.parse(raw) as User) : null;
-    } catch {
-      return null;
-    }
+    vaultDropLegacy();
+    return restoreSession();
   });
 
   const value = useMemo<AuthCtx>(
@@ -42,24 +44,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       user,
       login: async (username, password) => {
         try {
-          const profile = await loginApi(username.trim(), password);
-          setUser(saveUser(profile));
+          // 1. sign in: the reply is decrypted (see loginApi)
+          const { profile, record } = await loginApi(username.trim(), password);
+          // 2. keep the decrypted login JSON (without the password) ENCRYPTED in localStorage
+          saveLogin(username.trim(), record);
+          // 3. session first (the token goes into every call), then getCenter / getMenu / getReportAccess once
+          setSession(profile);
+          await loadSessionData(profile);
+          applySession(profile);
+          setUser(profile);
           return { ok: true };
         } catch (error) {
+          clearSessionData();
+          setSession(null);
           const message = error instanceof ApiError ? error.message : 'Something went wrong while signing in. Please try again.';
           return { ok: false, message };
         }
       },
-      createAccount: (name, email) => {
-        const cleanName = name.trim();
-        const cleanEmail = email.trim();
-        if (cleanName.length < 2 || !cleanEmail.includes('@')) return false;
-
-        setUser(saveUser({ name: cleanName, email: cleanEmail, role: 'Dairy administrator' }));
-        return true;
-      },
       logout: () => {
-        localStorage.removeItem(KEY);
+        clearSessionData();
+        setSession(null);
+        clearSmartxCache();
         setUser(null);
       },
     }),
