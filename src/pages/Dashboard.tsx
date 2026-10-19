@@ -1,5 +1,6 @@
 import type * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Droplets, FlaskConical, IndianRupee, RefreshCw, Users, Beaker, Info } from 'lucide-react';
 import { useChartColors } from '../context/ThemeContext';
@@ -135,7 +136,7 @@ const Dashboard: React.FC = () => {
   const vlccError = errorOf(vlccQ);
 
   const cols: Column<TopSupplier>[] = [
-    { key: 'rank', header: '#', cell: (r) => <span className="font-bold text-mute">{top.indexOf(r) + 1}</span>, className: 'w-10' },
+    { key: 'rank', header: 'Sr No', cell: (r) => <span className="font-bold text-mute">{top.indexOf(r) + 1}</span>, className: 'w-10' },
     { key: 'name', header: 'Farmer', sort: (r) => r.farmerName, cell: (r) => <div><p className="font-semibold">{r.farmerName}</p><p className="text-xs text-mute">ID {r.farmerId}</p></div> },
     { key: 'village', header: 'Village', sort: (r) => r.village, cell: (r) => r.village },
     { key: 'milk', header: 'Milk', cell: (r) => <KindChip kind={r.milk} label={r.milkLabel} compact /> },
@@ -267,16 +268,39 @@ const Dashboard: React.FC = () => {
         </Card>
 
         <Card>
-          <CardHeader title={`Centres ${when}`} subtitle="Litres received per centre" />
+          <CardHeader
+            title={`Centres ${when}`}
+            subtitle="Litres received per centre"
+            action={
+              centres.length > 5 ? (
+                <Link
+                  to="/centers"
+                  className="text-xs font-semibold text-brand hover:underline"
+                >
+                  View all 
+                </Link>
+              ) : undefined
+            }
+          />
           <QueryBoundary q={vlccQ} showWhenEmpty skeleton={<LoadingBlock height="h-48" />}>
             <ul className="space-y-4 p-5 sm:p-6">
-              {centres.map((c) => (
+              {centres.slice(0, 4).map((c) => (
                 <li key={c.id}>
                   <div className="flex items-center justify-between text-sm"><span className="flex items-center gap-2 font-semibold"><span className={`h-2 w-2 rounded-full ${c.liter > 0 ? 'bg-ok' : 'bg-mute/40'}`} />{c.name}</span><span className="tnum font-bold">{nf(c.liter)} L</span></div>
                   <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-soft"><div className="h-full rounded-full bg-brand transition-all duration-1000" style={{ width: `${(c.liter / maxCentre) * 100}%` }} /></div>
                 </li>
               ))}
             </ul>
+            {centres.length > 5 && (
+              <div className="border-t border-line px-5 py-3 sm:px-6">
+                <Link
+                  to="/centers"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold text-mute transition-colors hover:bg-soft hover:text-ink"
+                >
+                  View all centres →
+                </Link>
+              </div>
+            )}
           </QueryBoundary>
         </Card>
       </div>
