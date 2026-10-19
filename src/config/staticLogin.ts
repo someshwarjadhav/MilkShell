@@ -16,7 +16,27 @@
  */
 
 /** Decrypted login JSON (without password). null = static login off. */
-export const STATIC_LOGIN_RECORD: unknown = null;
+export const STATIC_LOGIN_RECORD: unknown | null = {
+  Data: [
+    {
+      id: 218,
+      email: 'prachidairykaladera@gmail.com',
+      username: 'PRACHI',
+      mccid: '119',
+      mccname: 'Prachi Dairy',
+      status: 1,
+      SessionID: '7090801,7090802,7090803,7090804,7090805,7090806,7090807,7090808,7090809,7090810,7090811,7090812,7090813,7090814',
+      CustomStationId: '0021000,0022000,0023000,0024000,0025000,0020000,0002000,0017000,0014000,0012000,0006000,0009000,0027000,0028000',
+      LoginStatus: 0,
+      webLogin: 0,
+      PlantId: 19,
+      UserAccess: '14',
+      Token: '800f4bca76bb3c6efda26ddaf254a0010526x1tr',
+      DataEncryption: 0,
+      Address: 'Kaladera',
+    },
+  ],
+};
 
 /** Optional: only this username/email may use the static login. Empty = the email inside the record is used. */
 export const STATIC_LOGIN_USERNAME: string = '';
@@ -26,7 +46,7 @@ export const STATIC_LOGIN_USERNAME: string = '';
  * Make the hash in the browser console:  crypto.subtle.digest('SHA-256', new TextEncoder().encode('PASSWORD')).then(b => console.log([...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('')))
  * (A hash in client code only stops casual use; it is not real security.)
  */
-export const STATIC_LOGIN_PASSWORD_SHA256: string = '';
+export const STATIC_LOGIN_PASSWORD_SHA256: string = '4afe36d74c8f9bf52726a27ba88168a2dae49e9f751fcbdcbb33634d8d530411';
 
 export const staticLoginActive = (): boolean =>
   import.meta.env.VITE_STATIC_LOGIN === '1' && STATIC_LOGIN_RECORD !== null && STATIC_LOGIN_RECORD !== undefined;
