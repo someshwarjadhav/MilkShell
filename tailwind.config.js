@@ -36,6 +36,7 @@ export default {
         drift: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
         ring: { '0%': { transform: 'scale(.6)', opacity: '.7' }, '100%': { transform: 'scale(2.2)', opacity: '0' } },
         shimmer: { to: { backgroundPosition: '-200% 0' } },
+        tile: { '0%,100%': { transform: 'scale(.55) rotate(-8deg)', opacity: '.45' }, '50%': { transform: 'scale(1) rotate(0deg)', opacity: '1' } },
         drop: { '0%': { transform: 'translateY(-14px) scale(.6)', opacity: '0' }, '40%': { opacity: '1' }, '100%': { transform: 'translateY(16px) scale(1)', opacity: '0' } },
       },
       animation: {
@@ -44,6 +45,7 @@ export default {
         drift: 'drift 6s ease-in-out infinite',
         ring: 'ring 2s ease-out infinite',
         shimmer: 'shimmer 1.6s linear infinite',
+        tile: 'tile 1.2s ease-in-out infinite',
         drop: 'drop 1.8s ease-in infinite',
       },
     },
