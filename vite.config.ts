@@ -1,7 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // Production build is uploaded to https://smartx.shivinfotech.co.in/milkshell/ (same domain as the API => no CORS).
+  // Change '/milkshell/' if you upload to a different folder name.
+  base: command === 'build' ? '/milkshell/' : '/',
   plugins: [react()],
   server: {
     // Dev-only replacement for Angular's proxy.conf.json:
@@ -26,4 +29,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
