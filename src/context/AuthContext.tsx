@@ -48,6 +48,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const { profile, record } = await loginApi(username.trim(), password);
           // 2. keep the decrypted login JSON (without the password) ENCRYPTED in localStorage
           saveLogin(username.trim(), record);
+          // Dev only: print the decrypted login JSON (no password) so it can be pasted into src/config/staticLogin.ts
+          if (import.meta.env.DEV) console.info('[static-login] paste this into STATIC_LOGIN_RECORD:', JSON.stringify(record));
           // 3. session first (the token goes into every call), then getCenter / getMenu / getReportAccess once
           setSession(profile);
           await loadSessionData(profile);
