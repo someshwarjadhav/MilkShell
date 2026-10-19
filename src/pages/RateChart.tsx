@@ -1,112 +1,112 @@
 import type * as React from 'react';
 import { useMemo, useState } from 'react';
-import { Save, RotateCcw } from 'lucide-react';
-import { useData } from '../context/DataContext';
-import { useToast } from '../context/ToastContext';
+import { Info } from 'lucide-react';
 import { Card, CardHeader } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Field, Input } from '../components/ui/Fields';
+import { Segmented } from '../components/ui/Fields';
 import { PageHeader } from '../components/ui/PageHeader';
-import { AnimalHead } from '../components/Illustrations';
-import { MILK_META, MILK_TYPES } from '../lib/milk';
-import { DEFAULT_RATES, rateFor, PENALTY } from '../lib/rate';
-import { inr } from '../lib/format';
+import { StatCard } from '../components/ui/StatCard';
+import { KindDot } from '../components/KindChip';
+import { LoadingBlock, Notice } from '../components/Widget';
+import { addDays, inr, todayISO } from '../lib/format';
 import { cn } from '../lib/cn';
-import type { MilkType, RateRule, RateTable } from '../types';
+import { KIND_META, type Kind } from '../services/utils/milk';
+import { isLoadingQ, useSamples } from '../hooks/useSmartxData';
+import { EmptyState } from '../components/EmptyState';
 
-const num = (v: string) => (v === '' || Number.isNaN(Number(v)) ? 0 : Number(v));
+const step = (v: number, s: number) => Math.round(v / s) * s;
 
+/**
+ * The portal does not publish its rate formula through the API, but every sample carries the rate it was paid at.
+ * This page shows those real rates: the average per milk type, and what was paid for each fat / SNF combination.
+ */
 const RateChart: React.FC = () => {
-  const { rates, setRates } = useData();
-  const toast = useToast();
-  const [draft, setDraft] = useState<RateTable>(rates);
-  const [milk, setMilk] = useState<MilkType>('cow');
-  const [calc, setCalc] = useState({ fat: 4.2, snf: 8.6, liter: 20 });
-  const rule = draft[milk];
-  const dirty = JSON.stringify(draft) !== JSON.stringify(rates);
+  const today = todayISO();
+  const [days, setDays] = useState<'7' | '30'>('30');
+  const [kind, setKind] = useState<Kind>('cow');
+  const { q, rows } = useSamples(addDays(today, -29), today);
 
-  const set = (k: keyof RateRule, v: string) => setDraft((d) => ({ ...d, [milk]: { ...d[milk], [k]: num(v) } }));
+  const inRange = useMemo(() => {
+    const from = addDays(today, -(Number(days) - 1));
+    return rows.filter((r) => { const d = new Date(r.date); return !Number.isNaN(d.getTime()) && d >= new Date(from + 'T00:00:00'); });
+  }, [rows, days, today]);
 
-  const fats = useMemo(() => (milk === 'buffalo' ? [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9] : [3, 3.5, 4, 4.5, 5, 5.5, 6]), [milk]);
-  const snfs = useMemo(() => (milk === 'buffalo' ? [8, 8.5, 9, 9.5, 10] : [7.5, 8, 8.5, 9, 9.5]), [milk]);
-  const all = fats.flatMap((f) => snfs.map((s) => rateFor(rule, f, s)));
-  const lo = Math.min(...all), hi = Math.max(...all);
-  const perL = rateFor(rule, calc.fat, calc.snf);
-  const below = calc.fat < rule.minFat || calc.snf < rule.minSnf;
+  const perKind = useMemo(() => (['cow', 'buffalo', 'mix', 'goat'] as Kind[]).map((k) => {
+    const rs = inRange.filter((r) => r.milk === k && r.rate > 0);
+    const liter = rs.reduce((a, r) => a + r.liter, 0);
+    return { k, count: rs.length, avg: liter ? rs.reduce((a, r) => a + r.rate * r.liter, 0) / liter : 0, min: rs.length ? Math.min(...rs.map((r) => r.rate)) : 0, max: rs.length ? Math.max(...rs.map((r) => r.rate)) : 0 };
+  }).filter((x) => x.count > 0), [inRange]);
+
+  const active = perKind.find((x) => x.k === kind) ?? perKind[0];
+  const matrix = useMemo(() => {
+    if (!active) return null;
+    const rs = inRange.filter((r) => r.milk === active.k && r.rate > 0 && r.fat > 0 && r.snf > 0);
+    const cells = new Map<string, { sum: number; n: number }>();
+    const fats = new Set<number>(), snfs = new Set<number>();
+    for (const r of rs) {
+      const f = step(r.fat, 0.5), s = step(r.snf, 0.5);
+      fats.add(f); snfs.add(s);
+      const c = cells.get(`${f}|${s}`) ?? { sum: 0, n: 0 };
+      c.sum += r.rate; c.n++;
+      cells.set(`${f}|${s}`, c);
+    }
+    const F = [...fats].sort((a, b) => a - b), S = [...snfs].sort((a, b) => a - b);
+    const vals = [...cells.values()].map((c) => c.sum / c.n);
+    return { F, S, cells, lo: Math.min(...vals), hi: Math.max(...vals) };
+  }, [inRange, active]);
+
+  if (isLoadingQ(q)) return <div className="space-y-6"><PageHeader title="Rate chart" subtitle="Loading the rates the portal applied…" /><LoadingBlock height="h-72" /></div>;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Rate chart" subtitle="Each milk type has its own formula. Change a rate and the farmer slip, billing and reports use it from the next sample." actions={<>
-        <Button variant="ghost" icon={<RotateCcw size={16} />} onClick={() => setDraft(DEFAULT_RATES)}>Restore defaults</Button>
-        <Button icon={<Save size={16} />} disabled={!dirty} onClick={() => { setRates(draft); toast('Rate chart saved'); }}>Save rates</Button>
-      </>} />
+      <PageHeader title="Rate chart" subtitle="The rates the SmartX portal actually paid, taken from every sample: average per milk type and the rate for each fat and SNF combination." actions={<Segmented value={days} onChange={setDays} options={[{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }]} />} />
+      <Notice q={q} />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {MILK_TYPES.map((m) => (
-          <button key={m} onClick={() => setMilk(m)} aria-pressed={milk === m} className={cn('flex items-center gap-4 rounded-[1.75rem] border-2 bg-panel p-5 text-left shadow-lift transition-all', milk === m ? `border-transparent ring-4 ${MILK_META[m].ring}` : 'border-line hover:border-brand/40')}>
-            <AnimalHead type={m} size={56} />
-            <div><p className="font-display text-xl font-extrabold">{MILK_META[m].label} milk</p><p className="text-sm text-mute">Fat ₹{draft[m].fatRate} · SNF ₹{draft[m].snfRate} per point</p></div>
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader title={`${MILK_META[milk].label} formula`} subtitle="Rate per litre = base + fat × fat rate + SNF × SNF rate" />
-            <div className="grid grid-cols-2 gap-4 p-5 sm:p-6">
-              <Field label="Fat rate (₹ per %)"><Input type="number" step="0.1" min="0" value={rule.fatRate} onChange={(e) => set('fatRate', e.target.value)} /></Field>
-              <Field label="SNF rate (₹ per %)"><Input type="number" step="0.1" min="0" value={rule.snfRate} onChange={(e) => set('snfRate', e.target.value)} /></Field>
-              <Field label="Base (₹ per litre)"><Input type="number" step="0.5" min="0" value={rule.base} onChange={(e) => set('base', e.target.value)} /></Field>
-              <span />
-              <Field label="Minimum fat %" hint="10% cut below this"><Input type="number" step="0.1" min="0" value={rule.minFat} onChange={(e) => set('minFat', e.target.value)} /></Field>
-              <Field label="Minimum SNF %" hint="10% cut below this"><Input type="number" step="0.1" min="0" value={rule.minSnf} onChange={(e) => set('minSnf', e.target.value)} /></Field>
-            </div>
-          </Card>
-
-          <Card>
-            <CardHeader title="Try a sample" subtitle="See what a farmer would be paid" />
-            <div className="space-y-4 p-5 sm:p-6">
-              <div className="grid grid-cols-3 gap-3">
-                <Field label="Fat %"><Input type="number" step="0.1" value={calc.fat} onChange={(e) => setCalc({ ...calc, fat: num(e.target.value) })} /></Field>
-                <Field label="SNF %"><Input type="number" step="0.1" value={calc.snf} onChange={(e) => setCalc({ ...calc, snf: num(e.target.value) })} /></Field>
-                <Field label="Litres"><Input type="number" step="0.5" value={calc.liter} onChange={(e) => setCalc({ ...calc, liter: num(e.target.value) })} /></Field>
-              </div>
-              <div className="rounded-2xl bg-deep p-5 text-white">
-                <p className="text-sm text-white/60">Rate per litre</p>
-                <p className="font-display text-4xl font-extrabold tnum">{inr(perL, 2)}</p>
-                <p className="mt-2 text-sm text-white/70">{calc.liter} L pays <b className="text-white">{inr(perL * calc.liter, 2)}</b></p>
-                {below && <p className="mt-2 rounded-lg bg-warn/20 px-2 py-1 text-xs font-semibold text-cream">Below minimum, {Math.round((1 - PENALTY) * 100)}% cut applied</p>}
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <Card className="self-start">
-          <CardHeader title="Rate matrix" subtitle="Rate per litre for every fat and SNF combination. Darker is higher." />
-          <div className="overflow-x-auto p-5 sm:p-6">
-            <table className="w-full min-w-[460px] border-separate border-spacing-1.5 text-center text-sm tnum">
-              <thead><tr><th className="text-xs font-semibold text-mute">Fat ↓ / SNF →</th>{snfs.map((s) => <th key={s} className="text-xs font-semibold text-mute">{s}</th>)}</tr></thead>
-              <tbody>
-                {fats.map((f) => (
-                  <tr key={f}>
-                    <th className="text-xs font-semibold text-mute">{f}</th>
-                    {snfs.map((s) => {
-                      const r = rateFor(rule, f, s);
-                      const t = hi === lo ? 0 : (r - lo) / (hi - lo);
-                      const cut = f < rule.minFat || s < rule.minSnf;
-                      return (
-                        <td key={s} className={cn('rounded-xl py-3 font-semibold transition-colors', t > 0.55 && 'text-white')} style={{ background: `color-mix(in srgb, ${MILK_META[milk].hex} ${Math.round(12 + t * 78)}%, transparent)`, outline: cut ? '1.5px dashed rgb(var(--danger))' : undefined }} title={cut ? 'Below minimum, rate reduced' : undefined}>{r.toFixed(1)}</td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-3 text-xs text-mute">Dashed cells fall below the minimum and carry the {Math.round((1 - PENALTY) * 100)}% reduction.</p>
+      {perKind.length === 0 ? <Card><EmptyState title="No rated samples in this period" hint="Rates appear once the portal has samples with a rate for these centres." /></Card> : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {perKind.map((x) => (
+              <button key={x.k} onClick={() => setKind(x.k)} aria-pressed={active?.k === x.k} className={cn('flex items-center gap-4 rounded-[1.75rem] border-2 bg-panel p-5 text-left shadow-lift transition-all', active?.k === x.k ? 'border-brand' : 'border-line hover:border-brand/40')}>
+                <KindDot kind={x.k} size={56} />
+                <div><p className="font-display text-xl font-extrabold">{KIND_META[x.k].label} milk</p><p className="text-sm text-mute">Average {inr(x.avg, 2)} / L · {x.count} samples</p></div>
+              </button>
+            ))}
           </div>
-        </Card>
-      </div>
+
+          {active && (
+            <div className="grid grid-cols-3 gap-4">
+              <StatCard label="Average rate" value={active.avg} prefix="₹" decimals={2} icon={<Info size={18} />} tone="text-brand" hint="Weighted by litres" />
+              <StatCard label="Lowest paid" value={active.min} prefix="₹" decimals={2} icon={<Info size={18} />} tone="text-buffalo" />
+              <StatCard label="Highest paid" value={active.max} prefix="₹" decimals={2} icon={<Info size={18} />} tone="text-ok" />
+            </div>
+          )}
+
+          {matrix && active && (
+            <Card>
+              <CardHeader title={`${KIND_META[active.k].label}: rate by fat and SNF`} subtitle="Average rate per litre paid for samples in each 0.5 band. Empty cells had no sample." />
+              <div className="overflow-x-auto p-5 sm:p-6">
+                <table className="w-full min-w-[460px] border-separate border-spacing-1.5 text-center text-sm tnum">
+                  <thead><tr><th className="text-xs font-semibold text-mute">Fat ↓ / SNF →</th>{matrix.S.map((s) => <th key={s} className="text-xs font-semibold text-mute">{s}</th>)}</tr></thead>
+                  <tbody>
+                    {matrix.F.map((f) => (
+                      <tr key={f}>
+                        <th className="text-xs font-semibold text-mute">{f}</th>
+                        {matrix.S.map((s) => {
+                          const c = matrix.cells.get(`${f}|${s}`);
+                          if (!c) return <td key={s} className="rounded-xl py-3 text-mute/50">·</td>;
+                          const r = c.sum / c.n;
+                          const t = matrix.hi === matrix.lo ? 0 : (r - matrix.lo) / (matrix.hi - matrix.lo);
+                          return <td key={s} title={`${c.n} samples`} className={cn('rounded-xl py-3 font-semibold', t > 0.55 && 'text-white')} style={{ background: `color-mix(in srgb, ${KIND_META[active.k].hex} ${Math.round(12 + t * 78)}%, transparent)` }}>{r.toFixed(1)}</td>;
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+      <p className="text-xs text-mute">Rates are set on the SmartX portal. To change a rate chart, edit it there; this page only reads what was applied.</p>
     </div>
   );
 };

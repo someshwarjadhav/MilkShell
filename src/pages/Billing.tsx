@@ -1,7 +1,6 @@
 import type * as React from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCheck, Download, Printer, ReceiptIndianRupee } from 'lucide-react';
-import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -11,15 +10,21 @@ import { Field, Select } from '../components/ui/Fields';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { StatCard } from '../components/ui/StatCard';
 import { PageHeader } from '../components/ui/PageHeader';
-import { MILK_META, MILK_TYPES } from '../lib/milk';
+import { LoadingBlock, Notice } from '../components/Widget';
+import { vlccOption } from '../services/vlcc/names';
 import { addDays, fmtDate, inr, nf, todayISO } from '../lib/format';
 import { exportCSV, exportPDF, type ExportCol } from '../lib/export';
-import { groupBy, summarize } from '../lib/stats';
-import { Droplets, IndianRupee, Wallet } from 'lucide-react';
-import type { Farmer, MilkType } from '../types';
+import { DEFAULT_PAGE_SIZE } from '../lib/global';
+import { KIND_META, type Kind } from '../services/utils/milk';
+import { isoFromTrdate } from '../services/utils/date';
+import { isLoadingQ, useSamples } from '../hooks/useSmartxData';
+import { Droplets, IndianRupee } from 'lucide-react';
 
 interface Cycle { start: string; end: string; label: string }
-interface Bill { farmer: Farmer; liters: Record<MilkType, number>; total: number; gross: number; recovery: number; net: number }
+interface Bill { key: string; farmerId: string; vlccid: string; name: string; village: string; liters: Record<Kind, number>; total: number; gross: number }
+
+const KINDS: Kind[] = ['cow', 'buffalo', 'mix'];
+const PAID_KEY = 'dhara-paid-bills';
 
 function segment(date: string): Cycle {
   const d = Number(date.slice(8, 10));
@@ -38,84 +43,85 @@ function cycles(today: string): Cycle[] {
 }
 
 const Billing: React.FC = () => {
-  const { collections, farmers } = useData();
   const toast = useToast();
-  const list = useMemo(() => cycles(todayISO()), []);
+  const today = todayISO();
+  const list = useMemo(() => cycles(today), [today]);
   const [idx, setIdx] = useState(1);
-  const [pct, setPct] = useState(15);
-  const [paid, setPaid] = useState<Set<string>>(new Set());
   const [slip, setSlip] = useState<Bill | null>(null);
+  const [paid, setPaid] = useState<Set<string>>(() => {
+    try { return new Set<string>(JSON.parse(localStorage.getItem(PAID_KEY) ?? '[]')); } catch { return new Set<string>(); }
+  });
+  useEffect(() => { try { localStorage.setItem(PAID_KEY, JSON.stringify([...paid])); } catch { } }, [paid]);
   const cycle = list[idx];
 
-  const bills = useMemo<Bill[]>(() => {
-    const rows = collections.filter((c) => c.date >= cycle.start && c.date <= cycle.end);
-    return [...groupBy(rows, (c) => c.farmerId)].map(([id, rs]) => {
-      const farmer = farmers.find((f) => f.id === id)!;
-      const liters = { cow: 0, buffalo: 0, goat: 0 } as Record<MilkType, number>;
-      for (const r of rs) liters[r.milk] += r.liter;
-      const gross = summarize(rs).amount;
-      const recovery = Math.min(farmer.advance, Math.round((gross * pct) / 100));
-      return { farmer, liters, total: liters.cow + liters.buffalo + liters.goat, gross, recovery, net: gross - recovery };
-    }).sort((a, b) => b.net - a.net);
-  }, [collections, farmers, cycle, pct]);
+  const { q, rows } = useSamples(cycle.start, cycle.end > today ? today : cycle.end);
 
-  const key = (b: Bill) => `${cycle.start}-${b.farmer.id}`;
-  const totals = bills.reduce((a, b) => ({ liter: a.liter + b.total, gross: a.gross + b.gross, rec: a.rec + b.recovery, net: a.net + b.net }), { liter: 0, gross: 0, rec: 0, net: 0 });
-  const paidCount = bills.filter((b) => paid.has(key(b))).length;
+  const bills = useMemo<Bill[]>(() => {
+    const by = new Map<string, Bill>();
+    for (const r of rows) {
+      const d = isoFromTrdate(r.date);
+      if (!d || d < cycle.start || d > cycle.end) continue;
+      const b = by.get(r.farmerKey) ?? { key: r.farmerKey, farmerId: r.farmerId, vlccid: r.vlccid, name: r.farmerName, village: r.village, liters: { cow: 0, buffalo: 0, mix: 0, goat: 0 }, total: 0, gross: 0 };
+      if (r.milk) b.liters[r.milk] += r.liter;
+      b.total += r.liter;
+      b.gross += r.amount;
+      by.set(r.farmerKey, b);
+    }
+    return [...by.values()].sort((a, b) => b.gross - a.gross);
+  }, [rows, cycle]);
+
+  const pk = (b: Bill) => `${cycle.start}-${b.key}`;
+  const totals = bills.reduce((a, b) => ({ liter: a.liter + b.total, gross: a.gross + b.gross }), { liter: 0, gross: 0 });
+  const paidCount = bills.filter((b) => paid.has(pk(b))).length;
+  const kinds = KINDS.filter((k) => bills.some((b) => b.liters[k] > 0));
 
   const cols: Column<Bill>[] = [
-    { key: 'f', header: 'Farmer', sort: (b) => b.farmer.name, cell: (b) => <div><p className="font-semibold">{b.farmer.name}</p><p className="text-xs text-mute">ID {b.farmer.code}</p></div> },
-    ...MILK_TYPES.map<Column<Bill>>((m) => ({ key: m, header: `${MILK_META[m].label} L`, align: 'right', sort: (b) => b.liters[m], cell: (b) => (b.liters[m] ? nf(b.liters[m], 1) : '—') })),
-    { key: 'gross', header: 'Gross', align: 'right', sort: (b) => b.gross, cell: (b) => inr(b.gross) },
-    { key: 'rec', header: 'Advance recovery', align: 'right', sort: (b) => b.recovery, cell: (b) => (b.recovery ? <span className="text-danger">−{inr(b.recovery)}</span> : '—') },
-    { key: 'net', header: 'Net payable', align: 'right', sort: (b) => b.net, cell: (b) => <span className="font-bold">{inr(b.net)}</span> },
-    { key: 'st', header: 'Status', cell: (b) => <Badge tone={paid.has(key(b)) ? 'ok' : 'warn'} dot>{paid.has(key(b)) ? 'Paid' : 'Due'}</Badge> },
+    { key: 'f', header: 'Farmer', sort: (b) => b.name, cell: (b) => <div><p className="font-semibold">{b.name}</p><p className="text-xs text-mute">ID {b.farmerId} · {vlccOption(b.vlccid)}</p></div> },
+    ...kinds.map<Column<Bill>>((k) => ({ key: k, header: `${KIND_META[k].label} L`, align: 'right', sort: (b) => b.liters[k], cell: (b) => (b.liters[k] ? nf(b.liters[k], 1) : '—') })),
+    { key: 'total', header: 'Total L', align: 'right', sort: (b) => b.total, cell: (b) => nf(b.total, 1) },
+    { key: 'gross', header: 'Amount payable', align: 'right', sort: (b) => b.gross, cell: (b) => <span className="font-bold">{inr(b.gross, 2)}</span> },
+    { key: 'st', header: 'Status', cell: (b) => <Badge tone={paid.has(pk(b)) ? 'ok' : 'warn'} dot>{paid.has(pk(b)) ? 'Paid' : 'Due'}</Badge> },
     { key: 'act', header: '', align: 'right', cell: (b) => <Button size="sm" variant="soft" icon={<ReceiptIndianRupee size={13} />} onClick={(e) => { e.stopPropagation(); setSlip(b); }}>Payslip</Button> },
   ];
 
   const ex: ExportCol<Bill>[] = [
-    { header: 'Farmer ID', value: (b) => b.farmer.code }, { header: 'Farmer', value: (b) => b.farmer.name },
-    ...MILK_TYPES.map<ExportCol<Bill>>((m) => ({ header: `${MILK_META[m].label} litres`, value: (b) => Math.round(b.liters[m] * 10) / 10 })),
-    { header: 'Gross', value: (b) => Math.round(b.gross) }, { header: 'Recovery', value: (b) => b.recovery }, { header: 'Net payable', value: (b) => Math.round(b.net) },
+    { header: 'Farmer ID', value: (b) => b.farmerId }, { header: 'VLC', value: (b) => b.vlccid }, { header: 'Farmer', value: (b) => b.name },
+    ...KINDS.map<ExportCol<Bill>>((k) => ({ header: `${KIND_META[k].label} litres`, value: (b) => Math.round(b.liters[k] * 10) / 10 })),
+    { header: 'Amount payable', value: (b) => Math.round(b.gross * 100) / 100 },
   ];
 
-  const markAll = () => { setPaid(new Set([...paid, ...bills.map(key)])); toast(`${bills.length} bills marked as paid`); };
+  const markAll = () => { setPaid(new Set([...paid, ...bills.map(pk)])); toast(`${bills.length} bills marked as paid on this device`); };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Billing" subtitle="Ten-day bills per farmer. Each milk type is priced on its own rate chart, then advances are recovered." actions={<>
-        <Button variant="outline" icon={<Download size={16} />} onClick={() => exportCSV(`bills-${cycle.start}`, ex, bills)}>Export CSV</Button>
-        <Button icon={<CheckCheck size={16} />} onClick={markAll}>Mark all paid</Button>
+      <PageHeader title="Billing" subtitle="Ten-day bills per farmer, added up from the portal's farmer samples at the rates the portal applied." actions={<>
+        <Button variant="outline" icon={<Download size={16} />} disabled={bills.length === 0} onClick={() => exportCSV(`bills-${cycle.start}`, ex, bills)}>Export CSV</Button>
+        <Button icon={<CheckCheck size={16} />} disabled={bills.length === 0} onClick={markAll}>Mark all paid</Button>
       </>} />
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Litres billed" value={totals.liter} icon={<Droplets size={18} />} tone="text-brand" hint={`${bills.length} farmers`} />
-        <StatCard label="Gross amount" value={totals.gross} prefix="₹" icon={<IndianRupee size={18} />} tone="text-cow" />
-        <StatCard label="Advance recovered" value={totals.rec} prefix="₹" icon={<Wallet size={18} />} tone="text-danger" />
-        <StatCard label="Net payable" value={totals.net} prefix="₹" icon={<ReceiptIndianRupee size={18} />} tone="text-ok" hint={`${paidCount} of ${bills.length} paid`} />
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+        <StatCard label="Litres billed" value={totals.liter} decimals={1} icon={<Droplets size={18} />} tone="text-brand" hint={`${bills.length} farmers`} />
+        <StatCard label="Amount payable" value={totals.gross} prefix="₹" icon={<IndianRupee size={18} />} tone="text-cow" />
+        <StatCard label="Paid" value={paidCount} icon={<ReceiptIndianRupee size={18} />} tone="text-ok" hint={`of ${bills.length} bills (marked on this device)`} />
       </div>
 
       <Card>
-        <CardHeader title="Billing cycle" action={<div className="grid w-full gap-3 sm:w-auto sm:grid-cols-2">
-          <Field label="Cycle"><Select value={idx} onChange={(e) => setIdx(Number(e.target.value))}>{list.map((c, i) => <option key={c.start} value={i}>{c.label}{i === 0 ? ' (running)' : ''}</option>)}</Select></Field>
-          <Field label={`Advance recovery: ${pct}% of gross`}><input type="range" min={0} max={50} step={5} value={pct} onChange={(e) => setPct(Number(e.target.value))} className="h-10 w-full accent-[rgb(var(--brand))]" /></Field>
-        </div>} />
-        <div className="mt-3"><DataTable columns={cols} rows={bills} rowKey={(b) => b.farmer.id} pageSize={10} onRowClick={(b) => setSlip(b)} /></div>
+        <CardHeader title="Billing cycle" action={<div className="w-full sm:w-72"><Field label="Cycle"><Select value={idx} onChange={(e) => setIdx(Number(e.target.value))}>{list.map((c, i) => <option key={c.start} value={i}>{c.label}{i === 0 ? ' (running)' : ''}</option>)}</Select></Field></div>} />
+        <Notice q={q} />
+        <div className="mt-3">{isLoadingQ(q) ? <LoadingBlock height="h-64" q={q} /> : <DataTable columns={cols} rows={bills} rowKey={(b) => b.key} pageSize={DEFAULT_PAGE_SIZE} pageSizes={[10, 25, 50, 100, 250]} onRowClick={(b) => setSlip(b)} empty={<p className="px-6 py-10 text-center text-sm text-mute">No milk was collected in this cycle.</p>} />}</div>
       </Card>
 
-      <Modal open={!!slip} onClose={() => setSlip(null)} title="Payslip" subtitle={slip ? `${cycle.label}` : ''}
+      <Modal open={!!slip} onClose={() => setSlip(null)} title="Payslip" subtitle={slip ? cycle.label : ''}
         footer={slip && <>
-          <Button variant="ghost" onClick={() => setPaid((p) => { const n = new Set(p); n.has(key(slip)) ? n.delete(key(slip)) : n.add(key(slip)); return n; })}>{paid.has(key(slip)) ? 'Mark as due' : 'Mark as paid'}</Button>
-          <Button icon={<Printer size={15} />} onClick={() => exportPDF(`Payslip ${slip.farmer.name} ${cycle.start}`, [{ header: 'Item', value: (r: [string, string]) => r[0] }, { header: 'Amount', value: (r: [string, string]) => r[1] }], [...MILK_TYPES.map((m): [string, string] => [`${MILK_META[m].label} ${nf(slip.liters[m], 1)} L`, '']), ['Gross', inr(slip.gross)], ['Advance recovery', `-${inr(slip.recovery)}`], ['Net payable', inr(slip.net)]])}>Print</Button>
+          <Button variant="ghost" onClick={() => setPaid((p) => { const n = new Set(p); n.has(pk(slip)) ? n.delete(pk(slip)) : n.add(pk(slip)); return n; })}>{paid.has(pk(slip)) ? 'Mark as due' : 'Mark as paid'}</Button>
+          <Button icon={<Printer size={15} />} onClick={() => exportPDF(`Payslip ${slip.name} ${cycle.start}`, [{ header: 'Item', value: (r: [string, string]) => r[0] }, { header: 'Amount', value: (r: [string, string]) => r[1] }], [...KINDS.filter((k) => slip.liters[k] > 0).map((k): [string, string] => [`${KIND_META[k].label} ${nf(slip.liters[k], 1)} L`, '']), ['Amount payable', inr(slip.gross, 2)]])}>Print</Button>
         </>}>
         {slip && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between"><div><p className="font-display text-xl font-extrabold">{slip.farmer.name}</p><p className="text-sm text-mute">Farmer {slip.farmer.code} · {slip.farmer.village}</p></div><Badge tone={paid.has(key(slip)) ? 'ok' : 'warn'} dot>{paid.has(key(slip)) ? 'Paid' : 'Due'}</Badge></div>
+            <div className="flex items-center justify-between"><div><p className="font-display text-xl font-extrabold">{slip.name}</p><p className="text-sm text-mute">Farmer {slip.farmerId} · {vlccOption(slip.vlccid)}{slip.village ? ` · ${slip.village}` : ''}</p></div><Badge tone={paid.has(pk(slip)) ? 'ok' : 'warn'} dot>{paid.has(pk(slip)) ? 'Paid' : 'Due'}</Badge></div>
             <ul className="divide-y divide-line/70 rounded-2xl border border-line">
-              {MILK_TYPES.filter((m) => slip.liters[m] > 0).map((m) => (<li key={m} className="flex justify-between px-4 py-3 text-sm"><span className="font-semibold">{MILK_META[m].label} milk</span><span className="tnum">{nf(slip.liters[m], 1)} L</span></li>))}
-              <li className="flex justify-between px-4 py-3 text-sm"><span>Gross amount</span><span className="font-semibold tnum">{inr(slip.gross)}</span></li>
-              <li className="flex justify-between px-4 py-3 text-sm"><span>Advance recovery</span><span className="font-semibold text-danger tnum">−{inr(slip.recovery)}</span></li>
-              <li className="flex justify-between bg-soft px-4 py-4"><span className="font-bold">Net payable</span><span className="font-display text-2xl font-extrabold tnum">{inr(slip.net)}</span></li>
+              {KINDS.filter((k) => slip.liters[k] > 0).map((k) => (<li key={k} className="flex justify-between px-4 py-3 text-sm"><span className="font-semibold">{KIND_META[k].label} milk</span><span className="tnum">{nf(slip.liters[k], 1)} L</span></li>))}
+              <li className="flex justify-between bg-soft px-4 py-4"><span className="font-bold">Amount payable</span><span className="font-display text-2xl font-extrabold tnum">{inr(slip.gross, 2)}</span></li>
             </ul>
           </div>
         )}

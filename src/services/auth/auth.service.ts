@@ -1,12 +1,21 @@
-import { decryptPayload, encryptPayload } from "./crypto";
-
-export class ApiError extends Error {}
+import { decryptPayload, encryptPayload } from "../../lib/crypto";
+import { ApiError } from "../http/errors";
 
 export interface LoginProfile {
   name: string;
   email: string;
   role: string;
+  dairyName?: string;
   token?: string;
+  vlccIds?: string[];
+  vlccNames?: Record<string, string>;
+  stationId?: string;
+  plantId?: string;
+  mccId?: string;
+  /** The login record's own user id: passed to getMenu and getReportAccess. */
+  userId?: string;
+  /** The "station" id column of the login record: passed to getCenter. Separate from `stationId` above, which the reports already use. */
+  centerStationId?: string;
 }
 
 type Obj = Record<string, unknown>;
@@ -18,7 +27,6 @@ const TIMEOUT_MS = 20_000;
 const isObj = (v: unknown): v is Obj =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Case-insensitive lookup of the first non-empty string among `keys`, searching the root object and its direct child objects. */
 function pickString(root: Obj, keys: string[]): string | undefined {
   const sources = [root, ...Object.values(root).filter(isObj)];
   for (const source of sources) {
@@ -33,7 +41,6 @@ function pickString(root: Obj, keys: string[]): string | undefined {
   return undefined;
 }
 
-/** Looks for an explicit success / failure flag in the server response. */
 function readFlag(root: Obj): "ok" | "fail" | undefined {
   for (const key of Object.keys(root)) {
     if (
@@ -69,14 +76,71 @@ function readFlag(root: Obj): "ok" | "fail" | undefined {
   return undefined;
 }
 
+const norm = (k: string) => k.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+function pickIds(rows: Obj[], names: string[]): string[] {
+  const wanted = names.map(norm);
+  const out: string[] = [];
+  for (const row of rows) {
+    for (const [key, value] of Object.entries(row)) {
+      if (!wanted.includes(norm(key))) continue;
+      if (typeof value !== "string" && typeof value !== "number") continue;
+      for (const part of String(value).split(/[,;\s]+/)) {
+        if (part && !out.includes(part)) out.push(part);
+      }
+    }
+  }
+  return out;
+}
+
+function pickVlccNames(rows: Obj[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const row of rows) {
+    const id = pickIds([row], ["vlccid", "vlccode", "vlcid"])[0];
+    const name = pickString(row, ["villagename", "vlccname", "vlcname", "centername", "centrename"]);
+    if (id && name) out[id] = name;
+  }
+  return out;
+}
+
 const nameFromEmail = (email: string) =>
   email
     .split("@")[0]
     .replace(/[._]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase()) || "User";
 
+/**
+ * The id that goes into getCenter. Order:
+ *  1. the column named in VITE_CENTER_ID_FIELD (.env.local), if set
+ *  2. CustomStationId / stationid / station / stationcode / stationno
+ *  3. any column whose name contains "station"
+ */
+function pickStationId(records: Obj[]): string | undefined {
+  // The value is passed on WHOLE: CustomStationId is one string with every station id, comma separated.
+  const whole = (names: string[]) => {
+    for (const w of names) {
+      for (const row of records) {
+        const key = Object.keys(row).find((k) => norm(k) === w);
+        const v = key ? row[key] : undefined;
+        if ((typeof v === "string" && v.trim()) || typeof v === "number") return String(v).trim();
+      }
+    }
+    return undefined;
+  };
+  const forced = norm(import.meta.env.VITE_CENTER_ID_FIELD ?? "");
+  const exact = whole([...(forced ? [forced] : []), "customstationid", "stationid", "station", "stationcode", "stationno"]);
+  if (exact) return exact;
+  for (const row of records) {
+    for (const [key, value] of Object.entries(row)) {
+      const k = norm(key);
+      if (!k.includes("station") || k.includes("name")) continue;
+      if ((typeof value === "string" && value.trim()) || typeof value === "number") return String(value).trim();
+    }
+  }
+  return undefined;
+}
 
-function mapLoginResponse(decoded: unknown, username: string): LoginProfile {
+export function mapLoginResponse(decoded: unknown, username: string): LoginProfile {
   const outer = Array.isArray(decoded) ? decoded[0] : decoded;
   if (!isObj(outer)) {
     throw new ApiError(
@@ -94,8 +158,8 @@ function mapLoginResponse(decoded: unknown, username: string): LoginProfile {
     "description",
   ]);
 
-  // This server replies { Data: [ { ...user record } ] }. An empty Data array means no matching user.
   let user: Obj = outer;
+  let records: Obj[] = [outer];
   const dataKey = Object.keys(outer).find((k) => k.toLowerCase() === "data");
   if (dataKey) {
     const inner = outer[dataKey];
@@ -103,6 +167,7 @@ function mapLoginResponse(decoded: unknown, username: string): LoginProfile {
       throw new ApiError(message || "Incorrect username or password.");
     const first = Array.isArray(inner) ? inner[0] : inner;
     if (isObj(first)) user = first;
+    records = (Array.isArray(inner) ? inner : [inner]).filter(isObj);
   }
 
   const token =
@@ -147,8 +212,38 @@ function mapLoginResponse(decoded: unknown, username: string): LoginProfile {
     name: name ?? nameFromEmail(resolvedEmail),
     email: resolvedEmail,
     role: role ?? "Dairy administrator",
+    dairyName: pickString(user, ["dairyname", "plantname", "plant", "companyname", "organizationname", "orgname", "societyname"]),
     token,
+    // The login record carries the VLC ids as one comma separated string in "SessionID".
+    vlccIds: pickIds(records, ["sessionid", "vlccid", "vlccids", "vlccode", "vlcid"]),
+    vlccNames: pickVlccNames(records),
+    // stationid stays empty unless the record has one: the session then uses all VLC ids, like the portal does.
+    stationId: pickIds(records, ["stationid", "station"])[0],
+    plantId: pickIds(records, ["plantid"])[0],
+    mccId: pickIds(records, ["mccid", "mcc"])[0],
+    // The user's own record is the first one. "id" is only the last resort: other rows may have their own ids.
+    userId:
+      pickIds(records.slice(0, 1), ["userid", "uid", "loginid", "usercode"])[0] ??
+      pickIds(records.slice(0, 1), ["id"])[0],
+    centerStationId: pickStationId(records),
   };
+}
+
+/**
+ * A copy of the decrypted login record that is safe to keep: every key that looks like a password is removed
+ * (the server's record contains the password). This copy is what is saved, encrypted, in localStorage.
+ */
+export function sanitizeLoginRecord(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sanitizeLoginRecord);
+  if (isObj(value)) {
+    const out: Obj = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (/pass(word|wd)?|pwd/i.test(k)) continue;
+      out[k] = sanitizeLoginRecord(v);
+    }
+    return out;
+  }
+  return value;
 }
 
 /** The server wraps encrypted replies as { "data": "ciphertext:iv" }. Plain JSON replies are passed through. */
@@ -218,10 +313,16 @@ async function postJson(
   }
 }
 
+export interface LoginResult {
+  profile: LoginProfile;
+  /** The decrypted login JSON without the password: AuthContext saves it encrypted, every page decrypts it again. */
+  record: unknown;
+}
+
 export async function loginApi(
   username: string,
   password: string,
-): Promise<LoginProfile> {
+): Promise<LoginResult> {
   let payload: string;
   try {
     
@@ -240,11 +341,17 @@ export async function loginApi(
     decoded = unwrap(json);
   } catch (error) {
     if (ok) throw error;
-    decoded = json; // error replies may be unreadable too; fall back to the status code below
+    decoded = json;
   }
 
-  // Dev-only debug line. Delete it before going live: it prints the whole user record to the console.
-  if (import.meta.env.DEV) console.log("[login] decrypted response:", decoded);
+  // Dev-only: lists the KEY NAMES of the login record (never the values, the record contains the password)
+  // so you can see which field carries the VLC / station ids.
+  if (import.meta.env.DEV) {
+    const rec = isObj(decoded) ? decoded : {};
+    const data = Object.keys(rec).find((k) => k.toLowerCase() === "data");
+    const first = data && Array.isArray(rec[data]) ? (rec[data] as unknown[])[0] : rec;
+    console.log("[login] response keys:", Object.keys(rec), "| user record keys:", isObj(first) ? Object.keys(first) : first);
+  }
 
   if (!ok) {
     const message = isObj(decoded)
@@ -256,5 +363,5 @@ export async function loginApi(
     throw new ApiError(`Sign-in failed (error ${status}). Please try again.`);
   }
 
-  return mapLoginResponse(decoded, username);
+  return { profile: mapLoginResponse(decoded, username), record: sanitizeLoginRecord(decoded) };
 }

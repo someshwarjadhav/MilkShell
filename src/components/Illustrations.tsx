@@ -53,7 +53,6 @@ export const Tanker: React.FC<P> = ({ size = 64, className }) => {
 const SPOT: Record<MilkType, string> = { cow: '#F6EBD3', buffalo: '#3B4468', goat: '#EDEFE6' };
 const BODY: Record<MilkType, string> = { cow: '#E8A33D', buffalo: '#5668B8', goat: '#3EA076' };
 
-/** Stylised heads for each animal — flat shapes, one accent colour. */
 export const AnimalHead: React.FC<{ type: MilkType; size?: number; className?: string }> = ({ type, size = 32, className }) => {
   const face = SPOT[type];
   return (

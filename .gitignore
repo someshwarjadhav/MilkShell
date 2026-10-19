@@ -8,3 +8,7 @@ coverage/
 
 # OS files
 .DS_Store
+
+# Local secrets (encryption key etc.)
+.env.local
+.env.*.local

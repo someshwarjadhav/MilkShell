@@ -57,7 +57,7 @@ const AppLayout: React.FC = () => {
             </motion.div>
           </Suspense>
         </main>
-        <footer className="px-6 pb-8 pt-2 text-center text-xs text-mute">{dairyName} · Dhara dairy cloud · demo data</footer>
+        <footer className="px-6 pb-8 pt-2 text-center text-xs text-mute">{dairyName} · Dhara Dairy</footer>
       </div>
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
     </div>

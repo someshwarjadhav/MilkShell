@@ -1,22 +1,27 @@
-import type { Collection, Flag, Thresholds } from '../types';
+import type { FarmerRow } from '../services/mappers/farmer.mapper';
+import type { Flag, LimitKind, Thresholds } from '../types';
 
+/** Starting alert limits. They are settings, not data: change them in Settings. */
 export const DEFAULT_THRESHOLDS: Thresholds = {
-  fat: { cow: 3.2, buffalo: 5.5, goat: 3.5 },
-  snf: { cow: 8.0, buffalo: 8.5, goat: 7.8 },
-  temp: 30,
+  fat: { cow: 3.2, buffalo: 5.5, mix: 3.5 },
+  snf: { cow: 8.0, buffalo: 8.5, mix: 8.0 },
+  water: 5,
 };
 
 export const FLAG_META: Record<Flag, { label: string; hint: string }> = {
-  water: { label: 'Water suspected', hint: 'SNF far below normal for this milk' },
+  water: { label: 'Water suspected', hint: 'SNF far below the limit for this milk' },
   'low-fat': { label: 'Low fat', hint: 'Fat below the alert limit' },
   'low-snf': { label: 'Low SNF', hint: 'SNF below the alert limit' },
-  'high-temp': { label: 'Warm sample', hint: 'Sample temperature above the limit' },
+  adulterated: { label: 'Added water', hint: 'The analyzer reported water above the limit' },
 };
 
-export function flagOf(c: Collection, t: Thresholds): Flag | null {
-  if (c.snf < t.snf[c.milk] - 0.7) return 'water';
-  if (c.fat < t.fat[c.milk]) return 'low-fat';
-  if (c.snf < t.snf[c.milk]) return 'low-snf';
-  if (c.temp > t.temp) return 'high-temp';
+const limitKind = (r: FarmerRow): LimitKind => (r.milk === 'cow' || r.milk === 'buffalo' ? r.milk : 'mix');
+
+export function flagOf(r: FarmerRow, t: Thresholds): Flag | null {
+  const k = limitKind(r);
+  if (r.water > t.water) return 'adulterated';
+  if (r.snf > 0 && r.snf < t.snf[k] - 0.7) return 'water';
+  if (r.fat > 0 && r.fat < t.fat[k]) return 'low-fat';
+  if (r.snf > 0 && r.snf < t.snf[k]) return 'low-snf';
   return null;
 }

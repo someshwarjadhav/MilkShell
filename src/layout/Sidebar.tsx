@@ -2,7 +2,9 @@ import type * as React from 'react';
 import { NavLink } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { NAV } from './nav';
+import { useMemo } from 'react';
+import { buildNav } from './nav';
+import { useMenuTree } from '../hooks/useSessionData';
 import { Logo } from '../components/Illustrations';
 import { cn } from '../lib/cn';
 import { useData } from '../context/DataContext';
@@ -12,6 +14,8 @@ interface Props { collapsed: boolean; onToggle: () => void; onNavigate?: () => v
 
 export const Sidebar: React.FC<Props> = ({ collapsed, onToggle, onNavigate, mobile }) => {
   const { dairyName } = useData();
+  const tree = useMenuTree();
+  const NAV = useMemo(() => buildNav(tree), [tree]);
   const slim = collapsed && !mobile;
   return (
     <nav aria-label="Main" className="flex h-full flex-col rounded-[2rem] border border-line bg-panel p-3 shadow-lift">

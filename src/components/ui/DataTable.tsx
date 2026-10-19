@@ -22,9 +22,10 @@ interface Props<T> {
   onRowClick?: (r: T) => void;
   empty?: ReactNode;
   footerRow?: ReactNode;
+  sizeLabel?: string;
 }
 
-export function DataTable<T>({ columns, rows, rowKey, pageSize = 10, pageSizes = [10, 25, 50, 100], onRowClick, empty, footerRow }: Props<T>) {
+export function DataTable<T>({ columns, rows, rowKey, pageSize = 10, pageSizes = [10, 25, 50, 100], onRowClick, empty, footerRow, sizeLabel = 'Rows' }: Props<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [dir, setDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(0);
@@ -98,7 +99,7 @@ export function DataTable<T>({ columns, rows, rowKey, pageSize = 10, pageSizes =
       {rows.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm text-mute">
           <div className="flex items-center gap-2">
-            <span>Rows</span>
+            <span>{sizeLabel}</span>
             <div className="w-24"><Select value={size} onChange={(e) => setSize(Number(e.target.value))} className="h-8 text-xs">{pageSizes.map((n) => <option key={n}>{n}</option>)}</Select></div>
             <span className="tnum">{cur * size + 1}–{Math.min(sorted.length, cur * size + size)} of {sorted.length}</span>
           </div>

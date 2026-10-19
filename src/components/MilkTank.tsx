@@ -4,7 +4,6 @@ import { useId } from 'react';
 
 interface Props { percent: number; color?: string; height?: number; className?: string; track?: string; outline?: string }
 
-/** Animated tank: the milk level rises on mount and the surface keeps rippling. */
 export const MilkTank: React.FC<Props> = ({ percent, color = '#14969B', height = 260, className, track = 'rgb(var(--soft))', outline = 'rgb(var(--ink) / .16)' }) => {
   const id = useId().replace(/:/g, '');
   const [shown, setShown] = useState(0);
