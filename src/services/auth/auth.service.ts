@@ -1,4 +1,5 @@
 import { decryptPayload, encryptPayload } from "../../lib/crypto";
+import { STATIC_LOGIN_RECORD, staticLoginActive, staticLoginAllows } from "../../config/staticLogin";
 import { ApiError } from "../http/errors";
 
 export interface LoginProfile {
@@ -323,6 +324,16 @@ export async function loginApi(
   username: string,
   password: string,
 ): Promise<LoginResult> {
+  // TEMPORARY static login (see src/config/staticLogin.ts): the sign-in API call below is skipped and the saved,
+  // decrypted login JSON is used instead. Off unless VITE_STATIC_LOGIN=1 and the record is filled.
+  if (staticLoginActive()) {
+    const profile = mapLoginResponse(STATIC_LOGIN_RECORD, username);
+    if (!(await staticLoginAllows(username, password, profile.email))) {
+      throw new ApiError("Incorrect username or password.");
+    }
+    return { profile, record: sanitizeLoginRecord(STATIC_LOGIN_RECORD) };
+  }
+
   let payload: string;
   try {
     
