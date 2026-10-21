@@ -10,8 +10,7 @@ export const GATEWAY_PATH = import.meta.env.VITE_GATEWAY_PATH || '/gateway/Inter
 export const REPORT_CONFIG_URL = import.meta.env.VITE_REPORT_CONFIG_URL || 'https://stipldrive.ddns.net/home/userReportConfig';
 
 /**
- * Same as Angular's `environment.staticIP = '/gateway/Interceptor?path='`.
- * Every call is `environment.staticIP + '/home/<endpoint>'`.
+ * SmartX API calls use the gateway path followed by `/home/<endpoint>`.
  */
 export const environment = {
   staticIP: `${BASE_URL}${GATEWAY_PATH}?path=`,

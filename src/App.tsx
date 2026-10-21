@@ -19,6 +19,9 @@ const Billing = lazy(() => import('./pages/Billing'));
 const Quality = lazy(() => import('./pages/Quality'));
 const Pipeline = lazy(() => import('./pages/Pipeline'));
 const Settings = lazy(() => import('./pages/Settings'));
+const UnionwiseCollection = lazy(() => import('./pages/reports/UnionwiseCollection'));
+const VlcStatus = lazy(() => import('./pages/reports/VlcStatus'));
+const VarianceReport = lazy(() => import('./pages/reports/VarianceReport'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 const ScrollToTop: React.FC = () => {
@@ -83,6 +86,9 @@ const App: React.FC = () => {
               <Route path="billing" element={<Billing />} />
               <Route path="quality" element={<Quality />} />
               <Route path="pipeline" element={<Pipeline />} />
+              <Route path="reports/unionwise" element={<UnionwiseCollection />} />
+              <Route path="reports/vlc-status" element={<VlcStatus />} />
+              <Route path="reports/variance" element={<VarianceReport />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />
             </Route>

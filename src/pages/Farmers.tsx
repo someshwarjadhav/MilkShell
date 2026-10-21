@@ -42,7 +42,7 @@ const Farmers: React.FC = () => {
   const centers = useCenters(); 
 
 
-  const [vlcc, setVlcc] = useState('all');
+  const [vlcc, setVlcc] = useState('');
   const [milk, setMilk] = useState<'all' | MilkCode>('all');
   const [shift, setShift] = useState<ShiftCode>('Z');
   const [from, setFrom] = useState(addDays(today, -6));
@@ -53,7 +53,7 @@ const Farmers: React.FC = () => {
   const [show, setShow] = useState<Show>('poured');
   const [openKey, setOpenKey] = useState<string | null>(null);
 
-  const ids = applied ? (applied.vlcc === 'all' ? sessionIds : [applied.vlcc]) : [];
+  const ids = applied ? [applied.vlcc] : [];
   const key = applied ? `farmerspage:${applied.from}:${applied.to}:${applied.shift}:${applied.milk}:${ids.join(',')}` : null;
   const samplesQ = useQuery<RawFarmerRow>(key, (emit) =>
     fetchFarmerCollection({ from: applied!.from, to: applied!.to, shift: applied!.shift, milk: applied!.milk, vlccIds: ids, priority: 0 }, emit));
@@ -63,19 +63,20 @@ const Farmers: React.FC = () => {
   const book = useMemo(() => (applied ? buildFarmerBook(master.rows, samples, end) : []), [applied, master.rows, samples, end]);
 
   const submit = () => {
+    if (!vlcc) return;
     const next: Applied = { from, to, shift, milk: milk === 'all' ? 'ALL' : milk, vlcc };
     const same = applied && applied.from === next.from && applied.to === next.to && applied.shift === next.shift && applied.milk === next.milk && applied.vlcc === next.vlcc;
     if (same) samplesQ.retry(); 
     else setApplied(next);
   };
-  const reset = () => { setVlcc('all'); setMilk('all'); setShift('Z'); setFrom(addDays(today, -6)); setTo(today); setQ(''); setShow('poured'); setApplied(null); };
+  const reset = () => { setVlcc(''); setMilk('all'); setShift('Z'); setFrom(addDays(today, -6)); setTo(today); setQ(''); setShow('poured'); setApplied(null); };
 
   useEffect(() => { const o = params.get('open'); if (o) setOpenKey(o); }, [params]);
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
     return book
-      .filter((f) => applied?.vlcc === 'all' || !applied || f.vlccid === applied.vlcc)
+      .filter((f) => !applied || f.vlccid === applied.vlcc)
       .filter((f) => show === 'all' || (show === 'poured' ? f.period > 0 : show === 'nomilk' ? f.period === 0 && f.active !== false : f.active === false))
       .filter((f) => !s || f.name.toLowerCase().includes(s) || f.farmerId.includes(s) || f.village.toLowerCase().includes(s) || f.phone.includes(s));
   }, [book, q, show, applied]);
@@ -134,13 +135,13 @@ const Farmers: React.FC = () => {
       <Card>
         <CardHeader title="User Info" subtitle="The portal can take up to a minute to answer." action={<Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={reset}>Reset</Button>} />
         <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
-          <Field label="VLC Name"><Select value={vlcc} onChange={(e) => setVlcc(e.target.value)}><option value="all">All centres</option>{centers.length ? centers.map((c) => <option key={c.id} value={c.id}>{c.label} · {c.id}</option>) : sessionIds.map((id) => <option key={id} value={id}>{vlccOption(id)}</option>)}</Select></Field>
+          <Field label="VLC Name"><Select value={vlcc} onChange={(e) => setVlcc(e.target.value)}><option value="">Select a centre</option>{centers.length ? centers.map((c) => <option key={c.id} value={c.id}>{c.label} · {c.id}</option>) : sessionIds.map((id) => <option key={id} value={id}>{vlccOption(id)}</option>)}</Select></Field>
           <Field label="Milk Type"><Select value={milk} onChange={(e) => setMilk(e.target.value as 'all' | MilkCode)}><option value="all">All milk</option>{GLOBALSMILK.milkOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}</Select></Field>
           <Field label="Shift"><Select value={shift} onChange={(e) => setShift(e.target.value as ShiftCode)}>{GLOBALSSHIFT.shiftOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}</Select></Field>
           <Field label="Show"><Select value={show} onChange={(e) => setShow(e.target.value as Show)}><option value="poured">Farmers who poured milk</option><option value="all">All registered farmers</option><option value="nomilk">Active, no milk</option><option value="inactive">Inactive</option></Select></Field>
           <Field label="From Date"><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
           <Field label="To Date"><Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} /></Field>
-          <div className="flex items-end sm:col-span-2"><Button className="w-full" icon={<Search size={16} />} onClick={submit} loading={fetching && samplesQ.rows.length === 0} disabled={!from || !to}>Submit</Button></div>
+          <div className="flex items-end sm:col-span-2"><Button className="w-full" icon={<Search size={16} />} onClick={submit} loading={fetching && samplesQ.rows.length === 0} disabled={!vlcc || !from || !to}>Submit</Button></div>
         </div>
       </Card>
 

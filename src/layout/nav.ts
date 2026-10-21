@@ -1,4 +1,4 @@
-import { FileSpreadsheet, LayoutDashboard, MessageCircle, Radio, Receipt, Settings, ShieldAlert, Tags, Users, Warehouse, Workflow } from 'lucide-react';
+import { Activity, Building2, FileSpreadsheet, GitCompareArrows, LayoutDashboard, MessageCircle, Radio, Receipt, Settings, ShieldAlert, Tags, Users, Warehouse, Workflow } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { routeFor, type MenuNode } from '../services/menu/menu.service';
 
@@ -28,6 +28,9 @@ export const NAV: NavGroup[] = [
       { to: '/collections', label: 'Collections', icon: FileSpreadsheet, hint: 'Reports by farmer, centre, day and milk' },
       { to: '/farmers', label: 'Farmers', icon: Users, hint: 'Registered farmers and what they poured' },
       { to: '/centers', label: 'Centres', icon: Warehouse, hint: 'Your VLCs: litres, farmers and last sample' },
+      { to: '/reports/unionwise', label: 'Unionwise Collection', icon: Building2, hint: 'Farmers, litres, average fat, SNF, rate and amount per union and society' },
+      { to: '/reports/vlc-status', label: 'VLC Status', icon: Activity, hint: 'Which centres are active or in active for the chosen dates and shift' },
+      { to: '/reports/variance', label: 'Variance Report', icon: GitCompareArrows, hint: 'DOC collection against VLC collection, with the difference' },
     ],
   },
   {

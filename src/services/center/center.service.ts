@@ -2,15 +2,7 @@ import { gatewayPostJson } from '../http/client';
 import { pick, rowsFrom } from '../utils/loose';
 import type { Center } from '../mappers/center.mapper';
 
-/**
- * Angular:
- *   getCenter(id) { return this.http.post(`${environment.staticIP}/home/farmercollectiondpu`, { id }, { responseType: 'text' })
- *                       .pipe(map(r => JSON.parse(r.replace(/[\r\n]+/g, '').trim()))); }
- *
- * Same call here: JSON body { id }, the reply is TEXT, \r\n are stripped, then JSON.parse
- * (gatewayPostJson -> parseGatewayText does exactly that).
- * `id` = the "station" id column of the decrypted login record.
- */
+/** SmartX portal endpoint adapter for this service. */
 export const getCenter = (id: string): Promise<unknown> => gatewayPostJson('/home/farmercollectiondpu', { id }, 0);
 
 const ID_KEYS = ['vlccid', 'vlcid', 'vlccode', 'centerid', 'centreid', 'villageid', 'dcsid', 'dcscode', 'id', 'code'];

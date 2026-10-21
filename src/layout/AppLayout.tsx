@@ -26,7 +26,7 @@ const AppLayout: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-clip">
       <aside className={`fixed inset-y-0 left-0 z-40 hidden p-3 transition-[width] duration-300 lg:block ${collapsed ? 'w-[92px]' : 'w-[286px]'}`}>
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       </aside>
@@ -48,9 +48,9 @@ const AppLayout: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div className={`transition-[padding] duration-300 ${collapsed ? 'lg:pl-[92px]' : 'lg:pl-[286px]'}`}>
+      <div className={`min-w-0 transition-[padding] duration-300 ${collapsed ? 'lg:pl-[92px]' : 'lg:pl-[286px]'}`}>
         <Topbar onMenu={() => setMobile(true)} onSearch={() => setPalette(true)} />
-        <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full min-w-0 max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
           <Suspense fallback={<PageLoader />}>
             <motion.div key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
               <Outlet />
