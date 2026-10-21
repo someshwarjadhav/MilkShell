@@ -3,26 +3,32 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    // /api/home/userlogin  ->  https://smartx.shivinfotech.co.in/home/userlogin
-    proxy: {
-      '/api': {
-        target: 'https://smartx.shivinfotech.co.in',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
+ server: {
+  proxy: {
+    '/api': {
+      target: 'https://smartx.shivinfotech.co.in',
+      changeOrigin: true,
+      secure: false,
+      rewrite: (path) => path.replace(/^\/api/, ''),
+    },
+    '/stipl': {
+      target: 'https://stipldrive.ddns.net',
+      changeOrigin: true,
+      secure: false,
+      rewrite: (path) => path.replace(/^\/stipl/, ''),
     },
   },
+},
   preview: {
-    proxy: {
-      '/gateway': {
-        target: 'https://smartx.shivinfotech.co.in',
-        changeOrigin: true,
-        secure: false,
-      },
+  proxy: {
+    '/stipl': {
+      target: 'https://stipldrive.ddns.net',
+      changeOrigin: true,
+      secure: false,
+      rewrite: (path) => path.replace(/^\/stipl/, ''),
     },
   },
+},
   build: {
     rollupOptions: {
       output: {
