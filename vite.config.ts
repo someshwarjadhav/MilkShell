@@ -4,7 +4,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    // Dev-only replacement for Angular's proxy.conf.json:
     // /api/home/userlogin  ->  https://smartx.shivinfotech.co.in/home/userlogin
     proxy: {
       '/api': {
@@ -12,6 +11,15 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
+  preview: {
+    proxy: {
+      '/gateway': {
+        target: 'https://smartx.shivinfotech.co.in',
+        changeOrigin: true,
+        secure: false,
       },
     },
   },
