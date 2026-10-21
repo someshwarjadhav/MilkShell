@@ -1,12 +1,6 @@
 import type * as React from "react";
 import { useMemo, useState } from "react";
-import {
-  Download,
-  FileSpreadsheet,
-  FileText,
-  RotateCcw,
-  Search,
-} from "lucide-react";
+import { RotateCcw, Search } from "lucide-react";
 import { useToast } from "../context/ToastContext";
 import { Card, CardHeader } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -14,17 +8,12 @@ import { Badge } from "../components/ui/Badge";
 import { Field, Input, Segmented, Select } from "../components/ui/Fields";
 import { DataTable, type Column } from "../components/ui/DataTable";
 import { StatCard } from "../components/ui/StatCard";
-import { PageHeader } from "../components/ui/PageHeader";
 import { KindChip } from "../components/KindChip";
 import { QueryBoundary } from "../components/Widget";
 import { MilkLoader } from "../components/MilkLoader";
 import { nf, todayISO } from "../lib/format";
-import {
-  exportCSV,
-  exportExcel,
-  exportPDF,
-  type ExportCol,
-} from "../lib/export";
+import { exportCSV, exportExcel, exportPDF, type ExportCol } from "../lib/export";
+import { ReportBar, ReportDataBadge, ReportPage } from "../components/ReportKit";
 import { GLOBALSMILK, GLOBALSSHIFT, DEFAULT_PAGE_SIZE } from "../lib/global";
 import { ENV_RATE_ID } from "../services/config";
 import { pickLoose } from "../services/farmer/farmerBook";
@@ -127,7 +116,7 @@ const Collections: React.FC = () => {
 
   const farmerAccess = useReportColumns("farmercollection");
 
-  const [vlcc, setVlcc] = useState("all");
+  const [vlcc, setVlcc] = useState("");
   const [milk, setMilk] = useState<"all" | MilkCode>("all");
   const [shift, setShift] = useState<ShiftCode>("Z");
   const [from, setFrom] = useState(today);
@@ -140,11 +129,12 @@ const Collections: React.FC = () => {
     to: today,
     shift: "Z",
     milk: "ALL",
-    vlcc: "all",
+    vlcc: "",
     rateId: ENV_RATE_ID,
   });
 
-  const ids = applied.vlcc === "all" ? sessionIds : [applied.vlcc];
+  const hasAppliedCentre = Boolean(applied.vlcc);
+  const ids = hasAppliedCentre ? [applied.vlcc] : [];
   const key = `${applied.from}:${applied.to}:${applied.shift}:${applied.milk}:${ids.join(",")}`;
   const params = {
     from: applied.from,
@@ -155,12 +145,12 @@ const Collections: React.FC = () => {
   };
 
   const vlccQ = useQuery<RawVlccRow>(
-    view === "vlcc" ? `vlccpage:${key}` : null,
+    view === "vlcc" && hasAppliedCentre ? `vlccpage:${key}` : null,
     (emit) => fetchVlccCollection(params, emit),
   );
 
   const entryQ = useQuery<RawLoose>(
-    view === "entry" && applied.rateId
+    view === "entry" && hasAppliedCentre && applied.rateId
       ? `entrypage:${key}:${applied.rateId}`
       : null,
     (emit) => fetchFarmerMilkEntry({ ...params, rateId: applied.rateId }, emit),
@@ -168,7 +158,7 @@ const Collections: React.FC = () => {
   const portalEntry =
     view === "entry" && !!applied.rateId && entryQ.status !== "error";
   const farmerQ = useQuery<RawFarmerRow>(
-    view === "farmer" || (view === "entry" && !portalEntry)
+    hasAppliedCentre && (view === "farmer" || (view === "entry" && !portalEntry))
       ? `farmerpage:${key}`
       : null,
     (emit) => fetchFarmerCollection(params, emit),
@@ -182,7 +172,8 @@ const Collections: React.FC = () => {
           ? entryQ
           : farmerQ;
 
-  const search = () =>
+  const search = () => {
+    if (!vlcc) return;
     setApplied({
       from,
       to,
@@ -191,8 +182,9 @@ const Collections: React.FC = () => {
       vlcc,
       rateId: rateId.trim(),
     });
+  };
   const reset = () => {
-    setVlcc("all");
+    setVlcc("");
     setMilk("all");
     setShift("Z");
     setFrom(today);
@@ -204,7 +196,7 @@ const Collections: React.FC = () => {
       to: today,
       shift: "Z",
       milk: "ALL",
-      vlcc: "all",
+      vlcc: "",
       rateId: ENV_RATE_ID,
     });
   };
@@ -721,30 +713,55 @@ const Collections: React.FC = () => {
 
   const name = `${view === "vlcc" ? "vlc-collection" : view === "farmer" ? "farmer-collection" : "farmerwise-collection"}-${applied.from}-to-${applied.to}`;
   const run = (kind: "csv" | "xls" | "pdf") => {
-    const fn =
-      kind === "csv" ? exportCSV : kind === "xls" ? exportExcel : exportPDF;
-    if (view === "vlcc") fn(name, vlccExport, vlccRows);
-    else if (view === "farmer") fn(name, farmerExport, farmerRows);
-    else if (portalEntry) fn(name, entryExport, entryRows);
-    else fn(name, farmerwiseExport, farmerwise);
-    toast(
-      kind === "pdf"
-        ? "Print dialog opened — choose Save as PDF to download"
-        : `${kind.toUpperCase()} file downloaded`,
-    );
+    const meta: Array<[string, string]> = [
+      ["Centre", vlccTitle(applied.vlcc)],
+      ["Milk", applied.milk === "ALL" ? "All milk" : GLOBALSMILK.milkOptions.find((m) => m.Id === applied.milk)?.Name ?? applied.milk],
+      ["Shift", GLOBALSSHIFT.shiftOptions.find((s) => s.Id === applied.shift)?.Name ?? applied.shift],
+      ["From", applied.from],
+      ["To", applied.to],
+    ];
+    const summary = [
+      { label: "Records", value: nf(sum.count) },
+      { label: "Total litres", value: nf(sum.liter, 2) },
+      { label: "Total kg", value: nf(sum.kg, 2) },
+      { label: "Amount", value: `₹ ${nf(sum.amount, 2)}` },
+    ];
+    const note = view === "entry" && !portalEntry
+      ? "Farmerwise totals in this tab are calculated from the portal's farmer collection rows because the portal farmerwise endpoint was not used or did not return data."
+      : "Report rows are loaded from the SmartX portal using the selected report tab and filters.";
+    if (kind === "pdf") {
+      const options = { subtitle: `${applied.from} to ${applied.to}`, meta, summary, note };
+      if (view === "vlcc") exportPDF(name, vlccExport, vlccRows, options);
+      else if (view === "farmer") exportPDF(name, farmerExport, farmerRows, options);
+      else if (portalEntry) exportPDF(name, entryExport, entryRows, options);
+      else exportPDF(name, farmerwiseExport, farmerwise, options);
+      toast("Print dialog opened — choose Save as PDF to download");
+      return;
+    }
+    if (view === "vlcc") {
+      if (kind === "csv") exportCSV(name, vlccExport, vlccRows);
+      else exportExcel(name, vlccExport, vlccRows);
+    } else if (view === "farmer") {
+      if (kind === "csv") exportCSV(name, farmerExport, farmerRows);
+      else exportExcel(name, farmerExport, farmerRows);
+    } else if (portalEntry) {
+      if (kind === "csv") exportCSV(name, entryExport, entryRows);
+      else exportExcel(name, entryExport, entryRows);
+    } else if (kind === "csv") exportCSV(name, farmerwiseExport, farmerwise);
+    else exportExcel(name, farmerwiseExport, farmerwise);
+    toast(`${kind.toUpperCase()} file downloaded`);
   };
 
   const err = active.status === "error";
   const statError = err ? active.error?.message : undefined;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Collections"
-        subtitle="Milk collected at your VLCs, totals per centre, every farmer sample, or the farmerwise entries."
-      />
+    <ReportPage
+      title="Collections"
+      subtitle="Milk collected at your VLCs, totals per centre, every farmer sample, or the farmerwise entries."
+    >
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      {hasAppliedCentre && <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard
           label="Total litres"
           value={sum.liter}
@@ -801,7 +818,7 @@ const Collections: React.FC = () => {
           error={statError}
           onRetry={active.retry}
         />
-      </div>
+      </div>}
 
       <Card>
         <CardHeader
@@ -821,7 +838,7 @@ const Collections: React.FC = () => {
         <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-6">
           <Field label="Centre" className="lg:col-span-2">
             <Select value={vlcc} onChange={(e) => setVlcc(e.target.value)}>
-              <option value="all">All centres</option>
+              <option value="">Select a centre</option>
               {centers.length
                 ? centers.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -917,6 +934,7 @@ const Collections: React.FC = () => {
               className="w-full whitespace-nowrap"
               icon={<Search size={16} />}
               onClick={search}
+              disabled={!vlcc}
               loading={active.fetching && active.rows.length === 0}
             >
               Search
@@ -926,9 +944,14 @@ const Collections: React.FC = () => {
       </Card>
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 sm:px-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="overflow-x-auto">
+        <ReportBar
+          count={sum.count}
+          hideCount={loading || err}
+          disabled={loading || err || sum.count === 0}
+          kinds={["xls", "csv", "pdf"]}
+          onExport={run}
+          left={(
+            <div className="max-w-full overflow-x-auto">
               <Segmented
                 value={view}
                 onChange={setView}
@@ -939,40 +962,9 @@ const Collections: React.FC = () => {
                 ]}
               />
             </div>
-            {!loading && !err && (
-              <Badge tone="brand">Record Count: {nf(sum.count)}</Badge>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="soft"
-              icon={<FileSpreadsheet size={15} />}
-              onClick={() => run("xls")}
-              disabled={loading || err || sum.count === 0}
-            >
-              Excel
-            </Button>
-            <Button
-              size="sm"
-              variant="soft"
-              icon={<Download size={15} />}
-              onClick={() => run("csv")}
-              disabled={loading || err || sum.count === 0}
-            >
-              CSV
-            </Button>
-            <Button
-              size="sm"
-              variant="soft"
-              icon={<FileText size={15} />}
-              onClick={() => run("pdf")}
-              disabled={loading || err || sum.count === 0}
-            >
-              Print / PDF
-            </Button>
-          </div>
-        </div>
+          )}
+          source={<ReportDataBadge state={{ fetching: active.fetching, stale: active.stale, updatedAt: active.updatedAt, failed: active.failed, total: active.total, error: active.error, hasData: active.rows.length > 0 }} />}
+        />
         {view === "entry" && !portalEntry && (
           <p className="border-b border-line bg-soft/60 px-5 py-3 text-xs text-mute sm:px-6">
             {applied.rateId && entryQ.status === "error"
@@ -980,7 +972,11 @@ const Collections: React.FC = () => {
               : "Each farmer's totals worked out from the farmer samples. To use the portal's own farmerwise report, type its Rate ID above and press Search."}
           </p>
         )}
-        {loading ? (
+        {!hasAppliedCentre ? (
+          <p className="px-6 py-14 text-center text-sm text-mute">
+            Select a centre and press Search to load its collection.
+          </p>
+        ) : loading ? (
           <MilkLoader label={loaderLabel} />
         ) : (
           <QueryBoundary
@@ -1029,7 +1025,7 @@ const Collections: React.FC = () => {
           </QueryBoundary>
         )}
       </Card>
-    </div>
+    </ReportPage>
   );
 };
 

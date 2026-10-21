@@ -11,9 +11,9 @@ const T: Record<Tone, string> = {
   brand: 'bg-brand/15 text-brand',
 };
 
-export const Badge: React.FC<{ tone?: Tone; dot?: boolean; children: ReactNode; className?: string }> = ({ tone = 'neutral', dot, children, className }) => {
+export const Badge: React.FC<{ tone?: Tone; dot?: boolean; children: ReactNode; className?: string; title?: string }> = ({ tone = 'neutral', dot, children, className, title }) => {
   return (
-    <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold', T[tone], className)}>
+    <span title={title} className={cn('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold', T[tone], className)}>
       {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
       {children}
     </span>

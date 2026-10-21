@@ -2,11 +2,7 @@ import { asFlag } from '../report/report.service';
 import { gatewayGet } from '../http/client';
 import { isObj, norm, pick, pickLike, pickValue, rowsFrom, type Obj } from '../utils/loose';
 
-/**
- * Angular:
- *   getMenu(userid) { return this.http.get<any>('' + environment.staticIP + '/dairy/dairy/getmenu?userid=' + userid + ''); }
- * `userid` = the user id of the decrypted login record.
- */
+/** SmartX portal endpoint adapter for this service. */
 export const getMenu = (userid: string): Promise<unknown> => gatewayGet(`/dairy/dairy/getmenu?userid=${encodeURIComponent(userid)}`, 0);
 
 export interface MenuNode {
@@ -77,11 +73,14 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
   { to: '/billing', aliases: ['billing', 'tendaybill', 'payslip'] },
   { to: '/quality', aliases: ['quality', 'qualitywatch'] },
   { to: '/pipeline', aliases: ['pipeline', 'datapipeline'] },
+  { to: '/reports/unionwise', aliases: ['unionwisecollection', 'unionwise', 'unionwisereport', 'mccwisecollection', 'mccwisecolection', 'mccwise'] },
+  { to: '/reports/vlc-status', aliases: ['vlcstatus', 'vlccstatus', 'vlcstatusreport'] },
+  { to: '/reports/variance', aliases: ['variancereport', 'variance'] },
   { to: '/settings', aliases: ['settings'] },
   { to: '/contact', aliases: ['contact', 'contactsupport', 'mysupportticket', 'supportticket'] },
 ];
 /** Only these long, specific names also match inside a longer title (\"Farmer Collection Report\"). Short words never do. */
-const CONTAINED = ['farmercollection', 'villagecollection', 'livecollection', 'farmerledger', 'ratechart', 'farmerwisecollection'];
+const CONTAINED = ['farmercollection', 'villagecollection', 'livecollection', 'farmerledger', 'ratechart', 'farmerwisecollection', 'unionwisecollection', 'mccwisecollection', 'variancereport', 'vlcstatus'];
 
 const urlKey = (url: string) => norm(url.replace(/^[a-z]+:\/\/[^/]+/i, '').split(/[?#]/)[0].split('/').filter(Boolean).pop() ?? '');
 

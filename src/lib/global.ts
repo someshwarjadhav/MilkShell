@@ -1,17 +1,14 @@
-/**
- * Global.ts port (from the Angular app) for React.
- * Angular's `GLOBALS`, page size, milk and shift options live here, in one place.
- * GLOBALS is filled from the login response in smartx/session.ts (setSession), so every page reads the same ids.
- */
+/** Shared application settings and the current SmartX session values. */
 
 export interface GlobalData {
-  [key: string]: any;
-  plantid: any;
-  sessionid: any; // first VLC id (the Angular app sends this as `vlccid` / `id`)
-  customsessionid: any; // all VLC ids, comma separated (used as VillageIds in /home/farmermaster)
-  mccid: any;
-  centerdata: any;
-  id: any;
+  plantid: string | null;
+  sessionid: string | null;
+  customsessionid: string | null;
+  mccid: string | null;
+  centerdata: unknown[] | null;
+  id: string | null;
+  userid: string | null;
+  stationid: string | null;
 }
 
 export const GLOBALS: GlobalData = {
@@ -21,6 +18,8 @@ export const GLOBALS: GlobalData = {
   mccid: null,
   centerdata: null,
   id: null,
+  userid: null,
+  stationid: null,
 };
 
 export const GLOBALPAGESIZE = {
@@ -48,7 +47,7 @@ export const DEFAULT_PAGE_SIZE: number = GLOBALPAGESIZE.defaultPageSize[0].size;
 
 export const limitLength = (value: string, max: number) => (value.length > max ? value.slice(0, max) : value);
 
-export class Pagination<T = any> {
+export class Pagination<T = unknown> {
   data: T[];
   pageSize: number;
   currentPage: number;

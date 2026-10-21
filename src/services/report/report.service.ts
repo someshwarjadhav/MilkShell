@@ -2,11 +2,8 @@ import { directGet } from '../http/client';
 import { REPORT_CONFIG_URL } from '../config';
 import { isObj, norm, pick, pickValue, rowsFrom, type Obj } from '../utils/loose';
 
-/**
- * Angular:
- *   getReportAccess(userid) { return this.http.get<any>('' + environment.staticIP + '/home/userReportConfig?userid=' + userid + ''); }
- * It says which report columns this user may see (one customer sees 10 columns, another 9: the one who does not want a
- * column simply has it switched off here, no code change).
+/** Fetch the signed-in user's report-column visibility settings from the SmartX portal.
+ * The portal may hide or reorder columns without requiring a UI code change.
  */
 export const getReportAccess = (userid: string): Promise<unknown> => {
   const url = new URL(REPORT_CONFIG_URL);
