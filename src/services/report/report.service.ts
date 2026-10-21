@@ -1,4 +1,5 @@
-import { gatewayGet } from '../http/client';
+import { directGet } from '../http/client';
+import { REPORT_CONFIG_URL } from '../config';
 import { isObj, norm, pick, pickValue, rowsFrom, type Obj } from '../utils/loose';
 
 /**
@@ -7,7 +8,11 @@ import { isObj, norm, pick, pickValue, rowsFrom, type Obj } from '../utils/loose
  * It says which report columns this user may see (one customer sees 10 columns, another 9: the one who does not want a
  * column simply has it switched off here, no code change).
  */
-export const getReportAccess = (userid: string): Promise<unknown> => gatewayGet(`/home/userReportConfig?userid=${encodeURIComponent(userid)}`, 0);
+export const getReportAccess = (userid: string): Promise<unknown> => {
+  const url = new URL(REPORT_CONFIG_URL);
+  url.searchParams.set('userid', userid);
+  return directGet(url.toString(), 0);
+};
 
 /** hidden: normalised column names switched OFF.  shown: normalised column names switched ON. */
 export interface ReportRule { hidden: Set<string>; shown: Set<string>; /** column -> position the portal wants it in */ order: Map<string, number> }

@@ -87,12 +87,12 @@ function urlFor(endpoint: string) {
 /** A gateway hiccup (502/503/504) or a dropped connection is worth ONE more try; a timeout or a 500 is not. */
 const retryable = (e: unknown) => e instanceof ApiError && (e.kind === 'network' || (e.kind === 'server' && /error 50[234]\b/.test(e.message)));
 
-async function send(endpoint: string, init: RequestInit, fields: unknown, ticket: Ticket): Promise<unknown> {
+async function send(endpoint: string, init: RequestInit, fields: unknown, ticket: Ticket, url = urlFor(endpoint)): Promise<unknown> {
   await acquire(ticket);
   try {
     for (let attempt = 0; ; attempt++) {
       try {
-        return await sendOnce(endpoint, init, fields);
+        return await sendOnce(endpoint, init, fields, url);
       } catch (e) {
         if (attempt === 0 && retryable(e)) { await sleep(700); continue; }
         throw e;
@@ -103,12 +103,12 @@ async function send(endpoint: string, init: RequestInit, fields: unknown, ticket
   }
 }
 
-async function sendOnce(endpoint: string, init: RequestInit, fields?: unknown): Promise<unknown> {
+async function sendOnce(endpoint: string, init: RequestInit, fields: unknown, url: string): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const token = getSession()?.token;
-    const res = await fetch(urlFor(endpoint), {
+    const res = await fetch(url, {
       ...init,
       headers: { Accept: 'application/json, text/plain, */*', ...((init.headers as Record<string, string>) ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       signal: controller.signal,
@@ -148,6 +148,17 @@ export const gatewayGet = (endpoint: string, priority: Priority = 1) => {
   if (shared) return shared;
   const ticket: Ticket = { priority };
   const p = send(endpoint, { method: 'GET' }, undefined, ticket);
+  memo.set(key, { at: Date.now(), p, ticket });
+  p.catch(() => memo.delete(key));
+  return p;
+};
+
+export const directGet = (url: string, priority: Priority = 1) => {
+  const key = `${getSession()?.scope ?? ''}|GET_DIRECT|${url}`;
+  const shared = getMemo(key, priority);
+  if (shared) return shared;
+  const ticket: Ticket = { priority };
+  const p = send(new URL(url).pathname, { method: 'GET' }, undefined, ticket, url);
   memo.set(key, { at: Date.now(), p, ticket });
   p.catch(() => memo.delete(key));
   return p;
