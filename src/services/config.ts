@@ -7,6 +7,8 @@ export const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/
 
 export const GATEWAY_PATH = import.meta.env.VITE_GATEWAY_PATH || '/gateway/Interceptor';
 
+export const REPORT_CONFIG_URL = import.meta.env.VITE_REPORT_CONFIG_URL || 'https://stipldrive.ddns.net/home/userReportConfig';
+
 /**
  * Same as Angular's `environment.staticIP = '/gateway/Interceptor?path='`.
  * Every call is `environment.staticIP + '/home/<endpoint>'`.
