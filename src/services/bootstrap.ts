@@ -51,12 +51,36 @@ export function applySession(profile: LoginProfile) {
 }
 
 
+async function loadCenters(profile: LoginProfile): Promise<unknown> {
+  const candidates = [profile.centerStationId, profile.vlccIds?.join(','), profile.mccId, profile.stationId]
+    .map((x) => (x ?? '').trim())
+    .filter((x, i, all) => x && all.indexOf(x) === i);
+  if (!candidates.length) throw new Error('no station id in the login record');
+  let answeredEmpty: unknown = null;
+  let lastError: unknown;
+  for (const id of candidates) {
+    try {
+      const reply = await getCenter(id);
+      if (parseCenters(reply).length > 0) {
+        if (import.meta.env.DEV) console.info('[getCenter] centres found with id:', id);
+        return reply;
+      }
+      answeredEmpty = reply;
+    } catch (e) {
+      lastError = e;
+      if (import.meta.env.DEV) console.warn('[getCenter] id', id, 'failed:', e instanceof Error ? e.message : e);
+    }
+  }
+  if (answeredEmpty !== null) return answeredEmpty;
+  throw lastError ?? new Error('the portal returned no centres');
+}
+
 export async function loadSessionData(profile: LoginProfile): Promise<void> {
   const { userId, centerStationId } = profile;
   errors = {};
   const missing = (what: string) => Promise.reject(new Error(`no ${what} in the login record`));
   const [c, m, r] = await Promise.allSettled([
-    centerStationId ? getCenter(centerStationId) : missing('station id'),
+    centerStationId || profile.vlccIds?.length ? loadCenters(profile) : missing('station id'),
     userId ? getMenu(userId) : missing('user id'),
     userId ? getReportAccess(userId) : missing('user id'),
   ]);

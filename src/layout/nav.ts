@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
+import { BarChart3 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useMenuTree } from '../hooks/useSessionData';
+import { REPORT_LABELS, canOpenReport, reportsFor } from '../config/reportAccess';
 import { routeFor, urlKey, type MenuNode } from '../services/menu/menu.api';
 import { norm } from '../services/utils/loose';
 import {
@@ -114,9 +117,32 @@ export function buildNav(tree: MenuNode[]): NavSection[] {
   return result;
 }
 
+
+export function applyReportAccess(sections: NavSection[], email?: string | null): NavSection[] {
+  const own = reportsFor(email);
+  const cleaned = sections
+    .map((s) => ({ ...s, items: s.items.filter((i) => canOpenReport(email, i.to)) }))
+    .filter((s) => s.to || s.items.length > 0);
+  if (!own) return cleaned;
+
+  const leaves: NavLeaf[] = own.map((to) => ({ to, label: REPORT_LABELS[to]?.label ?? to, hint: REPORT_LABELS[to]?.hint ?? 'Report', built: true }));
+  const reportSection: NavSection = { id: 'report', title: 'Report', icon: BarChart3, items: leaves };
+  const mine = new Set(own);
+
+  const others = cleaned
+    .filter((s) => s.id !== 'report')
+    .map((s) => (s.to ? s : { ...s, items: s.items.filter((i) => !mine.has(i.to)) }))
+    .filter((s) => s.to || s.items.length > 0);
+
+  const at = cleaned.findIndex((s) => s.id === 'report');
+  const insertAt = at >= 0 ? cleaned.slice(0, at).filter((s) => s.id !== 'report' && others.includes(s)).length : Math.min(1, others.length);
+  return [...others.slice(0, insertAt), reportSection, ...others.slice(insertAt)];
+}
+
 export function useNav(): NavSection[] {
   const tree = useMenuTree();
-  return useMemo(() => buildNav(tree), [tree]);
+  const { user } = useAuth();
+  return useMemo(() => applyReportAccess(buildNav(tree), user?.email), [tree, user?.email]);
 }
 
 export const flattenNav = (sections: NavSection[]): Array<NavLeaf & { section: string }> => {

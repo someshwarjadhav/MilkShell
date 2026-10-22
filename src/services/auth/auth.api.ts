@@ -1,5 +1,5 @@
 import { decryptPayload, encryptPayload } from "../../lib/crypto";
-import { STATIC_LOGIN_RECORD, staticLoginActive, staticLoginAllows } from "../../config/staticLogin";
+import { resolveStaticLogin, staticLoginActive } from "../../config/staticLogin";
 import { ApiError } from "../http/errors";
 
 export interface LoginProfile {
@@ -314,11 +314,15 @@ export async function loginApi(
 ): Promise<LoginResult> {
 
   if (staticLoginActive()) {
-    const profile = mapLoginResponse(STATIC_LOGIN_RECORD, username);
-    if (!(await staticLoginAllows(username, password, profile.email))) {
+    const found = await resolveStaticLogin(username, password);
+    if (found.kind === "denied") {
       throw new ApiError("Incorrect username or password.");
     }
-    return { profile, record: sanitizeLoginRecord(STATIC_LOGIN_RECORD) };
+    if (found.kind === "match") {
+      const profile = mapLoginResponse(found.record, username);
+      return { profile, record: sanitizeLoginRecord(found.record) };
+    }
+   
   }
 
   let payload: string;

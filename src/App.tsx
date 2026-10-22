@@ -1,10 +1,12 @@
 import type * as React from 'react';
+import type { ReactNode } from 'react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import AppLayout from './layout/AppLayout';
 import { PageLoader } from './components/PageLoader';
 import { useAuth } from './context/AuthContext';
 import { useLoginData } from './hooks/useSessionData';
+import { canOpenReport, PAGE_MOBILE_SETTINGS, PAGE_VLC_MILK_ENTRY, REPORT_CLEANING, REPORT_EKO, REPORT_FARMERWISE, REPORT_UNIONWISE, REPORT_VARIANCE, REPORT_VLCC, REPORT_VLC_STATUS } from './config/reportAccess';
 import { applySession, isSessionDataLoaded, loadSessionData } from './services/bootstrap';
 
 const Login = lazy(() => import('./pages/Login'));
@@ -22,6 +24,10 @@ const Settings = lazy(() => import('./pages/Settings'));
 const UnionwiseCollection = lazy(() => import('./pages/reports/UnionwiseCollection'));
 const VlcStatus = lazy(() => import('./pages/reports/VlcStatus'));
 const VarianceReport = lazy(() => import('./pages/reports/VarianceReport'));
+const CleaningReport = lazy(() => import('./pages/reports/CleaningReport'));
+const EkoCalibration = lazy(() => import('./pages/reports/EkoCalibration'));
+const VlcMilkEntry = lazy(() => import('./pages/transactions/VlcMilkEntry'));
+const MobileAppSettings = lazy(() => import('./pages/settings/MobileAppSettings'));
 const FormPlaceholder = lazy(() => import('./pages/FormPlaceholder'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -56,6 +62,18 @@ const SessionGate: React.FC = () => {
   return ready ? <Outlet /> : <PageLoader />;
 };
 
+/** Opens a report page only for the logins that may have it (config/reportAccess.ts). */
+const ReportGuard: React.FC<{ to: string; children: ReactNode }> = ({ to, children }) => {
+  const { user } = useAuth();
+  return canOpenReport(user?.email, to) ? <>{children}</> : <NotFound />;
+};
+
+/** A login that has the separate Vlcc / Farmerwise report pages gets Farmer collection on its own; the others keep the three-tab page. */
+const FarmerCollectionRoute: React.FC = () => {
+  const { user } = useAuth();
+  return canOpenReport(user?.email, REPORT_VLCC) ? <Collections only="farmer" /> : <Collections />;
+};
+
 const Protected: React.FC = () => {
   const { user } = useAuth();
   return user ? <SessionGate /> : <Navigate to="/login" replace />;
@@ -75,16 +93,22 @@ const App: React.FC = () => {
             <Route element={<AppLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="live" element={<LiveCollection />} />
-              <Route path="collections" element={<Collections />} />
+              <Route path="collections" element={<FarmerCollectionRoute />} />
+              <Route path="reports/farmerwise" element={<ReportGuard key="farmerwise" to={REPORT_FARMERWISE}><Collections only="entry" /></ReportGuard>} />
+              <Route path="reports/vlcc" element={<ReportGuard key="vlcc" to={REPORT_VLCC}><Collections only="vlcc" /></ReportGuard>} />
+              <Route path="reports/cleaning" element={<ReportGuard key="cleaning" to={REPORT_CLEANING}><CleaningReport /></ReportGuard>} />
+              <Route path="reports/eko-calibration" element={<ReportGuard key="eko" to={REPORT_EKO}><EkoCalibration /></ReportGuard>} />
+              <Route path="transactions/vlc-milk-entry" element={<ReportGuard key="vlcmilkentry" to={PAGE_VLC_MILK_ENTRY}><VlcMilkEntry /></ReportGuard>} />
               <Route path="farmers" element={<Farmers />} />
               <Route path="centers" element={<Centers />} />
               <Route path="rates" element={<RateChart />} />
               <Route path="billing" element={<Billing />} />
               <Route path="quality" element={<Quality />} />
               <Route path="pipeline" element={<Pipeline />} />
-              <Route path="reports/unionwise" element={<UnionwiseCollection />} />
-              <Route path="reports/vlc-status" element={<VlcStatus />} />
-              <Route path="reports/variance" element={<VarianceReport />} />
+              <Route path="reports/unionwise" element={<ReportGuard key="unionwise" to={REPORT_UNIONWISE}><UnionwiseCollection /></ReportGuard>} />
+              <Route path="reports/vlc-status" element={<ReportGuard key="vlcstatus" to={REPORT_VLC_STATUS}><VlcStatus /></ReportGuard>} />
+              <Route path="reports/variance" element={<ReportGuard key="variance" to={REPORT_VARIANCE}><VarianceReport /></ReportGuard>} />
+              <Route path="settings/mobile-app" element={<ReportGuard key="mobileapp" to={PAGE_MOBILE_SETTINGS}><MobileAppSettings /></ReportGuard>} />
               <Route path="settings" element={<Settings />} />
               <Route path="portal/*" element={<FormPlaceholder />} />
               <Route path="*" element={<NotFound />} />

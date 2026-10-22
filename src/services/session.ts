@@ -42,7 +42,7 @@ export function setSession(s: { vlccIds?: string[]; vlccNames?: Record<string, s
 
     stationId: s.stationId || ENV_STATION_ID || vlccIds.join(','),
 
-    mccId: ENV_MCC_ID || (vlccIds[0] ?? '').slice(0, 3) || s.mccId || '',
+    mccId: (fromLogin ? '' : ENV_MCC_ID) || (vlccIds[0] ?? '').slice(0, 3) || s.mccId || '',
     token: s.token,
     scope: (s.email || 'user').toLowerCase(),
   };

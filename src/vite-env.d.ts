@@ -14,6 +14,8 @@ interface ImportMetaEnv {
   readonly VITE_MENU_ONLY?: string;
   readonly VITE_MCC_ID?: string;
   readonly VITE_PORTAL_URL?: string;
+  readonly VITE_CLEANING_REPORT_PATH?: string;
+  readonly VITE_EKO_CALIBRATION_PATH?: string;
 }
 
 interface ImportMeta {

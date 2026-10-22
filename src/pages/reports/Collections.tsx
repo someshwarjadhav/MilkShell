@@ -46,7 +46,7 @@ import { useFarmerMaster } from "../../hooks/useSmartxData";
 import { useCenters, useReportColumns } from "../../hooks/useSessionData";
 import { Droplets, FlaskConical, IndianRupee, Users } from "lucide-react";
 
-type View = "vlcc" | "farmer" | "entry";
+export type View = "vlcc" | "farmer" | "entry";
 interface Applied {
   from: string;
   to: string;
@@ -107,7 +107,13 @@ const FARMER_COL_NAMES: Record<string, string[]> = {
   shift: ["shift"],
 };
 
-const Collections: React.FC = () => {
+const PAGE_TEXT: Record<View, { title: string; subtitle: string }> = {
+  vlcc: { title: "Vlcc Collection", subtitle: "Milk collected per VLC centre for the chosen dates, shift and milk type." },
+  farmer: { title: "Farmer Collection", subtitle: "Every farmer sample collected at the selected centre." },
+  entry: { title: "Farmerwise Collection", subtitle: "Farmer by farmer totals of the milk poured at the selected centre." },
+};
+
+const Collections: React.FC<{ only?: View }> = ({ only }) => {
   const toast = useToast();
   const today = todayISO();
   const sessionIds = getSession()?.vlccIds ?? [];
@@ -122,7 +128,7 @@ const Collections: React.FC = () => {
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [q, setQ] = useState("");
-  const [view, setView] = useState<View>("vlcc");
+  const [view, setView] = useState<View>(only ?? "vlcc");
   const [rateId, setRateId] = useState(ENV_RATE_ID);
   const [applied, setApplied] = useState<Applied>({
     from: today,
@@ -765,8 +771,8 @@ const Collections: React.FC = () => {
 
   return (
     <ReportPage
-      title="Farmer Collection"
-      subtitle="Milk collected at your VLCs, totals per centre, every farmer sample, or the farmerwise entries."
+      title={only ? PAGE_TEXT[only].title : "Farmer Collection"}
+      subtitle={only ? PAGE_TEXT[only].subtitle : "Milk collected at your VLCs, totals per centre, every farmer sample, or the farmerwise entries."}
     >
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -968,7 +974,7 @@ const Collections: React.FC = () => {
           disabled={loading || err || sum.count === 0}
           kinds={["xls", "csv", "pdf"]}
           onExport={run}
-          left={(
+          left={only ? undefined : (
             <div className="max-w-full overflow-x-auto">
               <Segmented
                 value={view}

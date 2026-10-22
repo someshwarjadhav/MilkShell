@@ -1,21 +1,4 @@
-/**
- * TEMPORARY static login, for the time the deployed domain is not allowed to call the sign-in API.
- *
- * How it works: when VITE_STATIC_LOGIN=1 AND STATIC_LOGIN_RECORD below is filled, the sign-in API is NOT called.
- * The saved (already decrypted) login JSON below is used instead, exactly as if the server had answered with it.
- * While STATIC_LOGIN_RECORD is null the app signs in through the real API as before.
- *
- * To fill it:
- *   1. Run `npm run dev` locally and sign in normally as the user (the real API works from localhost).
- *   2. Open the browser console (F12). Copy the JSON printed after "[static-login] paste this".
- *      (It is the decrypted login reply with the password already removed. You can also take it from Postman.)
- *   3. Paste it as the value of STATIC_LOGIN_RECORD below, then build and upload.
- *
- * SECURITY: everything in this file ends up in the public JavaScript of the deployed site, including the token.
- * Use it only until the domain is allowed, then delete this file's record (set it back to null) and redeploy.
- */
 
-/** Decrypted login JSON (without password). null = static login off. */
 export const STATIC_LOGIN_RECORD: unknown | null = {
   Data: [
     {
@@ -38,18 +21,58 @@ export const STATIC_LOGIN_RECORD: unknown | null = {
   ],
 };
 
-/** Optional: only this username/email may use the static login. Empty = the email inside the record is used. */
 export const STATIC_LOGIN_USERNAME: string = '';
 
-/**
- * Optional: SHA-256 (hex, lowercase) of the password. Empty = the password is not checked.
- * Make the hash in the browser console:  crypto.subtle.digest('SHA-256', new TextEncoder().encode('PASSWORD')).then(b => console.log([...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('')))
- * (A hash in client code only stops casual use; it is not real security.)
- */
+
 export const STATIC_LOGIN_PASSWORD_SHA256: string = '4afe36d74c8f9bf52726a27ba88168a2dae49e9f751fcbdcbb33634d8d530411';
 
+
+export const ABC_LOGIN_RECORD: unknown | null = {
+  Data: [
+    {
+      id: 1,
+      email: 'abc@gmail.com',
+      username: 'Stipl',
+      mccid: '701',
+      mccname: 'Stipl',
+      mobile: '9999999999',
+      status: 1,
+      SessionID: '7010101,7010103,7010102,7010105,7010108',
+      CustomStationId: '101010',
+      LoginStatus: 0,
+      webLogin: 0,
+      PlantId: 1,
+      UserAccess: '0',
+      deviceName: 'SMARTX',
+      lastLogin: '2025-02-19T16:59:48',
+      Token: '8be5eb4dc661add82e76dba50e68fe062625x1tr',
+      DataEncryption: 0,
+      GST: '07ABCDE12345',
+      Address: 'Sangliii',
+      logo: '',
+    },
+  ],
+};
+
+export const ABC_USERNAME = 'abc@gmail.com';
+export const ABC_PASSWORD_SHA256 = 'ef1673ba31fbcdc89d21df47b7e6fcf2d11d703748e16e0da59ffcfc4d3f0746';
+
+export interface StaticLoginEntry {
+
+  username: string;
+
+  passwordSha256: string;
+  record: unknown | null;
+}
+
+
+export const STATIC_LOGINS: StaticLoginEntry[] = [
+  { username: STATIC_LOGIN_USERNAME, passwordSha256: STATIC_LOGIN_PASSWORD_SHA256, record: STATIC_LOGIN_RECORD },
+  { username: ABC_USERNAME, passwordSha256: ABC_PASSWORD_SHA256, record: ABC_LOGIN_RECORD },
+];
+
 export const staticLoginActive = (): boolean =>
-  import.meta.env.VITE_STATIC_LOGIN === '1' && STATIC_LOGIN_RECORD !== null && STATIC_LOGIN_RECORD !== undefined;
+  import.meta.env.VITE_STATIC_LOGIN === '1' && STATIC_LOGINS.some((e) => e.record !== null && e.record !== undefined);
 
 async function sha256Hex(text: string): Promise<string> {
   const bytes = new TextEncoder().encode(text);
@@ -57,16 +80,38 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** true when the typed login may use the static record. */
-export async function staticLoginAllows(username: string, password: string, recordEmail?: string): Promise<boolean> {
-  const allowed = (STATIC_LOGIN_USERNAME || recordEmail || '').trim().toLowerCase();
-  if (allowed && username.trim().toLowerCase() !== allowed) return false;
-  if (STATIC_LOGIN_PASSWORD_SHA256) {
-    try {
-      return (await sha256Hex(password)) === STATIC_LOGIN_PASSWORD_SHA256.toLowerCase();
-    } catch {
-      return false;
-    }
+const recordEmailOf = (record: unknown): string => {
+  const outer: any = Array.isArray(record) ? record[0] : record;
+  const inner: any = outer && Array.isArray(outer.Data) ? outer.Data[0] : outer?.Data ?? outer;
+  return typeof inner?.email === 'string' ? inner.email : '';
+};
+
+const sameUser = (entry: StaticLoginEntry, username: string): boolean => {
+  const allowed = (entry.username || recordEmailOf(entry.record)).trim().toLowerCase();
+  return !allowed || username.trim().toLowerCase() === allowed;
+};
+
+async function passwordOk(entry: StaticLoginEntry, password: string): Promise<boolean> {
+  if (!entry.passwordSha256) return true;
+  try {
+    return (await sha256Hex(password)) === entry.passwordSha256.toLowerCase();
+  } catch {
+    return false;
   }
-  return true;
+}
+
+export type StaticLoginResult =
+  | { kind: 'match'; record: unknown }
+  | { kind: 'use-api' } 
+  | { kind: 'denied' };
+
+
+export async function resolveStaticLogin(username: string, password: string): Promise<StaticLoginResult> {
+  for (const entry of STATIC_LOGINS) {
+    if (!sameUser(entry, username)) continue;
+    if (!(await passwordOk(entry, password))) continue;
+    if (entry.record === null || entry.record === undefined) return { kind: 'use-api' };
+    return { kind: 'match', record: entry.record };
+  }
+  return { kind: 'denied' };
 }
