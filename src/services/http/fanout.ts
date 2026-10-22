@@ -5,26 +5,25 @@ import { apiDate } from '../utils/date';
 import { gatewayPost, listOf, type Priority } from './client';
 import { ApiError } from './errors';
 
-/** What every widget query returns: the rows, plus how many of the underlying requests failed. */
 export interface QueryData<T> {
   rows: T[];
   failed: number;
   total: number;
-  /** How many of the `total` requests have answered (successfully or not). */
+ 
   done: number;
-  /** Shown under the widget, e.g. when the figures were derived from another endpoint. */
+ 
   note?: string;
 }
 export type Emit<T> = (partial: QueryData<T>) => void;
 export type Job<T> = () => Promise<T[]>;
 
 export interface CollectionParams {
-  from: string; // yyyy-mm-dd
-  to: string; // yyyy-mm-dd
+  from: string; 
+  to: string;
   shift: ShiftCode;
   milk: MilkCode | 'ALL';
   vlccIds: string[];
-  /** 0 = on screen right now, 1 = normal (default), 2 = background. See http/client.ts. */
+ 
   priority?: Priority;
 }
 
@@ -39,11 +38,6 @@ export const needSession = () => {
   return s;
 };
 
-/**
- * Runs the jobs. All of them are handed to the gateway at once; its priority queue lets only a few run at a time,
- * so no slot sits idle waiting for a "first" request. Rows are reported as each request finishes.
- * Fails only when every job fails.
- */
 export async function fanOut<T>(waveList: Array<Array<Job<T>>>, emit: Emit<T> | undefined, dedupe: boolean): Promise<QueryData<T>> {
   const rows: T[] = [];
   const seen = new Map<string, number>();
@@ -60,7 +54,7 @@ export async function fanOut<T>(waveList: Array<Array<Job<T>>>, emit: Emit<T> | 
           const got = await job();
           for (const r of got) {
             if (dedupe) {
-              // The same row coming back from two requests (overlapping milk codes) counts once.
+              
               const sig = JSON.stringify(r);
               const owner = seen.get(sig);
               if (owner !== undefined && owner !== me) continue;
@@ -81,7 +75,7 @@ export async function fanOut<T>(waveList: Array<Array<Job<T>>>, emit: Emit<T> | 
   return { rows, failed, total, done };
 }
 
-/** One wave with every id's jobs, first id first. (The gateway queue, not the wave, limits how many run at once.) */
+
 export function waves<T>(ids: string[], jobsFor: (id: string) => Array<Job<T>>): Array<Array<Job<T>>> {
   return [ids.flatMap(jobsFor)];
 }
@@ -89,7 +83,7 @@ export function waves<T>(ids: string[], jobsFor: (id: string) => Array<Job<T>>):
 const milkCodes = (m: MilkCode | 'ALL'): MilkCode[] =>
   m !== 'ALL' ? [m] : ALL_MILK_CODE ? ([ALL_MILK_CODE] as MilkCode[]) : (FARMER_MILK_CODES as MilkCode[]);
 
-/** One POST per vlccid and milk code, shared by every report that takes id / shift / milktype / fromdate / todate. */
+
 export function collectionWaves<T>(endpoint: string, p: CollectionParams, extra: Record<string, string> = {}) {
   const s = needSession();
   return waves<T>(p.vlccIds, (id) =>
@@ -101,7 +95,7 @@ export function collectionWaves<T>(endpoint: string, p: CollectionParams, extra:
           milktype: code,
           fromdate: apiDate(p.from),
           todate: apiDate(p.to),
-          // An empty stationid / mccid makes the portal answer 500, so only ids that exist are sent.
+    
           ...(s.stationId ? { stationid: s.stationId } : {}),
           ...(s.mccId ? { mccid: s.mccId } : {}),
           ...extra,
@@ -111,10 +105,7 @@ export function collectionWaves<T>(endpoint: string, p: CollectionParams, extra:
   );
 }
 
-/**
- * The portal's own call for VlccCollection: ONE request carrying every VLC id comma separated
- * (id and stationid both), milktype Z = cow + buffalo, plus M for mix.
- */
+
 export function joinedWaves<T>(endpoint: string, p: CollectionParams): Array<Array<Job<T>>> {
   const s = needSession();
   const ids = p.vlccIds.join(',');
@@ -139,11 +130,6 @@ export function joinedWaves<T>(endpoint: string, p: CollectionParams): Array<Arr
 const rowVlcc = (r: unknown) => String((r as Record<string, unknown>)?.vlccid ?? '').trim();
 let joinedUnsupported = false;
 
-/**
- * Farmer report the way the SmartX portal asks: ONE request with every VLC id in `id` and `stationid` (milk Z + M).
- * That is 2 requests instead of 14 x 3. If the portal rejects it, or answers for only one of several centres,
- * it falls back to one request per VLC, so the figures stay complete either way.
- */
 export async function adaptiveCollection<T>(endpoint: string, p: CollectionParams, emit?: Emit<T>): Promise<QueryData<T>> {
   if (p.vlccIds.length > 1 && !joinedUnsupported) {
     try {
@@ -151,7 +137,7 @@ export async function adaptiveCollection<T>(endpoint: string, p: CollectionParam
       const centres = new Set(joined.rows.map(rowVlcc).filter(Boolean));
       const looksComplete = joined.failed === 0 && (joined.rows.length === 0 || centres.size > 1);
       if (looksComplete) return joined;
-      if (joined.failed > 0) joinedUnsupported = true; // the portal refuses the joined call: don't try again this session
+      if (joined.failed > 0) joinedUnsupported = true; 
     } catch {
       joinedUnsupported = true;
     }

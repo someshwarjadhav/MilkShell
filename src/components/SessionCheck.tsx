@@ -5,24 +5,19 @@ import { Card, CardHeader } from './ui/Card';
 import { Button } from './ui/Button';
 import { useToast } from '../context/ToastContext';
 import { getCenters, getMenuTree, getRawSessionData, getReportConfig, getSavedLoginRecord, getSessionErrors } from '../services/bootstrap';
-import { routeFor } from '../services/menu/menu.service';
+import { routeFor } from '../services/menu/menu.api';
 import { getSession } from '../services/session';
 import { useLoginData } from '../hooks/useSessionData';
 
-/** Secret-looking values are hidden before anything is shown or copied. */
 const mask = (_k: string, v: unknown) => (/pass|token|jwt|secret|pwd/i.test(_k) ? '***' : v);
 const text = (v: unknown, max = 5000) => {
   let s = '';
   try { s = JSON.stringify(v, mask, 1) ?? 'null'; } catch { s = String(v); }
   return s.length > max ? `${s.slice(0, max)}\n... (cut, ${s.length} characters in total)` : s;
 };
-/** The first rows of a reply are enough to see the key names. */
+
 const head = (v: unknown, n = 3) => (Array.isArray(v) ? v.slice(0, n) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v as object).map(([k, x]) => [k, Array.isArray(x) ? x.slice(0, n) : x])) : v);
 
-/**
- * Shows what the three sign-in APIs returned and what the app understood from it,
- * so a wrong key name can be found without opening the browser console.
- */
 export const SessionCheck: React.FC = () => {
   const toast = useToast();
   const profile = useLoginData();

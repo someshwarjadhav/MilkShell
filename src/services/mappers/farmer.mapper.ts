@@ -4,7 +4,7 @@ import { num, str } from '../utils/parse';
 
 export interface FarmerRow {
   key: string;
-  /** vlccid + farmerid: farmerid alone repeats across VLCs. */
+  
   farmerKey: string;
   farmerId: string;
   farmerName: string;
@@ -23,7 +23,7 @@ export interface FarmerRow {
   water: number;
   rate: number;
   amount: number;
-  /** villageagentaddress is the real village (villagename here is a code / dairy name). */
+ 
   village: string;
 }
 

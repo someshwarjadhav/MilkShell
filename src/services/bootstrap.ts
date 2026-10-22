@@ -1,24 +1,12 @@
 import { GLOBALS } from '../lib/global';
 import { DATA_KEY, LOGIN_KEY, vaultClear, vaultLoad, vaultSave } from '../lib/vault';
-import { mapLoginResponse, type LoginProfile } from './auth/auth.service';
-import { getCenter, parseCenters } from './center/center.service';
-import { parseMenu, getMenu, type MenuNode } from './menu/menu.service';
-import { EMPTY_REPORT_CONFIG, getReportAccess, parseReportConfig, type ReportConfig } from './report/report.service';
+import { mapLoginResponse, type LoginProfile } from './auth/auth.api';
+import { getCenter, parseCenters } from './center/center.api';
+import { parseMenu, getMenu, type MenuNode } from './menu/menu.api';
+import { EMPTY_REPORT_CONFIG, getReportAccess, parseReportConfig, type ReportConfig } from './report/report.api';
 import { setSession } from './session';
 import type { Center } from './mappers/center.mapper';
 
-/**
- * What happens after sign-in, and on every page open:
- *
- *  sign-in  -> encrypted login JSON is decrypted -> user id + station id are read from it
- *           -> getCenter(station id)   -> centre list (ONE time)  -> global variable GLOBALS.centerdata
- *           -> getMenu(user id)        -> left menu
- *           -> getReportAccess(user id)-> visible report columns
- *           -> the three replies are saved ENCRYPTED in localStorage
- *  page open-> restoreSession(): decrypts the saved login + replies again (nothing readable stays in localStorage)
- *
- * No form calls getCenter itself: every combo box reads the same list with useCenters().
- */
 
 interface SessionData {
   centers: Center[];
@@ -38,8 +26,7 @@ let errors: Record<string, string> = {};
 export const getCenters = (): Center[] => data.centers;
 export const getMenuTree = (): MenuNode[] => data.menu;
 export const getReportConfig = (): ReportConfig => data.report;
-/** For the Session check card in Settings: the replies exactly as the portal sent them. */
-/** Why a sign-in API failed (for the Session check card). Empty when everything answered. */
+
 export const getSessionErrors = () => errors;
 export const getRawSessionData = (): RawData | null => rawData;
 export const getSavedLoginRecord = (): unknown => vaultLoad<StoredLogin>(LOGIN_KEY)?.record ?? null;
@@ -54,10 +41,7 @@ function hydrate(raw: RawData) {
   };
 }
 
-/**
- * Puts the decrypted login (+ the centres, when loaded) into the session every service reads.
- * The centre list from getCenter IS the list of VLCs; if getCenter gave none, the VLC ids of the login record are used.
- */
+
 export function applySession(profile: LoginProfile) {
   const centers = data.centers;
   const names: Record<string, string> = { ...(profile.vlccNames ?? {}) };
@@ -66,7 +50,7 @@ export function applySession(profile: LoginProfile) {
   Object.assign(GLOBALS, { centerdata: centers, userid: profile.userId ?? null, stationid: profile.centerStationId ?? null });
 }
 
-/** Called once after sign-in (and once after a reload if the saved replies are missing). Never throws: a failed call only means a default is used. */
+
 export async function loadSessionData(profile: LoginProfile): Promise<void> {
   const { userId, centerStationId } = profile;
   errors = {};
@@ -85,7 +69,7 @@ export async function loadSessionData(profile: LoginProfile): Promise<void> {
   };
   const raw: RawData = { centers: value(c, 'getCenter'), menu: value(m, 'getMenu'), report: value(r, 'getReportAccess') };
   hydrate(raw);
-  // Centres are retried after a reload only when the call really failed (no station id = nothing to retry).
+
   loaded = raw.centers !== null || !centerStationId;
   vaultSave(DATA_KEY, { userId: userId ?? '', raw } satisfies StoredData);
 
@@ -101,11 +85,7 @@ export function saveLogin(username: string, record: unknown) {
   vaultSave(LOGIN_KEY, { username, record } satisfies StoredLogin);
 }
 
-/**
- * Decrypts the saved login (and the saved replies) and rebuilds the session from it.
- * Runs when the app starts and every time a page opens, so the readable copy only lives in memory.
- * Returns null when nothing is saved or the saved text was changed by hand: the caller signs the user out.
- */
+
 export function restoreSession(): LoginProfile | null {
   const login = vaultLoad<StoredLogin>(LOGIN_KEY);
   if (!login || !('record' in login)) return null;

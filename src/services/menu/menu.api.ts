@@ -1,8 +1,7 @@
-import { asFlag } from '../report/report.service';
+import { asFlag } from '../report/report.api';
 import { gatewayGet } from '../http/client';
 import { isObj, norm, pick, pickLike, pickValue, rowsFrom, type Obj } from '../utils/loose';
 
-/** SmartX portal endpoint adapter for this service. */
 export const getMenu = (userid: string): Promise<unknown> => gatewayGet(`/dairy/dairy/getmenu?userid=${encodeURIComponent(userid)}`, 0);
 
 export interface MenuNode {
@@ -10,7 +9,7 @@ export interface MenuNode {
   title: string;
   url: string;
   children: MenuNode[];
-  /** false when the reply switches this entry off for the user (Status / IsActive = 0). */
+  
   enabled: boolean;
 }
 
@@ -20,7 +19,7 @@ const ID_KEYS = ['menuid', 'id', 'pageid', 'formid'];
 const PARENT_KEYS = ['parentid', 'parentmenuid', 'parent', 'pid', 'parentmenu', 'mainmenuid'];
 const CHILD_KEYS = ['children', 'submenu', 'submenus', 'childmenu', 'childmenus', 'items', 'menus', 'subitems', 'child', 'subs'];
 
-/** Status / IsActive (or similar) set to 0 / false means the user may not use this entry. */
+
 function enabledOf(row: Obj): boolean {
   for (const k of ['isactive', 'status', 'isenabled', 'enabled', 'isvisible', 'visible']) {
     const key = Object.keys(row).find((x) => norm(x) === k);
@@ -31,7 +30,7 @@ function enabledOf(row: Obj): boolean {
 
 function nodeOf(row: Obj, index: number): { node: MenuNode; parent: string } {
   let inner = pickValue(row, CHILD_KEYS);
-  // Unknown key name: any list of objects inside the row is the list of sub-entries.
+
   if (!Array.isArray(inner)) inner = Object.values(row).find((v) => Array.isArray(v) && v.length > 0 && v.every(isObj));
   return {
     node: {
@@ -45,7 +44,7 @@ function nodeOf(row: Obj, index: number): { node: MenuNode; parent: string } {
   };
 }
 
-/** getMenu reply -> tree. Accepts a nested list (children inside each item) and a flat list with a parent id. */
+
 export function parseMenu(json: unknown): MenuNode[] {
   const entries = rowsFrom(json).map(nodeOf);
   const byId = new Map(entries.map((e) => [e.node.id, e.node]));
@@ -58,11 +57,7 @@ export function parseMenu(json: unknown): MenuNode[] {
   return roots;
 }
 
-/**
- * Menu entry -> a page of this React app. The first alias that equals the entry's url or title wins;
- * a title/url that merely contains an alias (\"Farmer Collection Report\") is the second choice.
- * Entries that match no page are not shown (the SmartX menu also lists screens this app does not have).
- */
+
 const ROUTES: Array<{ to: string; aliases: string[] }> = [
   { to: '/', aliases: ['dashboard', 'home', 'index'] },
   { to: '/live', aliases: ['livecollection', 'live', 'livedata'] },
@@ -79,10 +74,10 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
   { to: '/settings', aliases: ['settings'] },
   { to: '/contact', aliases: ['contact', 'contactsupport', 'mysupportticket', 'supportticket'] },
 ];
-/** Only these long, specific names also match inside a longer title (\"Farmer Collection Report\"). Short words never do. */
+
 const CONTAINED = ['farmercollection', 'villagecollection', 'livecollection', 'farmerledger', 'ratechart', 'farmerwisecollection', 'unionwisecollection', 'mccwisecollection', 'variancereport', 'vlcstatus'];
 
-const urlKey = (url: string) => norm(url.replace(/^[a-z]+:\/\/[^/]+/i, '').split(/[?#]/)[0].split('/').filter(Boolean).pop() ?? '');
+export const urlKey = (url: string) => norm(url.replace(/^[a-z]+:\/\/[^/]+/i, '').split(/[?#]/)[0].split('/').filter(Boolean).pop() ?? '');
 
 export function routeFor(node: MenuNode): string | null {
   const candidates = [urlKey(node.url), norm(node.title)].filter(Boolean);

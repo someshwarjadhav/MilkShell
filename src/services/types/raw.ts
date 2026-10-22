@@ -1,34 +1,29 @@
-/**
- * RAW response shapes of the SmartX portal, with the EXACT keys and casing the server sends.
- * Never rename a key here. Conversion to UI models happens only in mappers.ts.
- */
 
-/** GET /home/dashboardLinechart  (sparse: only days with data; Liter may be negative) */
 export interface RawLinePoint {
-  dsdtdate: string; // "15 Oct 2026"
-  milktype: string; // code: C | B | M
+  dsdtdate: string; 
+  milktype: string; 
   Liter: number;
-  dtdate: string; // "2026-10-15T00:00:00"
+  dtdate: string; 
 }
 
-/** POST /home/VlccCollection  (ALL values are strings; milktype and shift are full words) */
+
 export interface RawVlccRow {
   villagename: string;
   vlccid: string;
-  trdate: string; // "16 Oct 2026"
+  trdate: string;
   qty: string;
   fat: string;
   snf: string;
   clr: string;
-  milktype: string; // "Cow" | "Buffalo" | "Mix" ...
-  shift: string; // "Morning" | "Evening"
+  milktype: string; 
+  shift: string; 
   kg: string;
   rate: string;
   amount: string;
   beneficiaryname: string;
 }
 
-/** POST /home/farmercollection  (ALL values are strings; shift is a CODE; note capital Kg and Time) */
+
 export interface RawFarmerRow {
   farmerid: string;
   sampleno: string;
@@ -40,20 +35,20 @@ export interface RawFarmerRow {
   clr: string;
   water: string;
   milktype: string;
-  Time: string; // "06:48 PM"
+  Time: string; 
   vlccid: string;
-  shift: string; // code: M | E
+  shift: string; 
   rtpl: string;
   amount: string;
-  farmername: string; // can be ""
+  farmername: string; 
   usbflag: string;
   MaxId: string;
-  villagename: string; // a CODE or dairy name ("0012000"), NOT the village
-  villageagentaddress: string; // the real village
+  villagename: string; 
+  villageagentaddress: string; 
   beneficiaryname: string;
 }
 
-/** GET /home/topMilkSupplier  (numbers are real numbers here, key casing differs: Liter, MilkType) */
+
 export interface RawTopSupplier {
   villagename: string;
   farmerid: number;
@@ -64,12 +59,8 @@ export interface RawTopSupplier {
   MilkType: string;
 }
 
-/** Request codes */
-export type MilkCode = 'C' | 'B' | 'M' | 'Z'; // Cow, Buffalo, Mix, Z = Both (cow + buffalo)
-export type ShiftCode = 'M' | 'E' | 'Z'; // Morning, Evening, Both
+export type MilkCode = 'C' | 'B' | 'M' | 'Z'; 
+export type ShiftCode = 'M' | 'E' | 'Z'; 
 
-/**
- * POST /home/farmermaster  (JSON body { VillageIds: "id1,id2" }) and POST /home/FarmerMilkEntry.
- * The exact keys of these two replies are not documented, so they are read case-insensitively in mappers.ts.
- */
+
 export type RawLoose = Record<string, unknown>;

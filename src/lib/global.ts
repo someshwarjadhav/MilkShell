@@ -1,4 +1,4 @@
-/** Shared application settings and the current SmartX session values. */
+
 
 export interface GlobalData {
   plantid: string | null;
@@ -28,12 +28,15 @@ export const GLOBALPAGESIZE = {
 
 export const GLOBALSMILK = {
   milkOptions: [
+    { Id: 'Z', Name: 'Both' },
     { Id: 'C', Name: 'Cow' },
     { Id: 'B', Name: 'Buffalo' },
-    { Id: 'Z', Name: 'Both' },
     { Id: 'M', Name: 'Mix Milk' },
   ],
 };
+
+
+export const DEFAULT_MILK = 'Z' as const;
 
 export const GLOBALSSHIFT = {
   shiftOptions: [

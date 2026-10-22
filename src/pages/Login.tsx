@@ -20,7 +20,6 @@ import { DEV_EMAIL, DEV_PASSWORD } from '../services/config';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
-  // In `npm run dev` the form is pre-filled from VITE_DEV_EMAIL / VITE_DEV_PASSWORD (.env.local). Never in a production build.
   const [email, setEmail] = useState(DEV_EMAIL);
   const [password, setPassword] = useState(DEV_PASSWORD);
   const [show, setShow] = useState(false);

@@ -23,9 +23,9 @@ import { KIND_META, type Kind } from '../services/utils/milk';
 import { buildTrend, mapTop, type TopSupplier } from '../services/mappers/dashboard.mapper';
 import { farmerTotals, mapFarmers } from '../services/mappers/farmer.mapper';
 import { mapVlcc, totalsOf } from '../services/mappers/vlcc.mapper';
-import { fetchFarmerCollection } from '../services/farmer/farmer.service';
-import { fetchLineChart, fetchTopSuppliers } from '../services/dashboard/dashboard.service';
-import { fetchVlccCollection } from '../services/vlcc/vlcc.service';
+import { fetchFarmerCollection } from '../services/farmer/farmer.api';
+import { fetchLineChart, fetchTopSuppliers } from '../services/dashboard/dashboard.api';
+import { fetchVlccCollection } from '../services/vlcc/vlcc.api';
 import { getSession } from '../services/session';
 import { vlccName } from '../services/vlcc/names';
 import { buildCenters } from '../services/mappers/center.mapper';
@@ -46,16 +46,13 @@ const Dashboard: React.FC = () => {
   const ids = getSession()?.vlccIds ?? [];
   const idKey = ids.join(',');
 
-  // Every widget loads on its own, so one slow endpoint never blocks the others.
-  // Priorities: 0 = what the top card shows, 1 = the chart, 2 = background (top suppliers, farmer count).
+
   const lineQ = useQuery<RawLinePoint>(`line:${idKey}`, (emit) => fetchLineChart(ids, emit, 1));
-  // One VLC picked in the dropdown has its own request; "All" reuses lineQ.
+
   const centerLineQ = useQuery<RawLinePoint>(center === 'ALL' ? null : `line:${center}`, (emit) => fetchLineChart([center], emit, 0));
   const chartQ = center === 'ALL' ? lineQ : centerLineQ;
   const topQ = useQuery<RawTopSupplier>(`top:${idKey}`, (emit) => fetchTopSuppliers(ids, emit, 2));
 
-  // Today's totals are asked for IMMEDIATELY (one request), in parallel with the chart. Only when today has no milk yet
-  // (before the first morning collection) the card falls back to the latest day that has collection, taken from the line chart.
   const vlccToday = useQuery<RawVlccRow>(`vlcc:${today}:${today}:Z:ALL:${idKey}`, (emit) =>
     fetchVlccCollection({ from: today, to: today, shift: 'Z', milk: 'ALL', vlccIds: ids, priority: 0 }, emit));
   const todayHasMilk = useMemo(() => mapVlcc(vlccToday.rows).some((r) => r.liter > 0), [vlccToday.rows]);
@@ -64,7 +61,7 @@ const Dashboard: React.FC = () => {
 
   const trend30 = useMemo(() => buildTrend(lineQ.rows, today, 30), [lineQ.rows, today]);
   const latest = useMemo(() => [...trend30.days].reverse().find((d) => d.total > 0)?.date, [trend30]);
-  // "Settled" = every centre has answered (or saved data from the last visit is on screen). A half-loaded chart must not pick the day.
+
   const lineSettled = (lineQ.status === 'ready' && (!lineQ.fetching || lineQ.stale)) || lineQ.status === 'error';
   const day: string | null = !needFallback ? today : lineSettled ? latest ?? today : null;
   const pending = day === null;
@@ -92,7 +89,6 @@ const Dashboard: React.FC = () => {
   const centerLabel = center === 'ALL' ? 'All centres' : centers.find((c) => c.id === center)?.label ?? center;
   const top = useMemo(() => mapTop(topQ.rows, 10), [topQ.rows]);
 
-  // "A usual day" = average of the 14 days before today, from the same line-chart data.
   const target = useMemo(() => {
     const last14 = trend30.days.slice(-15, -1);
     const avg = last14.reduce((a, p) => a + Math.max(0, p.total), 0) / Math.max(1, last14.length);
@@ -126,7 +122,7 @@ const Dashboard: React.FC = () => {
       byId.set(r.vlccid, c);
     }
     return [...byId.entries()].map(([id, c]) => ({ id, ...c }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [vlccRows, idKey]);
   const maxCentre = Math.max(1, ...centres.map((c) => c.liter));
 

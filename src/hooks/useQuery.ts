@@ -5,11 +5,6 @@ import { clearRequestMemo } from '../services/http/client';
 import { type Emit, type QueryData } from '../services/http/fanout';
 import { getSession } from '../services/session';
 
-/**
- * One shared store per query key. Widgets that need the same data (several dashboard cards read
- * "today's VLC collection") share ONE request. The last good result is cached in localStorage,
- * so a slow or failing portal never leaves a widget blank if it has answered before.
- */
 export interface QueryState<R> {
   status: 'loading' | 'ready' | 'error';
   rows: R[];
@@ -17,7 +12,6 @@ export interface QueryState<R> {
   stale: boolean;
   failed: number;
   total: number;
-  /** Requests answered so far (of `total`): drives "Loaded 5 of 14". */
   done: number;
   error: ApiError | null;
   updatedAt: number | null;
@@ -53,7 +47,6 @@ function writeCache<R>(key: string, rows: R[], note?: string) {
   }
 }
 
-/** Called on sign-out so the next user never sees someone else's saved data. */
 export function clearSmartxCache() {
   store.clear();
   try {
@@ -79,8 +72,7 @@ function run<R>(key: string, entry: Entry<R>, force = false) {
   notify(entry as Entry<unknown>);
 
   const emit: Emit<R> = (p) => {
-    // Partial answers are shown while the rest is still loading, BUT an empty partial answer is not an answer:
-    // the first centre having no milk yet must not turn the whole screen into "0 L" while the others are still on their way.
+
     const hasRows = p.rows.length > 0;
     entry.state = {
       ...entry.state,
@@ -93,7 +85,6 @@ function run<R>(key: string, entry: Entry<R>, force = false) {
     notify(entry as Entry<unknown>);
   };
 
-  // Promise.resolve().then(...) so a synchronous throw (e.g. missing VLC id) becomes a normal error state.
   Promise.resolve().then(() => entry.fetcher(emit)).then(
     (data) => {
       entry.inflight = false;
@@ -143,7 +134,7 @@ function entryFor<R>(key: string, fetcher: Fetcher<R>): Entry<R> {
   return e;
 }
 
-/** Refreshes what is on screen. Queries of pages that are no longer open are left alone (they refresh when opened again). */
+
 export function refetchAll() {
   store.forEach((e, key) => { if (e.listeners.size > 0) run(key, e, true); });
 }
@@ -152,10 +143,7 @@ const IDLE: QueryState<never> = {
   status: 'loading', rows: [], fetching: false, stale: false, failed: 0, total: 0, done: 0, error: null, updatedAt: null, note: null, retry: () => {},
 };
 
-/**
- * `key` must contain everything the request depends on (dates, ids, shift...) and is prefixed with the
- * signed-in user so saved data is never shared between accounts. Pass null to keep the query switched off.
- */
+
 export function useQuery<R>(key: string | null, fetcher: Fetcher<R>): QueryState<R> {
   const scoped = key ? `${getSession()?.scope ?? 'anon'}:${key}` : null;
   const entry = scoped ? entryFor(scoped, fetcher) : null;

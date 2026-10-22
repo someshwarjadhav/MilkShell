@@ -1,7 +1,6 @@
 import type { FarmerRow } from '../services/mappers/farmer.mapper';
 import type { Flag, LimitKind, Thresholds } from '../types';
 
-/** Starting alert limits. They are settings, not data: change them in Settings. */
 export const DEFAULT_THRESHOLDS: Thresholds = {
   fat: { cow: 3.2, buffalo: 5.5, mix: 3.5 },
   snf: { cow: 8.0, buffalo: 8.5, mix: 8.0 },

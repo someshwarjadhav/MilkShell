@@ -27,7 +27,6 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
   const { theme, toggle } = useTheme();
   const { user, logout } = useAuth();
   const { thresholds } = useData();
-  // Background (priority 2): the alert bell fills in when the portal has nothing more urgent to answer.
   const { rows: samples } = useSamples(todayISO(), todayISO(), true, 2);
   const [bell, setBell] = useState(false);
   const [menu, setMenu] = useState(false);

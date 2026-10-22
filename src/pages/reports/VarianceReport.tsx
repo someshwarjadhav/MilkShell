@@ -18,8 +18,8 @@ import { exportCSV, exportExcel, exportPDF, type ExportCol } from '../../lib/exp
 import { DEFAULT_PAGE_SIZE } from '../../lib/global';
 import { useQuery } from '../../hooks/useQuery';
 import { useCenters } from '../../hooks/useSessionData';
-import { fetchVlccCollection } from '../../services/vlcc/vlcc.service';
-import { fetchFarmerCollection } from '../../services/farmer/farmer.service';
+import { fetchVlccCollection } from '../../services/vlcc/vlcc.api';
+import { fetchFarmerCollection } from '../../services/farmer/farmer.api';
 import { mapVlcc } from '../../services/mappers/vlcc.mapper';
 import { mapFarmers } from '../../services/mappers/farmer.mapper';
 import { variance, varianceTotals, type SideTotals, type VarianceRow } from '../../services/mappers/report.mapper';
@@ -27,7 +27,7 @@ import { getSession } from '../../services/session';
 import { vlccOption, vlccTitle } from '../../services/vlcc/names';
 import type { RawFarmerRow, RawVlccRow } from '../../services/types/raw';
 
-/** Difference cell: red when the plant (DOC) got less than the VLC collected, amber when it got more, grey when equal. */
+
 const Diff: React.FC<{ v: number; d?: number }> = ({ v, d = 2 }) => (
   <span className={cn('font-semibold', v < 0 ? 'text-danger' : v > 0 ? 'text-warn' : 'text-mute')}>{v.toFixed(d)}</span>
 );
@@ -58,7 +58,7 @@ const VarianceReport: React.FC = () => {
   const key = `${applied.from}:${applied.to}:${ids.join(',')}`;
   const params = { from: applied.from, to: applied.to, shift: 'Z' as const, milk: 'ALL' as const, vlccIds: ids, priority: 0 as const };
 
-  // DOC (vendor) side: what the portal holds per centre.  VLC (farmer) side: the farmer samples added up per centre, day, shift and milk.
+
   const vq = useQuery<RawVlccRow>(hasAppliedCentre ? `variance-doc:${key}` : null, (emit) => fetchVlccCollection(params, emit));
   const fq = useQuery<RawFarmerRow>(hasAppliedCentre ? `variance-vlc:${key}` : null, (emit) => fetchFarmerCollection(params, emit));
 
@@ -153,7 +153,6 @@ const VarianceReport: React.FC = () => {
     }
   };
 
-  // "Total :" row, laid out like the portal: C / B litres and amounts, then the grand totals.
   const block = (s: SideTotals, diff = false) => (
     <>
       <FootCell span={3}><TotalsCell a={[`C ${diff ? 'Diff' : 'Lit'}`, s.cowLit]} b={['Amt', s.cowAmt]} c={['Tot Lit', s.totLit]} /></FootCell>
@@ -174,12 +173,12 @@ const VarianceReport: React.FC = () => {
   return (
     <ReportPage title="Variance Report" subtitle="DOC collection against VLC collection for every centre, day, shift and milk type, with the difference between them.">
 
-      {hasAppliedCentre && <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="DOC litres" value={t.vendor.totLit} decimals={1} icon={<Droplets size={18} />} tone="text-brand" hint={`₹${nf(t.vendor.totAmt)} amount`} loading={loading} error={statError} onRetry={retry} />
-        <StatCard label="VLC litres" value={t.farmer.totLit} decimals={1} icon={<Scale size={18} />} tone="text-goat" hint={`₹${nf(t.farmer.totAmt)} amount`} loading={loading} error={statError} onRetry={retry} />
-        <StatCard label="Litre difference" value={t.diff.totLit} decimals={2} icon={<GitCompareArrows size={18} />} tone={t.diff.totLit < 0 ? 'text-danger' : 'text-warn'} hint="DOC minus VLC" loading={loading} error={statError} onRetry={retry} />
-        <StatCard label="Amount difference" value={t.diff.totAmt} decimals={2} prefix="₹" icon={<IndianRupee size={18} />} tone={t.diff.totAmt < 0 ? 'text-danger' : 'text-buffalo'} hint="DOC minus VLC" loading={loading} error={statError} onRetry={retry} />
-      </div>}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard label="DOC litres" value={t.vendor.totLit} decimals={1} icon={<Droplets size={18} />} tone="text-brand" hint={`₹${nf(t.vendor.totAmt)} amount`} loading={loading} error={statError} onRetry={retry} idle={!hasAppliedCentre} compact />
+        <StatCard label="VLC litres" value={t.farmer.totLit} decimals={1} icon={<Scale size={18} />} tone="text-goat" hint={`₹${nf(t.farmer.totAmt)} amount`} loading={loading} error={statError} onRetry={retry} idle={!hasAppliedCentre} compact />
+        <StatCard label="Litre difference" value={t.diff.totLit} decimals={2} icon={<GitCompareArrows size={18} />} tone={t.diff.totLit < 0 ? 'text-danger' : 'text-warn'} hint="DOC minus VLC" loading={loading} error={statError} onRetry={retry} idle={!hasAppliedCentre} compact />
+        <StatCard label="Amount difference" value={t.diff.totAmt} decimals={2} prefix="₹" icon={<IndianRupee size={18} />} tone={t.diff.totAmt < 0 ? 'text-danger' : 'text-buffalo'} hint="DOC minus VLC" loading={loading} error={statError} onRetry={retry} idle={!hasAppliedCentre} compact />
+      </div>
 
       <Reveal delay={0.05}>
         <Card>
@@ -206,7 +205,7 @@ const VarianceReport: React.FC = () => {
         <Card>
           <ReportBar count={rows.length} hideCount={loading || err} disabled={loading || err || nothing} kinds={['xls', 'pdf', 'csv']} onExport={run} source={<ReportDataBadge state={{ fetching: waiting, stale: vq.stale || fq.stale, updatedAt: vq.updatedAt !== null && fq.updatedAt !== null ? Math.max(vq.updatedAt, fq.updatedAt) : null, failed: vq.failed + fq.failed, total: vq.total + fq.total, error: err ? (vq.error ?? fq.error) : null, hasData: vq.rows.length > 0 && fq.rows.length > 0 }} />} />
           {!hasAppliedCentre ? (
-            <p className="px-6 py-14 text-center text-sm text-mute">Select a centre and press Submit to compare its collections.</p>
+            <p className="px-6 py-8 text-center text-sm text-mute">Select a centre and press Submit to compare its collections.</p>
           ) : loading ? (
             <MilkLoader label="Comparing DOC and VLC collection…" />
           ) : err ? (

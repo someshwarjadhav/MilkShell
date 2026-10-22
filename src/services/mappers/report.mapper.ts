@@ -3,9 +3,6 @@ import type { VlccRow } from './vlcc.mapper';
 import { isoFromTrdate } from '../utils/date';
 import type { Kind, ShiftName } from '../utils/milk';
 
-/* ------------------------------------------------------------------ */
-/*  Unionwise collection: one line per society (VLC), under its union  */
-/* ------------------------------------------------------------------ */
 
 export interface UnionRow {
   key: string;
@@ -59,9 +56,7 @@ export function unionTotals(rows: UnionRow[]) {
   return { societies: rows.length, farmers, liter, amount, fat: liter ? fw / liter : 0, snf: liter ? sw / liter : 0, rate: liter ? amount / liter : 0 };
 }
 
-/* ------------------------------------------------------------------ */
-/*  Variance: DOC (vendor) collection against VLC (farmer) collection  */
-/* ------------------------------------------------------------------ */
+
 
 export interface Side { qty: number; fat: number; snf: number; rate: number; amount: number }
 export interface VarianceRow {
@@ -88,7 +83,7 @@ const side = (a: Acc | undefined): Side =>
     qty: a.qty,
     fat: a.qty ? a.fw / a.qty : 0,
     snf: a.qty ? a.sw / a.qty : 0,
-    // One portal row keeps the portal's own rate; several rows get the average rate.
+
     rate: a.n === 1 ? a.rate0 : a.qty ? a.amount / a.qty : 0,
     amount: a.amount,
   };
@@ -151,9 +146,6 @@ export function varianceTotals(rows: VarianceRow[]): VarianceTotals {
   return { vendor, farmer, diff };
 }
 
-/* ------------------------------------------------------------------ */
-/*  VLC status: did the centre send milk in the chosen dates / shift   */
-/* ------------------------------------------------------------------ */
 
 export interface StatusRow { vlccid: string; village: string; active: boolean; liter: number; fat: number; snf: number; lastDate: string }
 

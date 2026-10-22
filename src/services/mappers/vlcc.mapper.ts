@@ -47,7 +47,6 @@ export interface Totals {
   liter: number;
   kg: number;
   amount: number;
-  /** weighted by litres: sum(qty*fat)/sum(qty). Never a simple average. */
   avgFat: number;
   avgSnf: number;
   vlcCount: number;

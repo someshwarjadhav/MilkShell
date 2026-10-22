@@ -7,6 +7,7 @@ import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { PageLoader } from '../components/PageLoader';
 import { useData } from '../context/DataContext';
+import { flattenNav, useNav } from './nav';
 
 const AppLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('dhara-collapsed') === '1');
@@ -14,9 +15,15 @@ const AppLayout: React.FC = () => {
   const [palette, setPalette] = useState(false);
   const { pathname } = useLocation();
   const { dairyName } = useData();
+  const menu = useNav();
 
   useEffect(() => localStorage.setItem('dhara-collapsed', collapsed ? '1' : '0'), [collapsed]);
   useEffect(() => { setMobile(false); }, [pathname]);
+
+  useEffect(() => {
+    const page = flattenNav(menu).find((l) => l.to === pathname);
+    document.title = page ? `${page.label} · Dhara Dairy` : 'Dhara Dairy';
+  }, [menu, pathname]);
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((p) => !p); }

@@ -1,95 +1,135 @@
-import { Activity, Building2, FileSpreadsheet, GitCompareArrows, LayoutDashboard, MessageCircle, Radio, Receipt, Settings, ShieldAlert, Tags, Users, Warehouse, Workflow } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { routeFor, type MenuNode } from '../services/menu/menu.service';
+import { useMemo } from 'react';
+import { useMenuTree } from '../hooks/useSessionData';
+import { routeFor, urlKey, type MenuNode } from '../services/menu/menu.api';
+import { norm } from '../services/utils/loose';
+import {
+  APP_PAGES,
+  APP_PAGE_LEAVES,
+  MORE_ICON,
+  NAV_MODULES,
+  type NavForm,
+  type NavLeaf,
+  type NavModule,
+  type NavSection,
+} from './navConfig';
 
-export interface NavItem {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  hint: string;
-}
+export type { NavLeaf, NavSection } from './navConfig';
 
-export interface NavGroup {
-  title: string;
-  items: NavItem[];
-}
+export const ALL_ITEMS: NavLeaf[] = APP_PAGE_LEAVES;
 
-export const NAV: NavGroup[] = [
-  {
-    title: 'Today',
-    items: [
-      { to: '/', label: 'Dashboard', icon: LayoutDashboard, hint: 'Overview of today and the last 30 days' },
-      { to: '/live', label: 'Live collection', icon: Radio, hint: 'Today\'s samples as the portal receives them' },
-    ],
-  },
-  {
-    title: 'Dairy',
-    items: [
-      { to: '/collections', label: 'Collections', icon: FileSpreadsheet, hint: 'Reports by farmer, centre, day and milk' },
-      { to: '/farmers', label: 'Farmers', icon: Users, hint: 'Registered farmers and what they poured' },
-      { to: '/centers', label: 'Centres', icon: Warehouse, hint: 'Your VLCs: litres, farmers and last sample' },
-      { to: '/reports/unionwise', label: 'Unionwise Collection', icon: Building2, hint: 'Farmers, litres, average fat, SNF, rate and amount per union and society' },
-      { to: '/reports/vlc-status', label: 'VLC Status', icon: Activity, hint: 'Which centres are active or in active for the chosen dates and shift' },
-      { to: '/reports/variance', label: 'Variance Report', icon: GitCompareArrows, hint: 'DOC collection against VLC collection, with the difference' },
-    ],
-  },
-  {
-    title: 'Money',
-    items: [
-      { to: '/rates', label: 'Rate chart', icon: Tags, hint: 'Rates the portal applied, per milk type' },
-      { to: '/billing', label: 'Billing', icon: Receipt, hint: '10-day bills and payslips' },
-    ],
-  },
-  {
-    title: 'Insight',
-    items: [
-      { to: '/quality', label: 'Quality watch', icon: ShieldAlert, hint: 'Adulteration and low-quality alerts' },
-      { to: '/pipeline', label: 'Data pipeline', icon: Workflow, hint: 'Machine to portal to dashboard, and API status' },
-      { to: '/settings', label: 'Settings', icon: Settings, hint: 'Theme and quality alert limits' },
-      { to: '/contact', label: 'Contact support', icon: MessageCircle, hint: 'Send a support request or view the temporary service notice' },
-    ],
-  },
-];
+const slug = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const hintFor = (route: string) => APP_PAGE_LEAVES.find((p) => p.to === route)?.hint;
+const labelFor = (route: string) => APP_PAGE_LEAVES.find((p) => p.to === route)?.label;
 
-export const ALL_ITEMS: NavItem[] = NAV.flatMap((group) => group.items);
 
-/**
- * Left menu from the getMenu API (bound once at sign-in, see services/bootstrap.ts).
- *  - A module (\"Report\") becomes a group, its forms become links.
- *  - Forms the reply switches off for this user (Status / IsActive = 0) are not shown.
- *  - Forms that are not pages of this app (Payment Voucher, Bill Unfreeze ...) are not shown.
- *  - The other pages of this app (Centres, Rate chart, Billing ...) stay under \"More\".
- *    Set VITE_MENU_ONLY=1 to show only what the API gives.
- * If NOTHING matches (menu failed or uses unknown names), the built-in NAV above is used, so the sidebar is never empty.
- */
-export function buildNav(tree: MenuNode[]): NavGroup[] {
-  const byRoute = new Map(ALL_ITEMS.map((i) => [i.to, i]));
-  const used = new Set<string>();
-  const switchedOff = new Set<string>();
-  // Safety: if switching entries off would leave nothing, the switch is ignored instead of emptying the menu.
-  const leaves = (ns: MenuNode[]): MenuNode[] => ns.flatMap((n) => (n.children.length ? leaves(n.children) : [n]));
-  const honourSwitch = leaves(tree).some((n) => n.enabled);
+export function buildNav(tree: MenuNode[]): NavSection[] {
+  const leavesOf = (ns: MenuNode[]): MenuNode[] => ns.flatMap((n) => (n.children.length ? leavesOf(n.children) : [n]));
+  
+  const honourSwitch = leavesOf(tree).some((n) => n.enabled);
   const on = (n: MenuNode) => !honourSwitch || n.enabled;
 
-  const toItem = (n: MenuNode): NavItem | null => {
-    const to = routeFor(n);
-    const base = to ? byRoute.get(to) : undefined;
-    if (to && !on(n)) switchedOff.add(to);
-    if (!on(n) || !to || !base || used.has(to)) return null;
-    used.add(to);
-    return { ...base, label: n.title || base.label };
+  const used = new Set<string>();
+  const switchedOff = new Set<string>();
+
+  const moduleOf = (title: string): NavModule | undefined => NAV_MODULES.find((m) => norm(m.name) === norm(title));
+  const formOf = (node: MenuNode, mod?: NavModule): NavForm | undefined => {
+    const key = norm(urlKey(node.url));
+    const title = norm(node.title);
+    const pool = mod?.children ?? NAV_MODULES.flatMap((m) => m.children ?? []);
+    return (key ? pool.find((f) => norm(f.key) === key) : undefined) ?? pool.find((f) => norm(f.name) === title);
   };
-  const groups: NavGroup[] = [];
-  for (const root of tree) {
-    if (!on(root)) continue;
-    const items = root.children.length ? root.children.map(toItem).filter((x): x is NavItem => !!x) : [toItem(root)].filter((x): x is NavItem => !!x);
-    if (items.length) groups.push({ title: root.title || 'Menu', items });
-  }
-  if (!groups.length) return NAV;
+
+  const toLeaf = (node: MenuNode, mod: NavModule | undefined, moduleTitle: string, apiIndex: number): { leaf: NavLeaf; order: number } | null => {
+    const sf = formOf(node, mod);
+    let to: string;
+    let built = false;
+    let portalPath: string | undefined;
+    if (sf) {
+      portalPath = sf.url;
+      built = !!sf.route;
+      to = sf.route ?? `/portal${sf.url}`;
+    } else {
+      const alias = routeFor(node);
+      built = !!alias;
+      to = alias ?? `/portal/${slug(moduleTitle)}/${slug(urlKey(node.url) || node.title || String(apiIndex))}`;
+    }
+    if (!on(node)) {
+      if (built) switchedOff.add(to);
+      return null;
+    }
+    if (built) {
+      if (used.has(to)) return null; 
+      used.add(to);
+    }
+    const order = sf && mod?.children ? mod.children.indexOf(sf) : 1000 + apiIndex;
+    return {
+      leaf: { to, label: node.title || sf?.name || labelFor(to) || 'Menu', hint: hintFor(to) ?? moduleTitle, built, portalPath },
+      order,
+    };
+  };
+
+  const sections: Array<{ section: NavSection; order: number }> = [];
+  tree.forEach((root, rootIndex) => {
+    if (!on(root)) return;
+    const mod = moduleOf(root.title);
+    const title = mod?.name ?? (root.title || 'Menu');
+    const order = mod ? NAV_MODULES.indexOf(mod) : 1000 + rootIndex;
+
+
+    if (mod && !mod.children && mod.route) {
+      if (root.children.length && !root.children.some(on)) return;
+      if (used.has(mod.route)) return;
+      used.add(mod.route);
+      sections.push({
+        order,
+        section: {
+          id: slug(title),
+          title,
+          icon: mod.icon,
+          to: mod.route,
+          items: [{ to: mod.route, label: root.title || mod.name, hint: hintFor(mod.route), built: true, portalPath: mod.url }],
+        },
+      });
+      return;
+    }
+
+    const forms = root.children.length ? root.children : [root];
+    if (root.children.length && !root.children.some(on)) return;
+    const items = forms
+      .map((n, i) => toLeaf(n, mod, title, i))
+      .filter((x): x is { leaf: NavLeaf; order: number } => !!x)
+      .sort((a, b) => a.order - b.order)
+      .map((x) => x.leaf);
+    if (!items.length) return;
+    sections.push({ order, section: { id: slug(title), title, icon: mod?.icon ?? MORE_ICON, items } });
+  });
+
+  const result = sections.sort((a, b) => a.order - b.order).map((s) => s.section);
+  if (!result.length) return APP_PAGES;
+
   if (import.meta.env.VITE_MENU_ONLY !== '1') {
-    // A page the API switched off for this user must not come back through "More" (Settings stays always).
-    const more = ALL_ITEMS.filter((i) => !used.has(i.to) && (i.to === '/settings' || !switchedOff.has(i.to)));
-    if (more.length) groups.push({ title: 'More', items: more });
+    const more = APP_PAGE_LEAVES.filter((i) => !used.has(i.to) && (i.to === '/settings' || !switchedOff.has(i.to)));
+    if (more.length) result.push({ id: 'more', title: 'More', icon: MORE_ICON, items: more });
   }
-  return groups;
+  return result;
 }
+
+export function useNav(): NavSection[] {
+  const tree = useMenuTree();
+  return useMemo(() => buildNav(tree), [tree]);
+}
+
+export const flattenNav = (sections: NavSection[]): Array<NavLeaf & { section: string }> => {
+  const seen = new Set<string>();
+  const out: Array<NavLeaf & { section: string }> = [];
+  for (const s of sections) {
+    for (const i of s.items) {
+      if (seen.has(i.to)) continue;
+      seen.add(i.to);
+      out.push({ ...i, section: s.title });
+    }
+  }
+  return out;
+};
+
+export const isActivePath = (to: string, pathname: string) => (to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`));

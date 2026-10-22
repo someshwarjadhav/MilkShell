@@ -32,17 +32,16 @@ const UnionwiseCollection: React.FC = () => {
   const [to, setTo] = useState(today);
   const [applied, setApplied] = useState({ from: today, to: today });
 
-  // Every farmer sample of the dates (all VLCs, both shifts, all milk): the same call the Farmer collection report uses.
   const { q, rows } = useSamples(applied.from, applied.to, true, 0);
 
-  // The union of a society: a column of the centre list when the portal sends one, otherwise the dairy itself.
+
   const unionOf = (id: string) => {
     const raw = centers.find((c) => c.id === id)?.raw;
     return (raw && pick(raw, UNION_KEYS)) || dairyName;
   };
 
   const data = useMemo(() => unionwise(rows, unionOf, (id) => vlccTitle(id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
     [rows, centers, dairyName]);
   const t = useMemo(() => unionTotals(data), [data]);
 
@@ -111,11 +110,11 @@ const UnionwiseCollection: React.FC = () => {
   return (
     <ReportPage title="Unionwise Collection" subtitle="Milk collected for each union and its societies: farmers, litres, average fat, SNF and rate, and the amount.">
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Total litres" value={t.liter} decimals={1} icon={<Droplets size={18} />} tone="text-brand" hint={`${t.societies} societies`} loading={loading} error={statError} onRetry={q.retry} />
-        <StatCard label="Average fat" value={t.fat} decimals={2} suffix="%" icon={<FlaskConical size={18} />} tone="text-cow" hint="Weighted by litres" loading={loading} error={statError} onRetry={q.retry} />
-        <StatCard label="Farmers" value={t.farmers} icon={<Users size={18} />} tone="text-goat" hint={`${t.societies} societies`} loading={loading} error={statError} onRetry={q.retry} />
-        <StatCard label="Amount" value={t.amount} prefix="₹" icon={<IndianRupee size={18} />} tone="text-buffalo" loading={loading} error={statError} onRetry={q.retry} />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard label="Total litres" value={t.liter} decimals={1} icon={<Droplets size={18} />} tone="text-brand" hint={`${t.societies} societies`} loading={loading} error={statError} onRetry={q.retry} compact />
+        <StatCard label="Average fat" value={t.fat} decimals={2} suffix="%" icon={<FlaskConical size={18} />} tone="text-cow" hint="Weighted by litres" loading={loading} error={statError} onRetry={q.retry} compact />
+        <StatCard label="Farmers" value={t.farmers} icon={<Users size={18} />} tone="text-goat" hint={`${t.societies} societies`} loading={loading} error={statError} onRetry={q.retry} compact />
+        <StatCard label="Amount" value={t.amount} prefix="₹" icon={<IndianRupee size={18} />} tone="text-buffalo" loading={loading} error={statError} onRetry={q.retry} compact />
       </div>
 
       <Reveal delay={0.05}>

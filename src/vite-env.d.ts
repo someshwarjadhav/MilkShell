@@ -13,6 +13,7 @@ interface ImportMetaEnv {
   readonly VITE_CENTER_ID_FIELD?: string;
   readonly VITE_MENU_ONLY?: string;
   readonly VITE_MCC_ID?: string;
+  readonly VITE_PORTAL_URL?: string;
 }
 
 interface ImportMeta {

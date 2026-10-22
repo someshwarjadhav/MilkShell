@@ -18,20 +18,20 @@ import { MilkLoader } from '../components/MilkLoader';
 import { useToast } from '../context/ToastContext';
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from '../lib/export';
 import { addDays, fmtDate, fmtShort, inr, nf, todayISO } from '../lib/format';
-import { DEFAULT_PAGE_SIZE, GLOBALSMILK, GLOBALSSHIFT } from '../lib/global';
+import { DEFAULT_MILK, DEFAULT_PAGE_SIZE, GLOBALSMILK, GLOBALSSHIFT } from '../lib/global';
 import { KIND_META, type Kind } from '../services/utils/milk';
 import { buildFarmerBook, farmerDaily, sampleStamp, type BookFarmer } from '../services/farmer/farmerBook';
 import { useCenters } from '../hooks/useSessionData';
 import { isLoadingQ, useFarmerMaster } from '../hooks/useSmartxData';
 import { mapFarmers } from '../services/mappers/farmer.mapper';
-import { fetchFarmerCollection } from '../services/farmer/farmer.service';
+import { fetchFarmerCollection } from '../services/farmer/farmer.api';
 import type { MilkCode, RawFarmerRow, ShiftCode } from '../services/types/raw';
 import { getSession } from '../services/session';
 import { vlccOption } from '../services/vlcc/names';
 import { useQuery } from '../hooks/useQuery';
 
 type Show = 'poured' | 'all' | 'nomilk' | 'inactive';
-interface Applied { from: string; to: string; shift: ShiftCode; milk: MilkCode | 'ALL'; vlcc: string }
+interface Applied { from: string; to: string; shift: ShiftCode; milk: MilkCode; vlcc: string }
 
 const Farmers: React.FC = () => {
   const cc = useChartColors();
@@ -43,7 +43,7 @@ const Farmers: React.FC = () => {
 
 
   const [vlcc, setVlcc] = useState('');
-  const [milk, setMilk] = useState<'all' | MilkCode>('all');
+  const [milk, setMilk] = useState<MilkCode>(DEFAULT_MILK);
   const [shift, setShift] = useState<ShiftCode>('Z');
   const [from, setFrom] = useState(addDays(today, -6));
   const [to, setTo] = useState(today);
@@ -64,12 +64,12 @@ const Farmers: React.FC = () => {
 
   const submit = () => {
     if (!vlcc) return;
-    const next: Applied = { from, to, shift, milk: milk === 'all' ? 'ALL' : milk, vlcc };
+    const next: Applied = { from, to, shift, milk, vlcc };
     const same = applied && applied.from === next.from && applied.to === next.to && applied.shift === next.shift && applied.milk === next.milk && applied.vlcc === next.vlcc;
     if (same) samplesQ.retry(); 
     else setApplied(next);
   };
-  const reset = () => { setVlcc(''); setMilk('all'); setShift('Z'); setFrom(addDays(today, -6)); setTo(today); setQ(''); setShow('poured'); setApplied(null); };
+  const reset = () => { setVlcc(''); setMilk(DEFAULT_MILK); setShift('Z'); setFrom(addDays(today, -6)); setTo(today); setQ(''); setShow('poured'); setApplied(null); };
 
   useEffect(() => { const o = params.get('open'); if (o) setOpenKey(o); }, [params]);
 
@@ -126,7 +126,7 @@ const Farmers: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Farmers"
         subtitle={!applied ? 'Choose the centre, milk type, shift and dates, then press Submit.' : loading ? 'Loading farmers from the SmartX portal…' : `${rows.length} farmers for ${rangeLabel}. Open a farmer to see their milk in this range.`}
@@ -136,7 +136,7 @@ const Farmers: React.FC = () => {
         <CardHeader title="User Info" subtitle="The portal can take up to a minute to answer." action={<Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={reset}>Reset</Button>} />
         <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
           <Field label="VLC Name"><Select value={vlcc} onChange={(e) => setVlcc(e.target.value)}><option value="">Select a centre</option>{centers.length ? centers.map((c) => <option key={c.id} value={c.id}>{c.label} · {c.id}</option>) : sessionIds.map((id) => <option key={id} value={id}>{vlccOption(id)}</option>)}</Select></Field>
-          <Field label="Milk Type"><Select value={milk} onChange={(e) => setMilk(e.target.value as 'all' | MilkCode)}><option value="all">All milk</option>{GLOBALSMILK.milkOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}</Select></Field>
+          <Field label="Milk Type"><Select value={milk} onChange={(e) => setMilk(e.target.value as MilkCode)}>{GLOBALSMILK.milkOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}</Select></Field>
           <Field label="Shift"><Select value={shift} onChange={(e) => setShift(e.target.value as ShiftCode)}>{GLOBALSSHIFT.shiftOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}</Select></Field>
           <Field label="Show"><Select value={show} onChange={(e) => setShow(e.target.value as Show)}><option value="poured">Farmers who poured milk</option><option value="all">All registered farmers</option><option value="nomilk">Active, no milk</option><option value="inactive">Inactive</option></Select></Field>
           <Field label="From Date"><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
@@ -160,7 +160,7 @@ const Farmers: React.FC = () => {
         {masterNote && <p className="px-5 pt-3 text-xs text-mute sm:px-6">{masterNote}</p>}
         {applied && <Notice q={samplesQ} />}
         {!applied
-          ? <p className="px-6 py-14 text-center text-sm text-mute">Press Submit to load the farmers.</p>
+          ? <p className="px-6 py-8 text-center text-sm text-mute">Press Submit to load the farmers.</p>
           : loading
             ? <MilkLoader variant="image" label="Loading farmers…" />
             : failed

@@ -15,10 +15,7 @@ import { EmptyState } from '../components/EmptyState';
 
 const step = (v: number, s: number) => Math.round(v / s) * s;
 
-/**
- * The portal does not publish its rate formula through the API, but every sample carries the rate it was paid at.
- * This page shows those real rates: the average per milk type, and what was paid for each fat / SNF combination.
- */
+
 const RateChart: React.FC = () => {
   const today = todayISO();
   const [days, setDays] = useState<'7' | '30'>('30');

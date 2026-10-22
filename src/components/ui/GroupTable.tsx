@@ -7,7 +7,6 @@ import { EmptyState } from '../EmptyState';
 export interface GCol<T> {
   key: string;
   header: ReactNode;
-  /** Columns with the same neighbouring `group` share one heading above them (DOC Collection, VLC Collection ...). */
   group?: string;
   cell: (row: T) => ReactNode;
   align?: 'left' | 'right' | 'center';
@@ -21,7 +20,7 @@ interface Props<T> {
   pageSize?: number;
   pageSizes?: number[];
   sizeLabel?: string;
-  /** Extra <tr> rows after the data (totals). */
+ 
   footer?: ReactNode;
   empty?: ReactNode;
 }
@@ -29,7 +28,7 @@ interface Props<T> {
 const alignOf = (a?: string) => (a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left');
 const TH = 'whitespace-nowrap border-b border-line bg-soft/70 px-4 py-3 text-xs font-semibold text-mute';
 
-/** Same look as DataTable, with a two-line heading (group over columns) and a totals area. */
+
 export function GroupTable<T>({ columns, rows, rowKey, pageSize = 100, pageSizes = [10, 25, 50, 100, 250], sizeLabel = 'Result per page', footer, empty }: Props<T>) {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(pageSize);

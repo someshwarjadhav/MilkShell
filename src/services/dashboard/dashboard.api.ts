@@ -2,7 +2,7 @@ import { gatewayGet, listOf, type Priority } from '../http/client';
 import { fanOut, needSession, waves, type Emit } from '../http/fanout';
 import type { RawLinePoint, RawTopSupplier } from '../types/raw';
 
-/** GET /home/dashboardLinechart?vlccid=<id>: litres per day and milk type. One call per VLC. */
+
 export function fetchLineChart(vlccIds: string[], emit?: Emit<RawLinePoint>, priority: Priority = 1) {
   needSession();
   return fanOut<RawLinePoint>(
@@ -12,7 +12,6 @@ export function fetchLineChart(vlccIds: string[], emit?: Emit<RawLinePoint>, pri
   );
 }
 
-/** GET /home/topMilkSupplier?vlccid=<id> */
 export function fetchTopSuppliers(vlccIds: string[], emit?: Emit<RawTopSupplier>, priority: Priority = 2) {
   needSession();
   return fanOut<RawTopSupplier>(

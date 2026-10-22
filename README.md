@@ -27,23 +27,37 @@ Production: the dev proxy does not exist in a built site. Either keep `VITE_API_
 location /api/ { proxy_pass https://smartx.shivinfotech.co.in/; proxy_ssl_server_name on; }
 ```
 
-If the server's reply uses different field names, adjust `mapLoginResponse()` in `src/services/auth/auth.service.ts`.
+If the server's reply uses different field names, adjust `mapLoginResponse()` in `src/services/auth/auth.api.ts`.
 
 ## After sign-in: centres, menu and report columns (3 extra APIs)
 
 Order of events:
 
-1. `POST /home/userlogin` returns the encrypted login JSON. It is decrypted in `auth.service.ts`.
+1. `POST /home/userlogin` returns the encrypted login JSON. It is decrypted in `auth.api.ts`.
 2. From that decrypted record: the **user id** (`userid`, fallback `id`) and the **station id** (`stationid` / `station`).
 3. Three calls, in parallel, once, right after sign-in (`services/bootstrap.ts`, `loadSessionData`):
 
 | API | Angular original | Here | Used for |
 | --- | --- | --- | --- |
-| `getCenter(id)` | `POST staticIP + /home/farmercollectiondpu`, body `{ id }`, reply as text, strip `\r\n`, `JSON.parse` | `services/center/center.service.ts` (`id` = station id) | the centre list: stored in `GLOBALS.centerdata`; every combo box reads it with `useCenters()` |
-| `getMenu(userid)` | `GET staticIP + /dairy/dairy/getmenu?userid=` | `services/menu/menu.service.ts` | the left menu (`layout/nav.ts` `buildNav`) |
-| `getReportAccess(userid)` | `GET staticIP + /home/userReportConfig?userid=` | `services/report/report.service.ts` | which columns of the Farmer collection report this user sees (Collections page, also in Excel/CSV/PDF) |
+| `getCenter(id)` | `POST staticIP + /home/farmercollectiondpu`, body `{ id }`, reply as text, strip `\r\n`, `JSON.parse` | `services/center/center.api.ts` (`id` = station id) | the centre list: stored in `GLOBALS.centerdata`; every combo box reads it with `useCenters()` |
+| `getMenu(userid)` | `GET staticIP + /dairy/dairy/getmenu?userid=` | `services/menu/menu.api.ts` | the left menu (`layout/nav.ts` `buildNav`) |
+| `getReportAccess(userid)` | `GET staticIP + /home/userReportConfig?userid=` | `services/report/report.api.ts` | which columns of the Farmer collection report this user sees (Collections page, also in Excel/CSV/PDF) |
 
 No form calls `getCenter` itself. The centre list is fetched once; Collections, Farmers and the other pages only read it. The VLC ids used by every report are the ids of this list (if `getCenter` fails, the VLC ids from the login record are used instead).
+
+### Left menu (sidebar) = getMenu API + `layout/navConfig.ts`
+
+`layout/navConfig.ts` is the TypeScript version of the Angular `_nav.ts`: every module and form of the SmartX portal, with order, icon and the React page it opens. The API decides what a user sees (same rule as the Angular `default-layout.component.ts`):
+
+- a module is shown when the API gives the user at least one enabled form in it (`ModuleName` = module `name`),
+- a form is shown when the API lists it with `Status` / `IsActive` = 1 (`FormClassName` = form `key`),
+- names are compared ignoring case, spaces and `-`,
+- a form with a React screen opens it; a form without one opens `/portal/...` (placeholder with an "Open in SmartX portal" button, `VITE_PORTAL_URL`),
+- a form the API sends that is not in `navConfig.ts` is still listed,
+- pages that only exist in this app (Centres, Rate chart, Billing ...) stay under **More** (`VITE_MENU_ONLY=1` hides them),
+- if getMenu fails, the built-in app pages are shown.
+
+To connect a new React page to a form: set `route` on that form in `navConfig.ts` and add the `<Route>` in `App.tsx`.
 
 ### What the replies look like (seen on a real login)
 
@@ -63,10 +77,10 @@ No form calls `getCenter` itself. The centre list is fetched once; Collections, 
 
 `npm run dev`, sign in, open the console: `[bootstrap]`, `[getCenter]`, `[getMenu]`, `[getReportAccess]` print what was found and the raw replies. Adjust, in one place each:
 
-- centre id / name keys: `ID_KEYS` / `NAME_KEYS` in `center.service.ts`
-- menu title / url / parent keys and the menu-to-page table `ROUTES`: `menu.service.ts`
-- report column names: `FARMER_COL_NAMES` in `pages/Collections.tsx`; the reply shapes understood are documented in `report.service.ts`
-- user id / station id keys of the login record: `mapLoginResponse()` in `auth.service.ts`
+- centre id / name keys: `ID_KEYS` / `NAME_KEYS` in `center.api.ts`
+- menu title / url / parent keys and the menu-to-page table `ROUTES`: `menu.api.ts`
+- report column names: `FARMER_COL_NAMES` in `pages/Collections.tsx`; the reply shapes understood are documented in `report.api.ts`
+- user id / station id keys of the login record: `mapLoginResponse()` in `auth.api.ts`
 
 A column the report-access reply says nothing about stays visible, and a menu that matches none of this app's pages falls back to the built-in menu, so a reply in an unexpected shape never hides data or empties the sidebar.
 
@@ -86,10 +100,10 @@ All portal calls live in `src/services/`, one service file per resource:
 | --- | --- |
 | `config.ts` | Gateway path, 90 s timeout, date format. The only place for settings. |
 | `session.ts` | VLC ids, VLC names, station and MCC ids from the login response (nothing hardcoded). |
-| `auth/auth.service.ts` | `POST /home/userlogin` (encrypted payload) and the login-record mapping. |
-| `dashboard/dashboard.service.ts` | `GET /home/dashboardLinechart` and `GET /home/topMilkSupplier`. |
-| `vlcc/vlcc.service.ts` | `POST /home/VlccCollection`. Shows the portal's own numbers (no fallback). One request with all VLC ids in `id` and `stationid`, milktype `Z`, and `mccid` (709). |
-| `farmer/farmer.service.ts` | `POST /home/farmercollection`, `POST /home/FarmerMilkEntry`, `POST /home/farmermaster`. |
+| `auth/auth.api.ts` | `POST /home/userlogin` (encrypted payload) and the login-record mapping. |
+| `dashboard/dashboard.api.ts` | `GET /home/dashboardLinechart` and `GET /home/topMilkSupplier`. |
+| `vlcc/vlcc.api.ts` | `POST /home/VlccCollection`. Shows the portal's own numbers (no fallback). One request with all VLC ids in `id` and `stationid`, milktype `Z`, and `mccid` (709). |
+| `farmer/farmer.api.ts` | `POST /home/farmercollection`, `POST /home/FarmerMilkEntry`, `POST /home/farmermaster`. |
 | `farmer/farmerBook.ts` | Registered farmers merged with what they poured. |
 | `http/client.ts` | Gateway transport. POST replies are text: `\r\n` stripped, then `JSON.parse`. `{"Success":false,"Message":"No Record !"}` is an empty list. |
 | `http/fanout.ts` | One request per VLC and milk type; the FIRST VLC is sent alone, the others follow. |
@@ -101,7 +115,7 @@ Hooks live in `src/hooks/`: `useQuery.ts` (per-widget loading / error / retry, o
 
 The Dashboard "Monthly collection" graph has a centre dropdown that lists villages by name (`services/vlcc/villages.ts` seeds the names; login and loaded rows override them): **All** merges `dashboardLinechart` of every VLC, a single centre calls it with that `vlccid` only.
 
-VLC / station / MCC ids are read from the login response (`vlccid`, `stationid`, `mccid`). If your login record uses other key names, run `npm run dev`, sign in and look at the `[login] response keys` line in the browser console, then add the name in `mapLoginResponse()` (`src/services/auth/auth.service.ts`). As a fallback you can set `VITE_VLCC_IDS`, `VITE_STATION_ID` and `VITE_MCC_ID` in `.env.local`. `VlccCollection` returns HTTP 500 without `mccid` (for this dairy: `709`, as the portal itself sends), so it is checked before the call and empty ids are never sent.
+VLC / station / MCC ids are read from the login response (`vlccid`, `stationid`, `mccid`). If your login record uses other key names, run `npm run dev`, sign in and look at the `[login] response keys` line in the browser console, then add the name in `mapLoginResponse()` (`src/services/auth/auth.api.ts`). As a fallback you can set `VITE_VLCC_IDS`, `VITE_STATION_ID` and `VITE_MCC_ID` in `.env.local`. `VlccCollection` returns HTTP 500 without `mccid` (for this dairy: `709`, as the portal itself sends), so it is checked before the call and empty ids are never sent.
 
 If the portal rejects the `fromdate` / `todate` format, set `VITE_API_DATE_FORMAT` (see `.env.example`).
 

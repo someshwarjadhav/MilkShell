@@ -6,17 +6,10 @@ import {
 import { getSession } from "../session";
 import { ApiError } from "./errors";
 
-/**
- * Concurrency gate with PRIORITIES: the portal is slow, so only a few requests run at once and the
- * ones the screen is waiting for go first.
- *   0 = what the user is looking at right now (today's total, a button they pressed)
- *   1 = normal (default)
- *   2 = background (top bar alerts, top suppliers, farmer counts): runs only when nothing more urgent is waiting
- */
+
 export type Priority = 0 | 1 | 2;
 let active = 0;
 const queues: Array<Array<() => void>> = [[], [], []];
-/** A waiting request. Its priority can be raised while it waits (see `bump`). */
 interface Ticket {
   priority: Priority;
   go?: () => void;
@@ -28,7 +21,7 @@ const acquire = (t: Ticket) =>
         t.go = resolve;
         queues[t.priority].push(resolve);
       });
-/** The same request was asked for again by something more urgent: move it forward in the line. */
+
 function bump(t: Ticket, priority: Priority) {
   if (priority >= t.priority) return;
   if (t.go) {
@@ -51,7 +44,6 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** POST replies are TEXT with \r\n inside: strip them, trim, then JSON.parse. */
 export function parseGatewayText(text: string): unknown {
   const clean = text.replace(/[\r\n]+/g, "").trim();
   if (!clean) throw new ApiError("The server sent an empty reply.", "parse");
@@ -67,7 +59,7 @@ export function parseGatewayText(text: string): unknown {
   } catch {
     throw new ApiError("The server reply could not be read.", "parse");
   }
-  // Some .NET endpoints double-encode: a JSON string that itself contains JSON.
+ 
   if (typeof json === "string") {
     try {
       json = JSON.parse(json);
@@ -76,10 +68,7 @@ export function parseGatewayText(text: string): unknown {
   return json;
 }
 
-/**
- * Turns a parsed reply into a list.
- * An empty result is an OBJECT {"Success":false,"Message":"No Record !"}: that is an empty state, not an error.
- */
+
 export function listOf<T>(json: unknown): T[] {
   if (Array.isArray(json)) return json as T[];
   if (isObj(json)) {
@@ -96,11 +85,11 @@ export function listOf<T>(json: unknown): T[] {
 }
 
 function urlFor(endpoint: string) {
-  // The endpoint (with its own ?query) travels inside the gateway's `path` parameter, as the portal does.
+
   return `${environment.staticIP}${endpoint}`;
 }
 
-/** A gateway hiccup (502/503/504) or a dropped connection is worth ONE more try; a timeout or a 500 is not. */
+
 const retryable = (e: unknown) =>
   e instanceof ApiError &&
   (e.kind === "network" ||
@@ -140,13 +129,13 @@ async function sendOnce(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    // const token = getSession()?.token;
+   
     const res = await fetch(url, {
       ...init,
       headers: {
         Accept: "application/json, text/plain, */*",
         ...((init.headers as Record<string, string>) ?? {}),
-        // ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      
       },
       signal: controller.signal,
     });

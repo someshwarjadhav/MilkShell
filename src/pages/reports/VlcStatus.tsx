@@ -18,7 +18,7 @@ import { todayISO } from '../../lib/format';
 import { GLOBALSSHIFT } from '../../lib/global';
 import { useQuery } from '../../hooks/useQuery';
 import { useCenters } from '../../hooks/useSessionData';
-import { fetchVlccCollection } from '../../services/vlcc/vlcc.service';
+import { fetchVlccCollection } from '../../services/vlcc/vlcc.api';
 import { mapVlcc } from '../../services/mappers/vlcc.mapper';
 import { vlcStatus, type StatusRow } from '../../services/mappers/report.mapper';
 import { getSession } from '../../services/session';
@@ -27,7 +27,7 @@ import type { RawVlccRow, ShiftCode } from '../../services/types/raw';
 
 type Show = 'all' | 'active' | 'inactive';
 
-/** One centre. Active: a wifi icon with a pulsing ring. Inactive: a red "no signal" icon that shakes now and then. */
+
 const StatusCard: React.FC<{ r: StatusRow; index: number }> = ({ r, index }) => {
   const still = useReducedMotion();
   return (
@@ -90,7 +90,7 @@ const VlcStatus: React.FC = () => {
 
   const mapped = useMemo(() => mapVlcc(q.rows), [q.rows]);
   const all = useMemo(() => vlcStatus(scopeIds, mapped, (id) => vlccTitle(id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  
     [mapped, applied.scope]);
 
   const activeCount = all.filter((r) => r.active).length;
@@ -142,12 +142,12 @@ const VlcStatus: React.FC = () => {
   return (
     <ReportPage title="VLC Status" subtitle="Check whether a selected centre sent milk for the chosen dates and shift.">
 
-      {hasAppliedCentre && <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Centres" value={all.length} icon={<Activity size={18} />} tone="text-brand" hint={`${activeCount} active`} loading={loading} error={statError} onRetry={q.retry} />
-        <StatCard label="Active" value={activeCount} icon={<Wifi size={18} />} tone="text-ok" hint="Sent milk" loading={loading} error={statError} onRetry={q.retry} />
-        <StatCard label="In Active" value={all.length - activeCount} icon={<WifiOff size={18} />} tone="text-danger" hint="No milk received" loading={loading} error={statError} onRetry={q.retry} />
-        <StatCard label="Total litres" value={totalLit} decimals={1} icon={<Droplets size={18} />} tone="text-buffalo" hint={`Avg fat ${avgFat.toFixed(2)}`} loading={loading} error={statError} onRetry={q.retry} />
-      </div>}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard label="Centres" value={all.length} icon={<Activity size={18} />} tone="text-brand" hint={`${activeCount} active`} loading={loading} error={statError} onRetry={q.retry} idle={!hasAppliedCentre} compact />
+        <StatCard label="Active" value={activeCount} icon={<Wifi size={18} />} tone="text-ok" hint="Sent milk" loading={loading} error={statError} onRetry={q.retry} idle={!hasAppliedCentre} compact />
+        <StatCard label="In Active" value={all.length - activeCount} icon={<WifiOff size={18} />} tone="text-danger" hint="No milk received" loading={loading} error={statError} onRetry={q.retry} idle={!hasAppliedCentre} compact />
+        <StatCard label="Total litres" value={totalLit} decimals={1} icon={<Droplets size={18} />} tone="text-buffalo" hint={`Avg fat ${avgFat.toFixed(2)}`} loading={loading} error={statError} onRetry={q.retry} idle={!hasAppliedCentre} compact />
+      </div>
 
       <Reveal delay={0.05}>
         <Card>
@@ -189,7 +189,7 @@ const VlcStatus: React.FC = () => {
             }
           />
           {!hasAppliedCentre ? (
-            <p className="px-6 py-14 text-center text-sm text-mute">Select a centre and press Submit to check its status.</p>
+            <p className="px-6 py-8 text-center text-sm text-mute">Select a centre and press Submit to check its status.</p>
           ) : <div className="p-5 sm:p-6">
             {loading ? (
               <MilkLoader label="Checking selected centre…" />

@@ -54,21 +54,21 @@ export function exportExcel<T>(name: string, cols: ExportCol<T>[], rows: T[]) {
   download(`${name}.xls`, 'application/vnd.ms-excel', html);
 }
 
-/** Extra things a report can put on its PDF. Everything is optional: exportPDF(name, cols, rows) still works. */
+
 export interface PdfOptions {
-  /** Line under the title, e.g. "21 Oct 2026 to 21 Oct 2026". */
+ 
   subtitle?: string;
-  /** Filters used, shown as small chips: [['VLC', 'All'], ['Shift', 'Morning']]. */
+
   meta?: Array<[string, string]>;
-  /** Big numbers above the table. */
+ 
   summary?: Array<{ label: string; value: string; tone?: 'ok' | 'warn' | 'danger' }>;
-  /** Heading over neighbouring columns, left to right, covering ALL columns. label '' = no group (the column heading spans both lines). */
+
   groups?: Array<{ label: string; span: number }>;
-  /** Last row. Each cell can span columns; "\n" starts a new line inside the cell. */
+ 
   totals?: Array<{ text: string | number; span?: number; align?: 'left' | 'right' | 'center' }>;
-  /** Default: landscape when the table has more than 8 columns. */
+
   landscape?: boolean;
-  /** Short note printed under the table. */
+  
   note?: string;
 }
 
@@ -77,7 +77,7 @@ const cell = (v: string | number) => htmlEsc(v).replace(/\n/g, '<br>');
 
 function pdfBody<T>(title: string, cols: ExportCol<T>[], rows: T[], o: PdfOptions) {
   const values = rows.map((row) => cols.map((c) => c.value(row)));
-  // A column is right aligned when every value in it is a number.
+
   const numeric = cols.map((_, i) => values.length > 0 && values.every((r) => String(r[i]).trim() === '' || isNumberText(r[i])));
   const grouped = !!o.groups?.some((g) => g.label);
 

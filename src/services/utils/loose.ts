@@ -1,10 +1,9 @@
-/** Helpers for replies whose exact key names are not fixed: keys are compared ignoring case, spaces, "_" and "-". */
 export type Obj = Record<string, unknown>;
 
 export const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 export const norm = (k: unknown) => String(k ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-/** The list inside a reply: the reply itself, or the first array under data / result / table ... */
+
 export function rowsFrom(json: unknown): Obj[] {
   if (Array.isArray(json)) return json.filter(isObj);
   if (!isObj(json)) return [];
@@ -20,7 +19,7 @@ export function rowsFrom(json: unknown): Obj[] {
   return [];
 }
 
-/** First non-empty string/number among `wanted` (in the order of `wanted`, not of the row). */
+
 export function pick(row: Obj, wanted: string[]): string {
   const keys = Object.keys(row);
   for (const w of wanted) {
@@ -41,10 +40,7 @@ export function pickValue(row: Obj, wanted: string[]): unknown {
   return undefined;
 }
 
-/**
- * Fallback when no exact key name matches: the first string/number value whose (normalised) key CONTAINS one of `has`
- * and none of `not`. Used for replies whose key names are not known in advance.
- */
+
 export function pickLike(row: Obj, has: string[], not: string[] = []): string {
   for (const [k, v] of Object.entries(row)) {
     const n = norm(k);

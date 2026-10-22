@@ -2,14 +2,14 @@ import { ENV_MCC_ID, ENV_STATION_ID, ENV_VLCC_IDS } from './config';
 import { GLOBALS } from '../lib/global';
 import { VILLAGE_NAMES } from './vlcc/villages';
 
-/** Ids that every SmartX call needs. Filled from the login response (AuthContext), never hardcoded. */
+
 export interface SmartxSession {
   vlccIds: string[];
   vlccNames: Record<string, string>;
   stationId: string;
   mccId: string;
   token?: string;
-  /** Cache namespace, so one user never sees another user's saved data. */
+ 
   scope: string;
 }
 
@@ -39,10 +39,9 @@ export function setSession(s: { vlccIds?: string[]; vlccNames?: Record<string, s
   current = {
     vlccIds,
     vlccNames: { ...VILLAGE_NAMES, ...(s.vlccNames ?? {}) },
-    // The portal sends every VLC id, comma separated, as `stationid`; mccid is the 3-digit prefix of the VLC ids (709).
+
     stationId: s.stationId || ENV_STATION_ID || vlccIds.join(','),
-    // SmartX wants 709 = the 3-digit prefix of the VLC ids (7090801 -> 709), exactly what the SmartX portal itself sends.
-    // The `mccid` in the MilkShell login record (e.g. 119) is a different id: sending it makes the server answer HTTP 500.
+
     mccId: ENV_MCC_ID || (vlccIds[0] ?? '').slice(0, 3) || s.mccId || '',
     token: s.token,
     scope: (s.email || 'user').toLowerCase(),
