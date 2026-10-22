@@ -11,7 +11,7 @@ import { cn } from '../lib/cn';
 
 export type ExportKind = 'xls' | 'pdf' | 'csv';
 
-/** Small rounded icon tile that floats gently (and wobbles on hover). Used in card headings of the report pages. */
+
 export const IconBadge: React.FC<{ icon: LucideIcon; tone?: string; size?: number }> = ({ icon: Icon, tone = 'text-brand', size = 18 }) => {
   const still = useReducedMotion();
   return (
@@ -30,16 +30,13 @@ export const CardTitle: React.FC<{ icon: LucideIcon; children: ReactNode; tone?:
   <span className="flex items-center gap-3"><IconBadge icon={icon} tone={tone} />{children}</span>
 );
 
-/** Fade + rise when a page or block appears. */
 export const Reveal: React.FC<{ children: ReactNode; delay?: number; className?: string }> = ({ children, delay = 0, className }) => (
   <motion.div className={className} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay, ease: 'easeOut' }}>
     {children}
   </motion.div>
 );
-
-/** Consistent page heading and spacing for every report screen and report tab. */
 export const ReportPage: React.FC<{ title: string; subtitle: string; children: ReactNode }> = ({ title, subtitle, children }) => (
-  <div className="min-w-0 space-y-6">
+  <div className="min-w-0 space-y-4">
     <Reveal><PageHeader title={title} subtitle={subtitle} /></Reveal>
     {children}
   </div>
@@ -55,7 +52,6 @@ export interface ReportSourceState {
   hasData?: boolean;
 }
 
-/** Honest source indicator: cached rows are explicitly identified, and no local sample data is called live. */
 export const ReportDataBadge: React.FC<{ state: ReportSourceState }> = ({ state }) => {
   const { fetching, stale, updatedAt, failed = 0, total = 0, error, hasData = false } = state;
   const failedText = total > 0 && failed > 0 ? ` · ${failed}/${total} requests failed` : '';
@@ -87,7 +83,7 @@ export const ReportDataBadge: React.FC<{ state: ReportSourceState }> = ({ state 
 const LABEL: Record<ExportKind, string> = { xls: 'Excel', pdf: 'PDF / Print', csv: 'CSV' };
 const ICON: Record<ExportKind, ReactNode> = { xls: <FileSpreadsheet size={15} />, pdf: <FileText size={15} />, csv: <Download size={15} /> };
 
-/** Record count, source status, and a consistent responsive export toolbar. */
+
 export const ReportBar: React.FC<{
   count: number;
   hideCount?: boolean;

@@ -1,7 +1,7 @@
 import type * as React from 'react';
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { ApiError } from '../services/http/errors';
-import { loginApi } from '../services/auth/auth.service';
+import { loginApi } from '../services/auth/auth.api';
 import { applySession, clearSessionData, loadSessionData, restoreSession, saveLogin } from '../services/bootstrap';
 import { vaultDropLegacy } from '../lib/vault';
 import { setSession } from '../services/session';
@@ -33,7 +33,6 @@ interface AuthCtx {
 const Ctx = createContext<AuthCtx | null>(null);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // The login is saved ENCRYPTED. Here it is decrypted into memory; no readable copy is kept in localStorage.
   const [user, setUser] = useState<User | null>(() => {
     vaultDropLegacy();
     return restoreSession();
@@ -44,13 +43,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       user,
       login: async (username, password) => {
         try {
-          // 1. sign in: the reply is decrypted (see loginApi)
+         
           const { profile, record } = await loginApi(username.trim(), password);
-          // 2. keep the decrypted login JSON (without the password) ENCRYPTED in localStorage
           saveLogin(username.trim(), record);
-          // Dev only: print the decrypted login JSON (no password) so it can be pasted into src/config/staticLogin.ts
           if (import.meta.env.DEV) console.info('[static-login] paste this into STATIC_LOGIN_RECORD:', JSON.stringify(record));
-          // 3. session first (the token goes into every call), then getCenter / getMenu / getReportAccess once
+
           setSession(profile);
           await loadSessionData(profile);
           applySession(profile);

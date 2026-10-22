@@ -13,9 +13,7 @@ export interface LoginProfile {
   stationId?: string;
   plantId?: string;
   mccId?: string;
-  /** The login record's own user id: passed to getMenu and getReportAccess. */
   userId?: string;
-  /** The "station" id column of the login record: passed to getCenter. Separate from `stationId` above, which the reports already use. */
   centerStationId?: string;
 }
 
@@ -110,14 +108,9 @@ const nameFromEmail = (email: string) =>
     .replace(/[._]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase()) || "User";
 
-/**
- * The id that goes into getCenter. Order:
- *  1. the column named in VITE_CENTER_ID_FIELD (.env.local), if set
- *  2. CustomStationId / stationid / station / stationcode / stationno
- *  3. any column whose name contains "station"
- */
+
 function pickStationId(records: Obj[]): string | undefined {
-  // The value is passed on WHOLE: CustomStationId is one string with every station id, comma separated.
+
   const whole = (names: string[]) => {
     for (const w of names) {
       for (const row of records) {
@@ -207,7 +200,6 @@ export function mapLoginResponse(decoded: unknown, username: string): LoginProfi
     throw new ApiError(message || "Incorrect username or password.");
   }
 
-  // Only safe fields are copied: the server's record also contains the password, which must never be stored.
   const resolvedEmail = email ?? username;
   return {
     name: name ?? nameFromEmail(resolvedEmail),
@@ -215,14 +207,14 @@ export function mapLoginResponse(decoded: unknown, username: string): LoginProfi
     role: role ?? "Dairy administrator",
     dairyName: pickString(user, ["dairyname", "plantname", "plant", "companyname", "organizationname", "orgname", "societyname"]),
     token,
-    // The login record carries the VLC ids as one comma separated string in "SessionID".
+
     vlccIds: pickIds(records, ["sessionid", "vlccid", "vlccids", "vlccode", "vlcid"]),
     vlccNames: pickVlccNames(records),
-    // stationid stays empty unless the record has one: the session then uses all VLC ids, like the portal does.
+
     stationId: pickIds(records, ["stationid", "station"])[0],
     plantId: pickIds(records, ["plantid"])[0],
     mccId: pickIds(records, ["mccid", "mcc"])[0],
-    // The user's own record is the first one. "id" is only the last resort: other rows may have their own ids.
+
     userId:
       pickIds(records.slice(0, 1), ["userid", "uid", "loginid", "usercode"])[0] ??
       pickIds(records.slice(0, 1), ["id"])[0],
@@ -230,10 +222,7 @@ export function mapLoginResponse(decoded: unknown, username: string): LoginProfi
   };
 }
 
-/**
- * A copy of the decrypted login record that is safe to keep: every key that looks like a password is removed
- * (the server's record contains the password). This copy is what is saved, encrypted, in localStorage.
- */
+
 export function sanitizeLoginRecord(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeLoginRecord);
   if (isObj(value)) {
@@ -247,7 +236,6 @@ export function sanitizeLoginRecord(value: unknown): unknown {
   return value;
 }
 
-/** The server wraps encrypted replies as { "data": "ciphertext:iv" }. Plain JSON replies are passed through. */
 function unwrap(json: unknown): unknown {
   if (isObj(json) && typeof json.data === "string" && json.data.includes(":")) {
     try {
@@ -316,7 +304,7 @@ async function postJson(
 
 export interface LoginResult {
   profile: LoginProfile;
-  /** The decrypted login JSON without the password: AuthContext saves it encrypted, every page decrypts it again. */
+
   record: unknown;
 }
 
@@ -324,8 +312,7 @@ export async function loginApi(
   username: string,
   password: string,
 ): Promise<LoginResult> {
-  // TEMPORARY static login (see src/config/staticLogin.ts): the sign-in API call below is skipped and the saved,
-  // decrypted login JSON is used instead. Off unless VITE_STATIC_LOGIN=1 and the record is filled.
+
   if (staticLoginActive()) {
     const profile = mapLoginResponse(STATIC_LOGIN_RECORD, username);
     if (!(await staticLoginAllows(username, password, profile.email))) {
@@ -355,8 +342,7 @@ export async function loginApi(
     decoded = json;
   }
 
-  // Dev-only: lists the KEY NAMES of the login record (never the values, the record contains the password)
-  // so you can see which field carries the VLC / station ids.
+
   if (import.meta.env.DEV) {
     const rec = isObj(decoded) ? decoded : {};
     const data = Object.keys(rec).find((k) => k.toLowerCase() === "data");

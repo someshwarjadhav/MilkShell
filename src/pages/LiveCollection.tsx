@@ -20,7 +20,6 @@ import { sampleStamp } from '../services/farmer/farmerBook';
 import { isLoadingQ, useSamples } from '../hooks/useSmartxData';
 import { getSession } from '../services/session';
 
-/** The portal is slow, so today's samples are asked for again only this often. */
 const REFRESH_MS = 60_000;
 
 const LiveCollection: React.FC = () => {

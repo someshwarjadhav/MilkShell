@@ -49,10 +49,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const isoOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const labelOf = (d: Date) => `${pad(d.getDate())} ${MON[d.getMonth()]} ${d.getFullYear()}`;
 
-/**
- * Groups the sparse points by dtdate, series C/B/M -> Cow/Buffalo/Mix, and fills missing days with 0.
- * Negative litres stay in the data (the chart clamps its axis at 0 and shows a note).
- */
+
 export function buildTrend(rows: RawLinePoint[], endISO: string, days: number): Trend {
   const byDate = new Map<string, { label: string; cow: number; buffalo: number; mix: number }>();
   let hasNegative = false;

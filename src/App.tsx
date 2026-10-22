@@ -11,7 +11,7 @@ const Login = lazy(() => import('./pages/Login'));
 const Contact = lazy(() => import('./pages/Contact'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const LiveCollection = lazy(() => import('./pages/LiveCollection'));
-const Collections = lazy(() => import('./pages/Collections'));
+const Collections = lazy(() => import('./pages/reports/Collections'));
 const Farmers = lazy(() => import('./pages/Farmers'));
 const Centers = lazy(() => import('./pages/Centers'));
 const RateChart = lazy(() => import('./pages/RateChart'));
@@ -22,6 +22,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 const UnionwiseCollection = lazy(() => import('./pages/reports/UnionwiseCollection'));
 const VlcStatus = lazy(() => import('./pages/reports/VlcStatus'));
 const VarianceReport = lazy(() => import('./pages/reports/VarianceReport'));
+const FormPlaceholder = lazy(() => import('./pages/FormPlaceholder'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 const ScrollToTop: React.FC = () => {
@@ -34,12 +35,7 @@ const ScrollToTop: React.FC = () => {
   return null;
 };
 
-/**
- * Runs for every page that opens:
- *  - useLoginData() decrypts the saved (encrypted) login again, so the readable copy only lives in memory.
- *    If the saved text was changed by hand it cannot be decrypted and the user is signed out.
- *  - If the centre list / menu / report access were never loaded (e.g. the saved copy was cleared), they are loaded once here.
- */
+
 const SessionGate: React.FC = () => {
   const { logout } = useAuth();
   const profile = useLoginData();
@@ -49,7 +45,7 @@ const SessionGate: React.FC = () => {
   useEffect(() => {
     if (!profile) { logout(); return; }
     if (isSessionDataLoaded()) { setReady(true); return; }
-    // One load per app start, even if React runs this effect twice (StrictMode): later runs just wait for it.
+  
     started.current ??= loadSessionData(profile).then(() => applySession(profile));
     let alive = true;
     started.current.then(() => { if (alive) setReady(true); });
@@ -90,6 +86,7 @@ const App: React.FC = () => {
               <Route path="reports/vlc-status" element={<VlcStatus />} />
               <Route path="reports/variance" element={<VarianceReport />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="portal/*" element={<FormPlaceholder />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Route>

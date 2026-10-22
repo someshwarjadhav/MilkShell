@@ -25,7 +25,6 @@ export function useTheme() {
   return c;
 }
 
-/** Hex colours for SVG charts, which cannot read CSS variables reliably. */
 export function useChartColors() {
   const { theme } = useTheme();
   return theme === 'dark'

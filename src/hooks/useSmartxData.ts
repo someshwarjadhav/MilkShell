@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { fetchFarmerCollection, fetchFarmerMaster } from '../services/farmer/farmer.service';
+import { fetchFarmerCollection, fetchFarmerMaster } from '../services/farmer/farmer.api';
 import { mapFarmers, type FarmerRow } from '../services/mappers/farmer.mapper';
 import { mapMaster, type MasterFarmer } from '../services/farmer/farmerBook';
 import { getSession } from '../services/session';

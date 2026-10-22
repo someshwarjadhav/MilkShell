@@ -1,49 +1,49 @@
 import type * as React from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { RotateCcw, Search } from "lucide-react";
-import { useToast } from "../context/ToastContext";
-import { Card, CardHeader } from "../components/ui/Card";
-import { Button } from "../components/ui/Button";
-import { Badge } from "../components/ui/Badge";
-import { Field, Input, Segmented, Select } from "../components/ui/Fields";
-import { DataTable, type Column } from "../components/ui/DataTable";
-import { StatCard } from "../components/ui/StatCard";
-import { KindChip } from "../components/KindChip";
-import { QueryBoundary } from "../components/Widget";
-import { MilkLoader } from "../components/MilkLoader";
-import { nf, todayISO } from "../lib/format";
-import { exportCSV, exportExcel, exportPDF, type ExportCol } from "../lib/export";
-import { ReportBar, ReportDataBadge, ReportPage } from "../components/ReportKit";
-import { GLOBALSMILK, GLOBALSSHIFT, DEFAULT_PAGE_SIZE } from "../lib/global";
-import { ENV_RATE_ID } from "../services/config";
-import { pickLoose } from "../services/farmer/farmerBook";
+import { useToast } from "../../context/ToastContext";
+import { Card, CardHeader } from "../../components/ui/Card";
+import { Button } from "../../components/ui/Button";
+import { Badge } from "../../components/ui/Badge";
+import { Field, Input, Segmented, Select } from "../../components/ui/Fields";
+import { DataTable, type Column } from "../../components/ui/DataTable";
+import { StatCard } from "../../components/ui/StatCard";
+import { KindChip } from "../../components/KindChip";
+import { QueryBoundary } from "../../components/Widget";
+import { MilkLoader } from "../../components/MilkLoader";
+import { nf, todayISO } from "../../lib/format";
+import { exportCSV, exportExcel, exportPDF, type ExportCol } from "../../lib/export";
+import { ReportBar, ReportDataBadge, ReportPage } from "../../components/ReportKit";
+import { GLOBALSMILK, GLOBALSSHIFT, DEFAULT_PAGE_SIZE, DEFAULT_MILK } from "../../lib/global";
+import { ENV_RATE_ID } from "../../services/config";
+import { pickLoose } from "../../services/farmer/farmerBook";
 import {
   farmerTotals,
   mapFarmers,
   type FarmerRow,
-} from "../services/mappers/farmer.mapper";
+} from "../../services/mappers/farmer.mapper";
 import {
   mapVlcc,
   totalsOf,
   type VlccRow,
-} from "../services/mappers/vlcc.mapper";
+} from "../../services/mappers/vlcc.mapper";
 import {
   fetchFarmerCollection,
   fetchFarmerMilkEntry,
-} from "../services/farmer/farmer.service";
-import { fetchVlccCollection } from "../services/vlcc/vlcc.service";
-import { getSession } from "../services/session";
-import { vlccOption, vlccTitle } from "../services/vlcc/names";
+} from "../../services/farmer/farmer.api";
+import { fetchVlccCollection } from "../../services/vlcc/vlcc.api";
+import { getSession } from "../../services/session";
+import { vlccOption, vlccTitle } from "../../services/vlcc/names";
 import type {
   MilkCode,
   RawFarmerRow,
   RawLoose,
   RawVlccRow,
   ShiftCode,
-} from "../services/types/raw";
-import { useQuery } from "../hooks/useQuery";
-import { useFarmerMaster } from "../hooks/useSmartxData";
-import { useCenters, useReportColumns } from "../hooks/useSessionData";
+} from "../../services/types/raw";
+import { useQuery } from "../../hooks/useQuery";
+import { useFarmerMaster } from "../../hooks/useSmartxData";
+import { useCenters, useReportColumns } from "../../hooks/useSessionData";
 import { Droplets, FlaskConical, IndianRupee, Users } from "lucide-react";
 
 type View = "vlcc" | "farmer" | "entry";
@@ -51,7 +51,7 @@ interface Applied {
   from: string;
   to: string;
   shift: ShiftCode;
-  milk: MilkCode | "ALL";
+  milk: MilkCode;
   vlcc: string;
   rateId: string;
 }
@@ -117,7 +117,7 @@ const Collections: React.FC = () => {
   const farmerAccess = useReportColumns("farmercollection");
 
   const [vlcc, setVlcc] = useState("");
-  const [milk, setMilk] = useState<"all" | MilkCode>("all");
+  const [milk, setMilk] = useState<MilkCode>(DEFAULT_MILK);
   const [shift, setShift] = useState<ShiftCode>("Z");
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
@@ -128,10 +128,11 @@ const Collections: React.FC = () => {
     from: today,
     to: today,
     shift: "Z",
-    milk: "ALL",
+    milk: DEFAULT_MILK,
     vlcc: "",
     rateId: ENV_RATE_ID,
   });
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const hasAppliedCentre = Boolean(applied.vlcc);
   const ids = hasAppliedCentre ? [applied.vlcc] : [];
@@ -178,14 +179,21 @@ const Collections: React.FC = () => {
       from,
       to,
       shift,
-      milk: milk === "all" ? "ALL" : milk,
+      milk,
       vlcc,
       rateId: rateId.trim(),
     });
+
+    window.setTimeout(() => {
+      const top = resultsRef.current?.getBoundingClientRect().top;
+      if (top !== undefined && top > window.innerHeight * 0.55) {
+        window.scrollBy({ top: top - 140, behavior: "smooth" });
+      }
+    }, 60);
   };
   const reset = () => {
     setVlcc("");
-    setMilk("all");
+    setMilk(DEFAULT_MILK);
     setShift("Z");
     setFrom(today);
     setTo(today);
@@ -195,7 +203,7 @@ const Collections: React.FC = () => {
       from: today,
       to: today,
       shift: "Z",
-      milk: "ALL",
+      milk: DEFAULT_MILK,
       vlcc: "",
       rateId: ENV_RATE_ID,
     });
@@ -715,7 +723,7 @@ const Collections: React.FC = () => {
   const run = (kind: "csv" | "xls" | "pdf") => {
     const meta: Array<[string, string]> = [
       ["Centre", vlccTitle(applied.vlcc)],
-      ["Milk", applied.milk === "ALL" ? "All milk" : GLOBALSMILK.milkOptions.find((m) => m.Id === applied.milk)?.Name ?? applied.milk],
+      ["Milk", GLOBALSMILK.milkOptions.find((m) => m.Id === applied.milk)?.Name ?? applied.milk],
       ["Shift", GLOBALSSHIFT.shiftOptions.find((s) => s.Id === applied.shift)?.Name ?? applied.shift],
       ["From", applied.from],
       ["To", applied.to],
@@ -757,11 +765,11 @@ const Collections: React.FC = () => {
 
   return (
     <ReportPage
-      title="Collections"
+      title="Farmer Collection"
       subtitle="Milk collected at your VLCs, totals per centre, every farmer sample, or the farmerwise entries."
     >
 
-      {hasAppliedCentre && <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard
           label="Total litres"
           value={sum.liter}
@@ -772,6 +780,8 @@ const Collections: React.FC = () => {
           loading={loading}
           error={statError}
           onRetry={active.retry}
+          idle={!hasAppliedCentre}
+          compact
         />
         <StatCard
           label="Average fat"
@@ -784,6 +794,8 @@ const Collections: React.FC = () => {
           error={statError}
           onRetry={active.retry}
           hint="Weighted by litres"
+          idle={!hasAppliedCentre}
+          compact
         />
         {view !== "vlcc" ? (
           <StatCard
@@ -795,6 +807,8 @@ const Collections: React.FC = () => {
             loading={loading}
             error={statError}
             onRetry={active.retry}
+            idle={!hasAppliedCentre}
+            compact
           />
         ) : (
           <StatCard
@@ -806,6 +820,8 @@ const Collections: React.FC = () => {
             loading={loading}
             error={statError}
             onRetry={active.retry}
+            idle={!hasAppliedCentre}
+            compact
           />
         )}
         <StatCard
@@ -817,8 +833,10 @@ const Collections: React.FC = () => {
           loading={loading}
           error={statError}
           onRetry={active.retry}
+          idle={!hasAppliedCentre}
+          compact
         />
-      </div>}
+      </div>
 
       <Card>
         <CardHeader
@@ -835,7 +853,7 @@ const Collections: React.FC = () => {
             </Button>
           }
         />
-        <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-6">
+        <div className="grid gap-3 px-5 pb-5 pt-3 sm:grid-cols-2 sm:px-6 lg:grid-cols-6">
           <Field label="Centre" className="lg:col-span-2">
             <Select value={vlcc} onChange={(e) => setVlcc(e.target.value)}>
               <option value="">Select a centre</option>
@@ -855,9 +873,8 @@ const Collections: React.FC = () => {
           <Field label="Milk type">
             <Select
               value={milk}
-              onChange={(e) => setMilk(e.target.value as "all" | MilkCode)}
+              onChange={(e) => setMilk(e.target.value as MilkCode)}
             >
-              <option value="all">All milk</option>
               {GLOBALSMILK.milkOptions.map((m) => (
                 <option key={m.Id} value={m.Id}>
                   {m.Name}
@@ -943,6 +960,7 @@ const Collections: React.FC = () => {
         </div>
       </Card>
 
+      <div ref={resultsRef}>
       <Card>
         <ReportBar
           count={sum.count}
@@ -973,7 +991,7 @@ const Collections: React.FC = () => {
           </p>
         )}
         {!hasAppliedCentre ? (
-          <p className="px-6 py-14 text-center text-sm text-mute">
+          <p className="px-6 py-8 text-center text-sm text-mute">
             Select a centre and press Search to load its collection.
           </p>
         ) : loading ? (
@@ -1025,6 +1043,7 @@ const Collections: React.FC = () => {
           </QueryBoundary>
         )}
       </Card>
+      </div>
     </ReportPage>
   );
 };

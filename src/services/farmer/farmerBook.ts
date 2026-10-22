@@ -1,8 +1,4 @@
-/**
- * Farmer book: the registered farmers (POST /home/farmermaster) merged with what they actually poured
- * (POST /home/farmercollection). Farmers who poured milk but are missing from the master list still appear.
- * A farmer is identified by vlccid + farmerid, because farmerid alone repeats across VLCs.
- */
+
 import { addDays } from '../../lib/format';
 import { isoFromTrdate } from '../utils/date';
 import type { FarmerRow } from '../mappers/farmer.mapper';
@@ -49,7 +45,7 @@ export function mapMaster(rows: RawLoose[]): MasterFarmer[] {
       name: pickLoose(r, ['farmername', 'name', 'farmer_name', 'fname']),
       village: pickLoose(r, ['dcsname', 'villagename', 'village', 'villageagentaddress', 'address']),
       phone: pickLoose(r, ['mobile', 'mobileno', 'mobilenumber', 'phone', 'phoneno', 'contactno', 'contact']),
-      // farmerbuff = 1 marks a buffalo farmer; 0 says nothing about cow, so the milk types then come from what was poured.
+   
       milk: kindOf(pickLoose(r, ['milktype', 'milk'])) ?? (pickLoose(r, ['farmerbuff']) === '1' ? 'buffalo' : null),
       active: ['false', '0', 'inactive', 'n', 'no'].includes(status) ? false : status ? true : null,
       bank: pickLoose(r, ['farmerbank']),

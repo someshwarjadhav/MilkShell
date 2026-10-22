@@ -45,10 +45,6 @@ export function Notice({ q }: { q: QueryState<unknown> }) {
   return null;
 }
 
-/**
- * Standard loading / error / empty handling for a widget. `children` renders only when there is data
- * (or `showWhenEmpty` is set, for widgets whose zero state is itself the answer).
- */
 export function QueryBoundary({
   q, children, skeleton, emptyTitle = 'No records yet', emptyHint, showWhenEmpty,
 }: {
