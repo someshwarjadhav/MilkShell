@@ -155,3 +155,16 @@ If the Farmerwise tab shows an error or no rows, enter the rate chart id in the 
 ## Contact form and backend
 
 The contact form does not transmit or store submissions. Account details and preferences use this browser's local storage.
+
+## Who sees which report (`src/config/reportAccess.ts`)
+
+The Report menu is decided per login there, on top of the getMenu API:
+
+| Login | Reports |
+| --- | --- |
+| `abc@gmail.com` | Farmer Collection, Farmerwise Collection, Vlcc Collection, VLC Status, Variance Report, Cleaning Report, Eko Calibration |
+| `prachidairykaladera@gmail.com` | Farmer Collection, Unionwise Collection, VLC Status, Variance Report |
+
+Farmerwise, Vlcc, Cleaning and Eko pages are *exclusive*: other logins never see them in the menu or search, and opening their address shows "Page spilled". To give another login a list, add its email to `REPORTS_BY_USER`.
+
+Cleaning Report and Eko Calibration read the portal paths in `src/services/report/portalReport.api.ts` (`VITE_CLEANING_REPORT_PATH`, `VITE_EKO_CALIBRATION_PATH`; default `/dairy/dairy/cleaningReport`, called as GET with `stationid`, `fromdate`, `todate`). Their table columns follow whatever the portal sends.

@@ -9,12 +9,15 @@ const ID_KEYS = ['vlccid', 'vlcid', 'vlccode', 'centerid', 'centreid', 'villagei
 const NAME_KEYS = ['villagename', 'vlccname', 'vlcname', 'centername', 'centrename', 'dcsname', 'name', 'village'];
 
 
+
+export const cleanCentreName = (n: string): string => n.replace(/\s*\|\s*[\w-]*\s*$/, '').replace(/\s+/g, ' ').trim();
+
 export function parseCenters(json: unknown): Center[] {
   const out: Center[] = [];
   for (const row of rowsFrom(json)) {
     const id = pick(row, ID_KEYS);
     if (!id || out.some((c) => c.id === id)) continue;
-    const name = pick(row, NAME_KEYS);
+    const name = cleanCentreName(pick(row, NAME_KEYS));
     out.push({ id, name, label: name || id, raw: row });
   }
   return out;

@@ -61,7 +61,12 @@ export function parseMenu(json: unknown): MenuNode[] {
 const ROUTES: Array<{ to: string; aliases: string[] }> = [
   { to: '/', aliases: ['dashboard', 'home', 'index'] },
   { to: '/live', aliases: ['livecollection', 'live', 'livedata'] },
-  { to: '/collections', aliases: ['collections', 'farmercollection', 'villagecollection', 'vlcccollection', 'vlccollection', 'farmerwisecollection'] },
+  { to: '/collections', aliases: ['collections', 'farmercollection', 'villagecollection'] },
+  { to: '/reports/farmerwise', aliases: ['farmerwisecollection', 'farmerwise'] },
+  { to: '/reports/vlcc', aliases: ['vlcccollection', 'vlccollection', 'vlcccollectionreport'] },
+  { to: '/reports/cleaning', aliases: ['cleaningreport', 'cleaning'] },
+  { to: '/reports/eko-calibration', aliases: ['ekocalibration'] },
+  { to: '/transactions/vlc-milk-entry', aliases: ['vlcmilkentry', 'bmcmilkentry', 'vlcmilkcollection'] },
   { to: '/farmers', aliases: ['farmers', 'farmer', 'farmerledger', 'farmermaster', 'farmerlist'] },
   { to: '/centers', aliases: ['centers', 'centres', 'center', 'centre', 'vlcc', 'vlccmaster', 'villagemaster'] },
   { to: '/rates', aliases: ['ratechart', 'rates', 'rate'] },
@@ -75,7 +80,7 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
   { to: '/contact', aliases: ['contact', 'contactsupport', 'mysupportticket', 'supportticket'] },
 ];
 
-const CONTAINED = ['farmercollection', 'villagecollection', 'livecollection', 'farmerledger', 'ratechart', 'farmerwisecollection', 'unionwisecollection', 'mccwisecollection', 'variancereport', 'vlcstatus'];
+const CONTAINED = ['farmercollection', 'villagecollection', 'livecollection', 'farmerledger', 'ratechart', 'farmerwisecollection', 'vlcccollection', 'unionwisecollection', 'mccwisecollection', 'variancereport', 'vlcstatus'];
 
 export const urlKey = (url: string) => norm(url.replace(/^[a-z]+:\/\/[^/]+/i, '').split(/[?#]/)[0].split('/').filter(Boolean).pop() ?? '');
 
