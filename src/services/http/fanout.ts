@@ -96,7 +96,7 @@ export function collectionWaves<T>(endpoint: string, p: CollectionParams, extra:
           fromdate: apiDate(p.from),
           todate: apiDate(p.to),
     
-          ...(s.stationId ? { stationid: s.stationId } : {}),
+          stationid: id,
           ...(s.mccId ? { mccid: s.mccId } : {}),
           ...extra,
         }, p.priority ?? 1),
@@ -119,7 +119,7 @@ export function joinedWaves<T>(endpoint: string, p: CollectionParams): Array<Arr
           milktype: code,
           fromdate: apiDate(p.from),
           todate: apiDate(p.to),
-          stationid: s.stationId || ids,
+          stationid: ids,
           ...(s.mccId ? { mccid: s.mccId } : {}),
         }, p.priority ?? 1),
       ),

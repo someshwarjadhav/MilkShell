@@ -1,3 +1,4 @@
+import { SHIFT_EVENING, SHIFT_MORNING } from '../lib/global';
 import type * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -46,23 +47,23 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
   }, [samples, thresholds]);
   const count = alerts.length;
   const hour = new Date().getHours();
-  const shift = hour < 12 ? 'Morning shift' : 'Evening shift';
+  const shift = `${hour < 12 ? SHIFT_MORNING : SHIFT_EVENING} shift`;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-bg/80 px-4 backdrop-blur-xl sm:px-6">
       <button onClick={onMenu} aria-label="Open menu" className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-panel text-mute hover:text-ink lg:hidden"><Menu size={18} /></button>
       <button onClick={onSearch} className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-panel px-3 text-left text-sm text-mute transition-colors hover:border-brand/60 sm:max-w-md">
-        <Search size={16} /><span className="truncate">Search pages or farmers</span>
+        <Search size={18} /><span className="truncate">Search pages or farmers</span>
         <kbd className="ml-auto hidden rounded-md bg-soft px-1.5 py-0.5 text-[11px] font-semibold sm:block">Ctrl K</kbd>
       </button>
       <div className="ml-auto flex items-center gap-2">
         <Badge tone="brand" dot className="hidden md:inline-flex">{shift} · live</Badge>
         <button onClick={toggle} aria-label="Switch theme" className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-panel text-mute hover:text-ink">
-          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         <div className="relative" ref={bellRef}>
           <button onClick={() => setBell((b) => !b)} aria-label="Alerts" className="relative grid h-10 w-10 place-items-center rounded-xl border border-line bg-panel text-mute hover:text-ink">
-            <Bell size={17} />
+            <Bell size={18} />
             {count > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">{count}</span>}
           </button>
           <AnimatePresence>

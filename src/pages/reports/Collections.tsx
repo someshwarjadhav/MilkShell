@@ -14,9 +14,7 @@ import { MilkLoader } from "../../components/MilkLoader";
 import { nf, todayISO } from "../../lib/format";
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from "../../lib/export";
 import { ReportBar, ReportDataBadge, ReportPage } from "../../components/ReportKit";
-import { GLOBALSMILK, GLOBALSSHIFT, DEFAULT_PAGE_SIZE, DEFAULT_MILK } from "../../lib/global";
-import { ENV_RATE_ID } from "../../services/config";
-import { pickLoose } from "../../services/farmer/farmerBook";
+import { GLOBALLABELS, GLOBALSMILK, GLOBALSSHIFT, DEFAULT_PAGE_SIZE, DEFAULT_MILK, DEFAULT_SHIFT, SHIFT_MORNING } from "../../lib/global";
 import {
   farmerTotals,
   mapFarmers,
@@ -29,34 +27,33 @@ import {
 } from "../../services/mappers/vlcc.mapper";
 import {
   fetchFarmerCollection,
-  fetchFarmerMilkEntry,
 } from "../../services/farmer/farmer.api";
 import { fetchVlccCollection } from "../../services/vlcc/vlcc.api";
-import { getSession } from "../../services/session";
 import { vlccOption, vlccTitle } from "../../services/vlcc/names";
 import type {
   MilkCode,
   RawFarmerRow,
-  RawLoose,
   RawVlccRow,
   ShiftCode,
 } from "../../services/types/raw";
 import { useQuery } from "../../hooks/useQuery";
-import { useFarmerMaster } from "../../hooks/useSmartxData";
-import { useCenters, useReportColumns } from "../../hooks/useSessionData";
+import { useFarmerMaster, useFarmersOf } from "../../hooks/useSmartxData";
+import { ALL_CENTRES, useCentreIds, useFirstCentre } from "../../hooks/useCentres";
+import { CentreField, PlantMccField, SubmitButton } from "../../components/ReportFilters";
+import { useReportColumns } from "../../hooks/useSessionData";
 import { Droplets, FlaskConical, IndianRupee, Users } from "lucide-react";
 
 export type View = "vlcc" | "farmer" | "entry";
 interface Applied {
+  farmer: string;
   from: string;
   to: string;
   shift: ShiftCode;
   milk: MilkCode;
   vlcc: string;
-  rateId: string;
+  ids: string[];
 }
 
-type EntryRow = Record<string, string>;
 interface FarmerwiseRow {
   key: string;
   farmerId: string;
@@ -70,22 +67,7 @@ interface FarmerwiseRow {
   rate: number;
   amount: number;
 }
-const prettyKey = (k: string) =>
-  k
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .replace(/^./, (c) => c.toUpperCase());
-const asText = (v: unknown) =>
-  v === null || v === undefined
-    ? ""
-    : typeof v === "object"
-      ? JSON.stringify(v)
-      : String(v).trim();
-const toNum = (v: string) => {
-  const n = Number(v.replace(/,/g, ""));
-  return Number.isFinite(n) ? n : 0;
-};
-const HIDDEN_KEYS = new Set(["maxid"]);
+const sameFarmerId = (a: string, b: string) => a === b || (a.replace(/^0+/, "") !== "" && a.replace(/^0+/, "") === b.replace(/^0+/, ""));
 
 const FARMER_COL_NAMES: Record<string, string[]> = {
   fid: ["farmerid", "farmercode", "farmerno"],
@@ -116,32 +98,33 @@ const PAGE_TEXT: Record<View, { title: string; subtitle: string }> = {
 const Collections: React.FC<{ only?: View }> = ({ only }) => {
   const toast = useToast();
   const today = todayISO();
-  const sessionIds = getSession()?.vlccIds ?? [];
 
-  const centers = useCenters();
+  const firstCentre = useFirstCentre();
+  const allIds = useCentreIds();
 
   const farmerAccess = useReportColumns("farmercollection");
 
-  const [vlcc, setVlcc] = useState("");
+  const [vlcc, setVlcc] = useState(only === "entry" ? firstCentre : ALL_CENTRES);
+  const [farmer, setFarmer] = useState("");
   const [milk, setMilk] = useState<MilkCode>(DEFAULT_MILK);
-  const [shift, setShift] = useState<ShiftCode>("Z");
+  const [shift, setShift] = useState<ShiftCode>(DEFAULT_SHIFT);
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [q, setQ] = useState("");
   const [view, setView] = useState<View>(only ?? "vlcc");
-  const [rateId, setRateId] = useState(ENV_RATE_ID);
   const [applied, setApplied] = useState<Applied>({
+    farmer: "",
     from: today,
     to: today,
-    shift: "Z",
+    shift: DEFAULT_SHIFT,
     milk: DEFAULT_MILK,
     vlcc: "",
-    rateId: ENV_RATE_ID,
+    ids: [],
   });
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  const hasAppliedCentre = Boolean(applied.vlcc);
-  const ids = hasAppliedCentre ? [applied.vlcc] : [];
+  const hasAppliedCentre = applied.ids.length > 0;
+  const ids = applied.ids;
   const key = `${applied.from}:${applied.to}:${applied.shift}:${applied.milk}:${ids.join(",")}`;
   const params = {
     from: applied.from,
@@ -156,38 +139,25 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     (emit) => fetchVlccCollection(params, emit),
   );
 
-  const entryQ = useQuery<RawLoose>(
-    view === "entry" && hasAppliedCentre && applied.rateId
-      ? `entrypage:${key}:${applied.rateId}`
-      : null,
-    (emit) => fetchFarmerMilkEntry({ ...params, rateId: applied.rateId }, emit),
-  );
-  const portalEntry =
-    view === "entry" && !!applied.rateId && entryQ.status !== "error";
   const farmerQ = useQuery<RawFarmerRow>(
-    hasAppliedCentre && (view === "farmer" || (view === "entry" && !portalEntry))
+    hasAppliedCentre && view !== "vlcc"
       ? `farmerpage:${key}`
       : null,
     (emit) => fetchFarmerCollection(params, emit),
   );
-  const active =
-    view === "vlcc"
-      ? vlccQ
-      : view === "farmer"
-        ? farmerQ
-        : portalEntry
-          ? entryQ
-          : farmerQ;
+  const active = view === "vlcc" ? vlccQ : farmerQ;
 
   const search = () => {
-    if (!vlcc) return;
+    const picked = vlcc === ALL_CENTRES ? allIds : [vlcc];
+    if (!vlcc || !picked.length) return;
     setApplied({
+      farmer,
       from,
       to,
       shift,
       milk,
       vlcc,
-      rateId: rateId.trim(),
+      ids: picked,
     });
 
     window.setTimeout(() => {
@@ -198,20 +168,21 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     }, 60);
   };
   const reset = () => {
-    setVlcc("");
+    setVlcc(view === "entry" ? firstCentre : ALL_CENTRES);
+    setFarmer("");
     setMilk(DEFAULT_MILK);
-    setShift("Z");
+    setShift(DEFAULT_SHIFT);
     setFrom(today);
     setTo(today);
     setQ("");
-    setRateId(ENV_RATE_ID);
     setApplied({
+      farmer: "",
       from: today,
       to: today,
-      shift: "Z",
+      shift: DEFAULT_SHIFT,
       milk: DEFAULT_MILK,
       vlcc: "",
-      rateId: ENV_RATE_ID,
+      ids: [],
     });
   };
 
@@ -228,6 +199,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
   );
 
   const master = useFarmerMaster(view !== "vlcc");
+  const farmers = useFarmersOf(vlcc === ALL_CENTRES ? "" : vlcc, view === "entry");
   const masterNames = useMemo(
     () =>
       new Map(
@@ -245,13 +217,14 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
             ? { ...r, farmerName: masterNames.get(r.farmerKey)! }
             : r,
         )
+        .filter((r) => view !== "entry" || !applied.farmer || sameFarmerId(r.farmerId, applied.farmer))
         .filter(
           (r) =>
             !needle ||
             r.farmerName.toLowerCase().includes(needle) ||
             r.farmerId.includes(needle),
         ),
-    [farmerQ.rows, needle, masterNames],
+    [farmerQ.rows, needle, masterNames, view, applied.farmer],
   );
 
   const farmerwiseAll = useMemo<FarmerwiseRow[]>(() => {
@@ -304,51 +277,8 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     [farmerwiseAll, needle],
   );
 
-  const entryRows = useMemo<EntryRow[]>(() => {
-    const rows = entryQ.rows.map((r) =>
-      Object.fromEntries(Object.entries(r).map(([k, v]) => [k, asText(v)])),
-    );
-    return needle
-      ? rows.filter((r) =>
-          Object.values(r).some((v) => v.toLowerCase().includes(needle)),
-        )
-      : rows;
-  }, [entryQ.rows, needle]);
-  const entryKeys = useMemo(() => {
-    const keys: string[] = [];
-    for (const r of entryRows)
-      for (const k of Object.keys(r))
-        if (!keys.includes(k) && !HIDDEN_KEYS.has(k.toLowerCase()))
-          keys.push(k);
-    return keys;
-  }, [entryRows]);
-
   const vt = useMemo(() => totalsOf(vlccRows), [vlccRows]);
   const ft = useMemo(() => farmerTotals(farmerRows), [farmerRows]);
-  const et = useMemo(() => {
-    let liter = 0,
-      kg = 0,
-      amount = 0,
-      fw = 0;
-    const ids = new Set<string>();
-    for (const r of entryRows) {
-      const q = toNum(pickLoose(r, ["qty", "liter", "litre"]));
-      liter += q;
-      kg += toNum(pickLoose(r, ["kg"]));
-      amount += toNum(pickLoose(r, ["amount", "totalamount"]));
-      fw += q * toNum(pickLoose(r, ["fat"]));
-      const id = pickLoose(r, ["farmerid", "farmercode"]);
-      if (id) ids.add(`${pickLoose(r, ["vlccid"])}:${id}`);
-    }
-    return {
-      count: entryRows.length,
-      liter,
-      kg,
-      amount,
-      avgFat: liter ? fw / liter : 0,
-      farmers: ids.size,
-    };
-  }, [entryRows]);
   const sum =
     view === "vlcc"
       ? {
@@ -370,25 +300,15 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
             farmers: ft.farmers,
             vlcs: undefined as number | undefined,
           }
-        : portalEntry
-          ? {
-              liter: et.liter,
-              kg: et.kg,
-              avgFat: et.avgFat,
-              amount: et.amount,
-              count: et.count,
-              farmers: et.farmers,
-              vlcs: undefined as number | undefined,
-            }
-          : {
-              liter: ft.liter,
-              kg: ft.kg,
-              avgFat: ft.avgFat,
-              amount: ft.amount,
-              count: farmerwise.length,
-              farmers: ft.farmers,
-              vlcs: undefined as number | undefined,
-            };
+        : {
+            liter: ft.liter,
+            kg: ft.kg,
+            avgFat: ft.avgFat,
+            amount: ft.amount,
+            count: farmerwise.length,
+            farmers: ft.farmers,
+            vlcs: undefined as number | undefined,
+          };
   const loading =
     active.status === "loading" ||
     (active.fetching && active.rows.length === 0);
@@ -454,7 +374,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
       key: "shift",
       header: "Shift",
       cell: (r) => (
-        <Badge tone={r.shift === "Morning" ? "warn" : "brand"}>
+        <Badge tone={r.shift === SHIFT_MORNING ? "warn" : "brand"}>
           {r.shift ?? r.shiftLabel}
         </Badge>
       ),
@@ -500,7 +420,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
       header: "Shift",
       cell: (r) =>
         r.shift ? (
-          <Badge tone={r.shift === "Morning" ? "warn" : "brand"}>
+          <Badge tone={r.shift === SHIFT_MORNING ? "warn" : "brand"}>
             {r.shift}
           </Badge>
         ) : (
@@ -711,24 +631,10 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     FARMER_COL_NAMES,
   );
 
-  const entryCols: Column<EntryRow>[] = entryKeys.map((k) => ({
-    key: k,
-    header: prettyKey(k),
-    sort: (r: EntryRow) =>
-      r[k] !== "" && !Number.isNaN(Number(r[k].replace(/,/g, "")))
-        ? toNum(r[k])
-        : (r[k] ?? ""),
-    cell: (r: EntryRow) => r[k] ?? "",
-  }));
-  const entryExport: ExportCol<EntryRow>[] = entryKeys.map((k) => ({
-    header: prettyKey(k),
-    value: (r: EntryRow) => r[k] ?? "",
-  }));
-
   const name = `${view === "vlcc" ? "vlc-collection" : view === "farmer" ? "farmer-collection" : "farmerwise-collection"}-${applied.from}-to-${applied.to}`;
   const run = (kind: "csv" | "xls" | "pdf") => {
     const meta: Array<[string, string]> = [
-      ["Centre", vlccTitle(applied.vlcc)],
+      ["Centre", applied.vlcc === ALL_CENTRES ? GLOBALLABELS.allCentres : vlccTitle(applied.vlcc)],
       ["Milk", GLOBALSMILK.milkOptions.find((m) => m.Id === applied.milk)?.Name ?? applied.milk],
       ["Shift", GLOBALSSHIFT.shiftOptions.find((s) => s.Id === applied.shift)?.Name ?? applied.shift],
       ["From", applied.from],
@@ -740,14 +646,11 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
       { label: "Total kg", value: nf(sum.kg, 2) },
       { label: "Amount", value: `₹ ${nf(sum.amount, 2)}` },
     ];
-    const note = view === "entry" && !portalEntry
-      ? "Farmerwise totals in this tab are calculated from the portal's farmer collection rows because the portal farmerwise endpoint was not used or did not return data."
-      : "Report rows are loaded from the SmartX portal using the selected report tab and filters.";
+    const note = "Report rows are loaded from the SmartX portal using the selected report tab and filters.";
     if (kind === "pdf") {
       const options = { subtitle: `${applied.from} to ${applied.to}`, meta, summary, note };
       if (view === "vlcc") exportPDF(name, vlccExport, vlccRows, options);
       else if (view === "farmer") exportPDF(name, farmerExport, farmerRows, options);
-      else if (portalEntry) exportPDF(name, entryExport, entryRows, options);
       else exportPDF(name, farmerwiseExport, farmerwise, options);
       toast("Print dialog opened — choose Save as PDF to download");
       return;
@@ -758,9 +661,6 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     } else if (view === "farmer") {
       if (kind === "csv") exportCSV(name, farmerExport, farmerRows);
       else exportExcel(name, farmerExport, farmerRows);
-    } else if (portalEntry) {
-      if (kind === "csv") exportCSV(name, entryExport, entryRows);
-      else exportExcel(name, entryExport, entryRows);
     } else if (kind === "csv") exportCSV(name, farmerwiseExport, farmerwise);
     else exportExcel(name, farmerwiseExport, farmerwise);
     toast(`${kind.toUpperCase()} file downloaded`);
@@ -846,41 +746,38 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
 
       <Card>
         <CardHeader
-          title="Filters"
-          subtitle="Press Search to load. The portal can take up to a minute."
+          title="User Info"
           action={
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<RotateCcw size={14} />}
-              onClick={reset}
-            >
+            <Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={reset}>
               Reset
             </Button>
           }
         />
-        <div className="grid gap-3 px-5 pb-5 pt-3 sm:grid-cols-2 sm:px-6 lg:grid-cols-6">
-          <Field label="Centre" className="lg:col-span-2">
-            <Select value={vlcc} onChange={(e) => setVlcc(e.target.value)}>
-              <option value="">Select a centre</option>
-              {centers.length
-                ? centers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label} · {c.id}
-                    </option>
-                  ))
-                : sessionIds.map((id) => (
-                    <option key={id} value={id}>
-                      {vlccOption(id)}
-                    </option>
-                  ))}
-            </Select>
-          </Field>
-          <Field label="Milk type">
-            <Select
-              value={milk}
-              onChange={(e) => setMilk(e.target.value as MilkCode)}
-            >
+        <div className="grid gap-x-4 gap-y-3 px-5 pb-5 pt-3 sm:px-6 sm:pb-6 sm:grid-cols-2 lg:grid-cols-12">
+          {view !== "vlcc" && <PlantMccField className={view === "entry" ? "lg:col-span-4" : "lg:col-span-3"} />}
+          <CentreField
+            className={view === "vlcc" ? "lg:col-span-6" : view === "entry" ? "lg:col-span-4" : "lg:col-span-3"}
+            value={vlcc}
+            allValue={view === "entry" ? undefined : ALL_CENTRES}
+            onChange={(id) => {
+              setVlcc(id);
+              setFarmer("");
+            }}
+          />
+          {view === "entry" && (
+            <Field label={GLOBALLABELS.farmerName} className="lg:col-span-4">
+              <Select value={farmer} onChange={(e) => setFarmer(e.target.value)}>
+                <option value="">{GLOBALLABELS.allFarmers}</option>
+                {farmers.rows.map((m) => (
+                  <option key={m.farmerId} value={m.farmerId}>
+                    {m.name ? `${m.farmerId} | ${m.name}` : m.farmerId}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+          <Field label={GLOBALLABELS.milkType} className="lg:col-span-3">
+            <Select value={milk} onChange={(e) => setMilk(e.target.value as MilkCode)}>
               {GLOBALSMILK.milkOptions.map((m) => (
                 <option key={m.Id} value={m.Id}>
                   {m.Name}
@@ -888,11 +785,8 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
               ))}
             </Select>
           </Field>
-          <Field label="Shift">
-            <Select
-              value={shift}
-              onChange={(e) => setShift(e.target.value as ShiftCode)}
-            >
+          <Field label={GLOBALLABELS.shift} className="lg:col-span-3">
+            <Select value={shift} onChange={(e) => setShift(e.target.value as ShiftCode)}>
               {GLOBALSSHIFT.shiftOptions.map((m) => (
                 <option key={m.Id} value={m.Id}>
                   {m.Name}
@@ -900,69 +794,18 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
               ))}
             </Select>
           </Field>
-          <Field label="From">
-            <Input
-              type="date"
-              value={from}
-              max={to}
-              onChange={(e) => setFrom(e.target.value)}
-            />
+          <Field label={GLOBALLABELS.fromDate} className="lg:col-span-3">
+            <Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
           </Field>
-          <Field label="To">
-            <Input
-              type="date"
-              value={to}
-              min={from}
-              max={today}
-              onChange={(e) => setTo(e.target.value)}
-            />
+          <Field label={GLOBALLABELS.toDate} className="lg:col-span-3">
+            <Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} />
           </Field>
-          {view === "entry" && (
-            <Field
-              label="Rate ID"
-              hint="Optional: only for the portal's own farmerwise report"
-              className="lg:col-span-2"
-            >
-              <Input
-                value={rateId}
-                onChange={(e) => setRateId(e.target.value)}
-                placeholder="Leave empty to use farmer samples"
-              />
-            </Field>
-          )}
-          <Field
-            label={
-              view === "vlcc"
-                ? "Village or VLC id"
-                : view === "farmer"
-                  ? "Farmer name or ID"
-                  : "Search any column"
-            }
-            className={
-              view === "entry"
-                ? "sm:col-span-2 lg:col-span-3"
-                : "sm:col-span-2 lg:col-span-5"
-            }
-          >
-            <Input
-              icon={<Search size={16} />}
-              placeholder="Start typing"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </Field>
-
-          <div className="flex items-end sm:col-span-2 lg:col-span-1 lg:items-start lg:self-start lg:mt-7">
-            <Button
-              className="w-full whitespace-nowrap"
-              icon={<Search size={16} />}
-              onClick={search}
-              disabled={!vlcc}
-              loading={active.fetching && active.rows.length === 0}
-            >
-              Search
-            </Button>
-          </div>
+          <SubmitButton
+            className={view === "entry" ? "sm:col-span-2 lg:col-span-12" : "sm:col-span-2 lg:col-span-6"}
+            disabled={!vlcc}
+            loading={active.fetching && active.rows.length === 0}
+            onClick={search}
+          />
         </div>
       </Card>
 
@@ -974,31 +817,31 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
           disabled={loading || err || sum.count === 0}
           kinds={["xls", "csv", "pdf"]}
           onExport={run}
-          left={only ? undefined : (
-            <div className="max-w-full overflow-x-auto">
-              <Segmented
-                value={view}
-                onChange={setView}
-                options={[
-                  { value: "vlcc", label: "VLC collection" },
-                  { value: "farmer", label: "Farmer collection" },
-                  { value: "entry", label: "Farmerwise collection" },
-                ]}
-              />
-            </div>
-          )}
+          left={
+            <>
+              {!only && (
+                <div className="max-w-full overflow-x-auto">
+                  <Segmented
+                    value={view}
+                    onChange={setView}
+                    options={[
+                      { value: "vlcc", label: "VLC collection" },
+                      { value: "farmer", label: "Farmer collection" },
+                      { value: "entry", label: "Farmerwise collection" },
+                    ]}
+                  />
+                </div>
+              )}
+              <div className="w-56 max-w-full">
+                <Input icon={<Search size={16} />} placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
+              </div>
+            </>
+          }
           source={<ReportDataBadge state={{ fetching: active.fetching, stale: active.stale, updatedAt: active.updatedAt, failed: active.failed, total: active.total, error: active.error, hasData: active.rows.length > 0 }} />}
         />
-        {view === "entry" && !portalEntry && (
-          <p className="border-b border-line bg-soft/60 px-5 py-3 text-xs text-mute sm:px-6">
-            {applied.rateId && entryQ.status === "error"
-              ? `The portal refused its farmerwise report for Rate ID ${applied.rateId}. Showing each farmer's totals worked out from the farmer samples instead.`
-              : "Each farmer's totals worked out from the farmer samples. To use the portal's own farmerwise report, type its Rate ID above and press Search."}
-          </p>
-        )}
         {!hasAppliedCentre ? (
           <p className="px-6 py-8 text-center text-sm text-mute">
-            Select a centre and press Search to load its collection.
+            Select a centre and press Submit to load its collection.
           </p>
         ) : loading ? (
           <MilkLoader label={loaderLabel} />
@@ -1027,20 +870,11 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
                 pageSizes={[10, 25, 50, 100, 250]}
                 sizeLabel="Result per page"
               />
-            ) : !portalEntry ? (
+            ) : (
               <DataTable
                 columns={farmerwiseCols}
                 rows={farmerwise}
                 rowKey={(r) => r.key}
-                pageSize={DEFAULT_PAGE_SIZE}
-                pageSizes={[10, 25, 50, 100, 250]}
-                sizeLabel="Result per page"
-              />
-            ) : (
-              <DataTable
-                columns={entryCols}
-                rows={entryRows}
-                rowKey={(r) => JSON.stringify(r)}
                 pageSize={DEFAULT_PAGE_SIZE}
                 pageSizes={[10, 25, 50, 100, 250]}
                 sizeLabel="Result per page"

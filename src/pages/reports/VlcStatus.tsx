@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Activity, Droplets, FlaskConical, Search, Wifi, WifiOff } from 'lucide-react';
 import { Card, CardHeader } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Field, Input, Segmented, Select } from '../../components/ui/Fields';
 import { StatCard } from '../../components/ui/StatCard';
@@ -15,15 +14,15 @@ import { useToast } from '../../context/ToastContext';
 import { nf, fmtDate } from '../../lib/format';
 import { cn } from '../../lib/cn';
 import { todayISO } from '../../lib/format';
-import { GLOBALSSHIFT } from '../../lib/global';
+import { DEFAULT_MILK, DEFAULT_SHIFT, GLOBALLABELS, GLOBALSMILK, GLOBALSSHIFT } from '../../lib/global';
+import { useCentreIds } from '../../hooks/useCentres';
+import { PlantMccField, SubmitButton } from '../../components/ReportFilters';
 import { useQuery } from '../../hooks/useQuery';
-import { useCenters } from '../../hooks/useSessionData';
 import { fetchVlccCollection } from '../../services/vlcc/vlcc.api';
 import { mapVlcc } from '../../services/mappers/vlcc.mapper';
 import { vlcStatus, type StatusRow } from '../../services/mappers/report.mapper';
-import { getSession } from '../../services/session';
 import { vlccTitle } from '../../services/vlcc/names';
-import type { RawVlccRow, ShiftCode } from '../../services/types/raw';
+import type { MilkCode, RawVlccRow, ShiftCode } from '../../services/types/raw';
 
 type Show = 'all' | 'active' | 'inactive';
 
@@ -69,29 +68,27 @@ const StatusCard: React.FC<{ r: StatusRow; index: number }> = ({ r, index }) => 
 const VlcStatus: React.FC = () => {
   const today = todayISO();
   const toast = useToast();
-  const centers = useCenters();
-  const sessionIds = getSession()?.vlccIds ?? [];
+  const allIds = useCentreIds();
 
-  const [scope, setScope] = useState('');
-  const [shift, setShift] = useState<ShiftCode>('M');
+  const [milk, setMilk] = useState<MilkCode>(DEFAULT_MILK);
+  const [shift, setShift] = useState<ShiftCode>(DEFAULT_SHIFT);
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
-  const [applied, setApplied] = useState({ from: today, to: today, shift: 'M' as ShiftCode, scope: '' });
+  const [applied, setApplied] = useState({ from: today, to: today, shift: DEFAULT_SHIFT as ShiftCode, milk: DEFAULT_MILK as MilkCode, ids: [] as string[] });
   const [show, setShow] = useState<Show>('all');
   const [needle, setNeedle] = useState('');
 
-  const allIds = centers.length ? centers.map((c) => c.id) : sessionIds;
-  const hasAppliedCentre = Boolean(applied.scope);
-  const scopeIds = hasAppliedCentre ? [applied.scope] : [];
+  const hasAppliedCentre = applied.ids.length > 0;
+  const scopeIds = applied.ids;
 
-  const key = `vlcstatus:${applied.from}:${applied.to}:${applied.shift}:${applied.scope}`;
+  const key = `vlcstatus:${applied.from}:${applied.to}:${applied.shift}:${applied.milk}:${applied.ids.join(',')}`;
   const q = useQuery<RawVlccRow>(hasAppliedCentre ? key : null, (emit) =>
-    fetchVlccCollection({ from: applied.from, to: applied.to, shift: applied.shift, milk: 'ALL', vlccIds: scopeIds, priority: 0 }, emit));
+    fetchVlccCollection({ from: applied.from, to: applied.to, shift: applied.shift, milk: applied.milk, vlccIds: scopeIds, priority: 0 }, emit));
 
   const mapped = useMemo(() => mapVlcc(q.rows), [q.rows]);
   const all = useMemo(() => vlcStatus(scopeIds, mapped, (id) => vlccTitle(id)),
   
-    [mapped, applied.scope]);
+    [mapped, applied.ids]);
 
   const activeCount = all.filter((r) => r.active).length;
   const shown = all
@@ -120,7 +117,7 @@ const VlcStatus: React.FC = () => {
     if (kind === 'pdf') {
       exportPDF(name, cols, shown, {
         subtitle: `Centre activity · ${fmtDate(applied.from)} to ${fmtDate(applied.to)}`,
-        meta: [['Centre', vlccTitle(applied.scope)], ['Shift', GLOBALSSHIFT.shiftOptions.find((s) => s.Id === applied.shift)?.Name ?? applied.shift], ['Status filter', show]],
+        meta: [['Centre', GLOBALLABELS.allCentres], ['Shift', GLOBALSSHIFT.shiftOptions.find((s) => s.Id === applied.shift)?.Name ?? applied.shift], ['Status filter', show]],
         summary: [
           { label: 'Centres', value: nf(shown.length) },
           { label: 'Active', value: nf(shownActive), tone: 'ok' },
@@ -151,24 +148,22 @@ const VlcStatus: React.FC = () => {
 
       <Reveal delay={0.05}>
         <Card>
-          <CardHeader title={<CardTitle icon={Activity}>MCC/VLC Info</CardTitle>} subtitle="Choose a centre, shift and dates, then press Submit." />
-          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-[2fr_1.2fr_1fr_1fr_1.2fr]">
-            <Field label="Centre">
-              <Select value={scope} onChange={(e) => setScope(e.target.value)}>
-                <option value="">Select a centre</option>
-                {allIds.map((id) => <option key={id} value={id}>{vlccTitle(id)} · {id}</option>)}
+          <CardHeader title={<CardTitle icon={Activity}>MCC/VLC Info</CardTitle>} />
+          <div className="grid gap-x-4 gap-y-3 px-5 pb-5 pt-3 sm:px-6 sm:pb-6 sm:grid-cols-2 lg:grid-cols-6">
+            <PlantMccField />
+            <Field label={GLOBALLABELS.milkType}>
+              <Select value={milk} onChange={(e) => setMilk(e.target.value as MilkCode)}>
+                {GLOBALSMILK.milkOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}
               </Select>
             </Field>
-            <Field label="Shift">
+            <Field label={GLOBALLABELS.shift}>
               <Select value={shift} onChange={(e) => setShift(e.target.value as ShiftCode)}>
                 {GLOBALSSHIFT.shiftOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}
               </Select>
             </Field>
-            <Field label="From Date"><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
-            <Field label="To Date"><Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} /></Field>
-            <div className="flex items-end sm:col-span-2 lg:col-span-1">
-              <Button className="w-full" icon={<Search size={16} />} loading={q.fetching && q.rows.length === 0} disabled={!scope} onClick={() => setApplied({ from, to, shift, scope })}>Submit</Button>
-            </div>
+            <Field label={GLOBALLABELS.fromDate}><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
+            <Field label={GLOBALLABELS.toDate}><Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} /></Field>
+            <SubmitButton className="sm:col-span-2 lg:col-span-1" loading={q.fetching && q.rows.length === 0} disabled={allIds.length === 0} onClick={() => setApplied({ from, to, shift, milk, ids: allIds })} />
           </div>
         </Card>
       </Reveal>

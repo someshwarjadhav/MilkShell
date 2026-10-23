@@ -54,7 +54,6 @@ const Quality: React.FC = () => {
   const scatter = useMemo(() => {
     const step = Math.max(1, Math.ceil(rows.length / 500));
     return kinds.map((k) => ({ k, data: rows.filter((c, i) => c.milk === k && c.fat > 0 && c.snf > 0 && i % step === 0).map((c) => ({ fat: c.fat, snf: c.snf })) }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows]);
 
   const fcols: Column<Flagged>[] = [

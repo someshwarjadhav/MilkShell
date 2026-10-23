@@ -36,7 +36,7 @@ export const REPORTS_BY_USER: Record<string, string[]> = {
 
   'abc@gmail.com': [REPORT_FARMER, REPORT_FARMERWISE, REPORT_VLCC, REPORT_VLC_STATUS, REPORT_VARIANCE, REPORT_CLEANING, REPORT_EKO],
 
-  'prachidairykaladera@gmail.com': [REPORT_FARMER, REPORT_UNIONWISE, REPORT_VLC_STATUS, REPORT_VARIANCE],
+  'prachidairykaladera@gmail.com': [REPORT_FARMER, REPORT_FARMERWISE, REPORT_VLCC, REPORT_UNIONWISE, REPORT_VLC_STATUS, REPORT_VARIANCE],
 };
 
 export const reportsFor = (email?: string | null): string[] | null =>

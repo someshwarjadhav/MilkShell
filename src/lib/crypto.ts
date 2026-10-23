@@ -14,7 +14,7 @@ function getKey() {
 }
 
 export function encryptPayload(data: unknown): string {
-  const iv = lib.WordArray.random(16); // fresh random IV for every request
+  const iv = lib.WordArray.random(16);
   const encrypted = AES.encrypt(JSON.stringify(data), getKey(), options(iv));
   return `${encrypted.ciphertext.toString(Base64)}:${iv.toString(Base64)}`;
 }

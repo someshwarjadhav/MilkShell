@@ -1,11 +1,12 @@
 import type * as React from 'react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Pause, Play, Printer, Scale } from 'lucide-react';
 import { useInterval } from '../components/hooks';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { Pager } from '../components/ui/Pager';
 import { PageHeader } from '../components/ui/PageHeader';
 import { KindChip, KindDot } from '../components/KindChip';
 import { EmptyState } from '../components/EmptyState';
@@ -19,6 +20,14 @@ import { isoFromTrdate } from '../services/utils/date';
 import { sampleStamp } from '../services/farmer/farmerBook';
 import { isLoadingQ, useSamples } from '../hooks/useSmartxData';
 import { getSession } from '../services/session';
+import { cn } from '../lib/cn';
+
+const HIGHLIGHT: Record<string, string> = {
+  cow: 'bg-cow/15 ring-1 ring-inset ring-cow/40',
+  buffalo: 'bg-buffalo/15 ring-1 ring-inset ring-buffalo/40',
+  mix: 'bg-goat/15 ring-1 ring-inset ring-goat/40',
+  goat: 'bg-goat/15 ring-1 ring-inset ring-goat/40',
+};
 
 const REFRESH_MS = 60_000;
 
@@ -26,6 +35,10 @@ const LiveCollection: React.FC = () => {
   const { thresholds } = useData();
   const today = todayISO();
   const [running, setRunning] = useState(true);
+  const [entryPage, setEntryPage] = useState(1);
+  const [entrySize, setEntrySize] = useState(10);
+  const [centrePage, setCentrePage] = useState(1);
+  const centreSize = 5;
   const { q, rows } = useSamples(today, today);
   const ids = getSession()?.vlccIds ?? [];
 
@@ -36,6 +49,22 @@ const LiveCollection: React.FC = () => {
     [rows, today],
   );
   const latest = feed[0];
+
+  const seen = useRef<Set<string> | null>(null);
+  const lit = useRef<Set<string>>(new Set());
+  const keysNow = feed.map((r) => r.key);
+  if (feed.length > 0) {
+    if (seen.current === null) {
+      seen.current = new Set(keysNow);
+      lit.current = new Set([keysNow[0]]);
+    } else {
+      const fresh = keysNow.filter((k) => !seen.current!.has(k));
+      if (fresh.length > 0) {
+        lit.current = new Set(fresh);
+        fresh.forEach((k) => seen.current!.add(k));
+      }
+    }
+  }
   const kinds: Kind[] = ['cow', 'buffalo', 'mix'];
   const totals = kinds.map((k) => {
     const rs = feed.filter((r) => r.milk === k);
@@ -43,6 +72,12 @@ const LiveCollection: React.FC = () => {
   });
   const perCentre = ids.map((id) => ({ id, count: feed.filter((r) => r.vlccid === id).length, village: feed.find((r) => r.vlccid === id)?.village ?? '' }));
   const loading = isLoadingQ(q);
+  const entryPages = Math.max(1, Math.ceil(feed.length / entrySize));
+  const entryAt = Math.min(entryPage, entryPages);
+  const entryRows = feed.slice((entryAt - 1) * entrySize, entryAt * entrySize);
+  const centrePages = Math.max(1, Math.ceil(perCentre.length / centreSize));
+  const centreAt = Math.min(centrePage, centrePages);
+  const centreRows = perCentre.slice((centreAt - 1) * centreSize, centreAt * centreSize);
 
   return (
     <div className="space-y-6">
@@ -66,8 +101,8 @@ const LiveCollection: React.FC = () => {
         ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-        <div className="space-y-6">
+      <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+        <div className="flex flex-col gap-6">
           <Card className="overflow-hidden">
             <CardHeader title="Latest slip" subtitle="The newest sample received today" action={running ? <Badge tone="ok" dot>Auto refresh</Badge> : <Badge>Paused</Badge>} />
             <div className="p-5 sm:p-6">
@@ -95,27 +130,28 @@ const LiveCollection: React.FC = () => {
             </div>
           </Card>
 
-          <Card>
+          <Card className="flex flex-1 flex-col">
             <CardHeader title="Centres today" subtitle={`${perCentre.filter((c) => c.count > 0).length} of ${perCentre.length} centres have sent samples`} />
-            <ul className="space-y-3 p-5 sm:p-6">
-              {perCentre.map((c) => (
+            <ul className="flex-1 space-y-3 p-5 sm:p-6">
+              {centreRows.map((c) => (
                 <li key={c.id} className="flex items-center gap-3 rounded-2xl bg-soft/70 p-3">
                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{vlccTitle(c.id, c.village)}</p><p className="text-xs text-mute">VLC {c.id}</p></div>
                   <Badge tone={c.count > 0 ? 'ok' : 'neutral'} dot>{c.count} samples</Badge>
                 </li>
               ))}
             </ul>
+            <Pager total={perCentre.length} page={centreAt} size={centreSize} onPage={setCentrePage} />
           </Card>
         </div>
 
-        <Card className="self-start">
+        <Card className="flex flex-col">
           <CardHeader title="Incoming entries" subtitle={`Newest first · ${feed.length} today`} />
-          <ul className="mt-3 divide-y divide-line/70 px-2 pb-3">
+          <ul className="mt-3 flex-1 divide-y divide-line/70 px-2 pb-3">
             {feed.length === 0 && <li>{loading ? <LoadingBlock height="h-32" /> : <EmptyState title="No entries yet" hint="Nothing has been received from the centres today." />}</li>}
-            {feed.slice(0, 40).map((c) => {
+            {entryRows.map((c) => {
               const flag = flagOf(c, thresholds);
               return (
-                <li key={c.key} className="overflow-hidden rounded-xl">
+                <li key={c.key} className={cn('overflow-hidden rounded-xl transition-colors duration-500', lit.current.has(c.key) && HIGHLIGHT[c.milk ?? 'mix'])}>
                   <div className="flex flex-wrap items-center gap-3 px-3 py-3">
                     <KindDot kind={c.milk ?? 'mix'} size={38} />
                     <div className="min-w-[8rem] flex-1"><p className="font-semibold">{c.farmerName}</p><p className="text-xs text-mute">{vlccTitle(c.vlccid, c.village)} · {c.time}</p></div>
@@ -128,6 +164,7 @@ const LiveCollection: React.FC = () => {
               );
             })}
           </ul>
+          <Pager total={feed.length} page={entryAt} size={entrySize} onPage={setEntryPage} onSize={(n) => { setEntrySize(n); setEntryPage(1); }} />
         </Card>
       </div>
     </div>

@@ -1,6 +1,5 @@
 const c = (name) => `rgb(var(--${name}) / <alpha-value>)`;
 
-/** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   darkMode: 'class',

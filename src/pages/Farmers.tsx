@@ -18,15 +18,15 @@ import { MilkLoader } from '../components/MilkLoader';
 import { useToast } from '../context/ToastContext';
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from '../lib/export';
 import { addDays, fmtDate, fmtShort, inr, nf, todayISO } from '../lib/format';
-import { DEFAULT_MILK, DEFAULT_PAGE_SIZE, GLOBALSMILK, GLOBALSSHIFT } from '../lib/global';
+import { DEFAULT_MILK, DEFAULT_PAGE_SIZE, DEFAULT_SHIFT, GLOBALLABELS, GLOBALSMILK, GLOBALSSHIFT } from '../lib/global';
+import { useFirstCentre } from '../hooks/useCentres';
+import { CentreField, PlantMccField, SubmitButton } from '../components/ReportFilters';
 import { KIND_META, type Kind } from '../services/utils/milk';
 import { buildFarmerBook, farmerDaily, sampleStamp, type BookFarmer } from '../services/farmer/farmerBook';
-import { useCenters } from '../hooks/useSessionData';
 import { isLoadingQ, useFarmerMaster } from '../hooks/useSmartxData';
 import { mapFarmers } from '../services/mappers/farmer.mapper';
 import { fetchFarmerCollection } from '../services/farmer/farmer.api';
 import type { MilkCode, RawFarmerRow, ShiftCode } from '../services/types/raw';
-import { getSession } from '../services/session';
 import { vlccOption } from '../services/vlcc/names';
 import { useQuery } from '../hooks/useQuery';
 
@@ -38,13 +38,12 @@ const Farmers: React.FC = () => {
   const toast = useToast();
   const [params, setParams] = useSearchParams();
   const today = todayISO();
-  const sessionIds = getSession()?.vlccIds ?? [];
-  const centers = useCenters(); 
+  const firstCentre = useFirstCentre();
 
 
-  const [vlcc, setVlcc] = useState('');
+  const [vlcc, setVlcc] = useState(firstCentre);
   const [milk, setMilk] = useState<MilkCode>(DEFAULT_MILK);
-  const [shift, setShift] = useState<ShiftCode>('Z');
+  const [shift, setShift] = useState<ShiftCode>(DEFAULT_SHIFT);
   const [from, setFrom] = useState(addDays(today, -6));
   const [to, setTo] = useState(today);
   const [applied, setApplied] = useState<Applied | null>(null);
@@ -69,7 +68,7 @@ const Farmers: React.FC = () => {
     if (same) samplesQ.retry(); 
     else setApplied(next);
   };
-  const reset = () => { setVlcc(''); setMilk(DEFAULT_MILK); setShift('Z'); setFrom(addDays(today, -6)); setTo(today); setQ(''); setShow('poured'); setApplied(null); };
+  const reset = () => { setVlcc(firstCentre); setMilk(DEFAULT_MILK); setShift(DEFAULT_SHIFT); setFrom(addDays(today, -6)); setTo(today); setQ(''); setShow('poured'); setApplied(null); };
 
   useEffect(() => { const o = params.get('open'); if (o) setOpenKey(o); }, [params]);
 
@@ -133,15 +132,16 @@ const Farmers: React.FC = () => {
       />
 
       <Card>
-        <CardHeader title="User Info" subtitle="The portal can take up to a minute to answer." action={<Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={reset}>Reset</Button>} />
-        <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
-          <Field label="VLC Name"><Select value={vlcc} onChange={(e) => setVlcc(e.target.value)}><option value="">Select a centre</option>{centers.length ? centers.map((c) => <option key={c.id} value={c.id}>{c.label} · {c.id}</option>) : sessionIds.map((id) => <option key={id} value={id}>{vlccOption(id)}</option>)}</Select></Field>
-          <Field label="Milk Type"><Select value={milk} onChange={(e) => setMilk(e.target.value as MilkCode)}>{GLOBALSMILK.milkOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}</Select></Field>
-          <Field label="Shift"><Select value={shift} onChange={(e) => setShift(e.target.value as ShiftCode)}>{GLOBALSSHIFT.shiftOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}</Select></Field>
+        <CardHeader title="User Info" action={<Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={reset}>Reset</Button>} />
+        <div className="grid gap-x-4 gap-y-3 px-5 pb-5 pt-3 sm:px-6 sm:pb-6 sm:grid-cols-2 lg:grid-cols-4">
+          <PlantMccField />
+          <CentreField value={vlcc} onChange={setVlcc} />
+          <Field label={GLOBALLABELS.milkType}><Select value={milk} onChange={(e) => setMilk(e.target.value as MilkCode)}>{GLOBALSMILK.milkOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}</Select></Field>
+          <Field label={GLOBALLABELS.shift}><Select value={shift} onChange={(e) => setShift(e.target.value as ShiftCode)}>{GLOBALSSHIFT.shiftOptions.map((m) => <option key={m.Id} value={m.Id}>{m.Name}</option>)}</Select></Field>
           <Field label="Show"><Select value={show} onChange={(e) => setShow(e.target.value as Show)}><option value="poured">Farmers who poured milk</option><option value="all">All registered farmers</option><option value="nomilk">Active, no milk</option><option value="inactive">Inactive</option></Select></Field>
-          <Field label="From Date"><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label="To Date"><Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} /></Field>
-          <div className="flex items-end sm:col-span-2"><Button className="w-full" icon={<Search size={16} />} onClick={submit} loading={fetching && samplesQ.rows.length === 0} disabled={!vlcc || !from || !to}>Submit</Button></div>
+          <Field label={GLOBALLABELS.fromDate}><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
+          <Field label={GLOBALLABELS.toDate}><Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} /></Field>
+          <SubmitButton className="sm:col-span-2" onClick={submit} loading={fetching && samplesQ.rows.length === 0} disabled={!vlcc || !from || !to} />
         </div>
       </Card>
 
@@ -152,9 +152,9 @@ const Farmers: React.FC = () => {
             {ready && <div className="w-full min-w-[220px] sm:w-72"><Input icon={<Search size={16} />} placeholder="Name, ID, village or phone" value={q} onChange={(e) => setQ(e.target.value)} /></div>}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="soft" icon={<FileSpreadsheet size={15} />} onClick={() => run('xls')} disabled={!ready || rows.length === 0}>Excel</Button>
-            <Button size="sm" variant="soft" icon={<Download size={15} />} onClick={() => run('csv')} disabled={!ready || rows.length === 0}>CSV</Button>
-            <Button size="sm" variant="soft" icon={<FileText size={15} />} onClick={() => run('pdf')} disabled={!ready || rows.length === 0}>Print / PDF</Button>
+            <Button variant="soft" className="min-w-32" icon={<FileSpreadsheet size={15} />} onClick={() => run('xls')} disabled={!ready || rows.length === 0}>Excel</Button>
+            <Button variant="soft" className="min-w-32" icon={<Download size={15} />} onClick={() => run('csv')} disabled={!ready || rows.length === 0}>CSV</Button>
+            <Button variant="soft" className="min-w-32" icon={<FileText size={15} />} onClick={() => run('pdf')} disabled={!ready || rows.length === 0}>Print / PDF</Button>
           </div>
         </div>
         {masterNote && <p className="px-5 pt-3 text-xs text-mute sm:px-6">{masterNote}</p>}
