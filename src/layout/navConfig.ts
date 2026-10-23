@@ -155,7 +155,7 @@ export const NAV_MODULES: NavModule[] = [
     icon: Inbox,
     children: [
       form('BMC Milk Entry', '/Transactions/vlc-milk-entry', 'vlc-milk-entry', '/transactions/vlc-milk-entry'),
-      form('Farmer Milk Entry', '/Transactions/farmer-milk-collection', 'farmer-milk-collection'),
+      form('Farmer Milk Entry', '/Transactions/farmer-milk-collection', 'farmer-milk-collection', '/transactions/farmer-milk-entry'),
       form('Manage Collection', '/Transactions/manage-collection', 'manage-collection'),
       form('Sales Rate Master', '/Transactions/sales-rate-master', 'sales-rate-master'),
       form('Sales Order', '/Transactions/sale-order', 'sale-order'),
