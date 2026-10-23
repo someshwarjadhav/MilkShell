@@ -6,7 +6,7 @@ import AppLayout from './layout/AppLayout';
 import { PageLoader } from './components/PageLoader';
 import { useAuth } from './context/AuthContext';
 import { useLoginData } from './hooks/useSessionData';
-import { canOpenReport, PAGE_DPU_SETTINGS, PAGE_MOBILE_SETTINGS, PAGE_VLC_MILK_ENTRY, REPORT_CLEANING, REPORT_EKO, REPORT_FARMERWISE, REPORT_UNIONWISE, REPORT_VARIANCE, REPORT_VLCC, REPORT_VLC_STATUS } from './config/reportAccess';
+import { canOpenReport, PAGE_DPU_SETTINGS, PAGE_EKO_MILK_SETTINGS, PAGE_MOBILE_SETTINGS, PAGE_VLC_MILK_ENTRY, REPORT_CLEANING, REPORT_EKO, REPORT_FARMERWISE, REPORT_UNIONWISE, REPORT_VARIANCE, REPORT_VLCC, REPORT_VLC_STATUS } from './config/reportAccess';
 import { applySession, isSessionDataLoaded, loadSessionData } from './services/bootstrap';
 
 const Login = lazy(() => import('./pages/Login'));
@@ -29,6 +29,7 @@ const EkoCalibration = lazy(() => import('./pages/reports/EkoCalibration'));
 const VlcMilkEntry = lazy(() => import('./pages/transactions/VlcMilkEntry'));
 const MobileAppSettings = lazy(() => import('./pages/settings/MobileAppSettings'));
 const DpuSettings = lazy(() => import('./pages/settings/DpuSettings'));
+const EkoMilkSettings = lazy(() => import('./pages/settings/EkoMilkSettings'));
 const FormPlaceholder = lazy(() => import('./pages/FormPlaceholder'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -108,6 +109,7 @@ const App: React.FC = () => {
               <Route path="reports/variance" element={<ReportGuard key="variance" to={REPORT_VARIANCE}><VarianceReport /></ReportGuard>} />
               <Route path="settings/mobile-app" element={<ReportGuard key="mobileapp" to={PAGE_MOBILE_SETTINGS}><MobileAppSettings /></ReportGuard>} />
               <Route path="settings/dpu-settings" element={<ReportGuard key="dpusettings" to={PAGE_DPU_SETTINGS}><DpuSettings /></ReportGuard>} />
+              <Route path="settings/eko-milk-settings" element={<ReportGuard key="ekomilksettings" to={PAGE_EKO_MILK_SETTINGS}><EkoMilkSettings /></ReportGuard>} />
               <Route path="settings" element={<Settings />} />
               <Route path="portal/*" element={<FormPlaceholder />} />
               <Route path="*" element={<NotFound />} />
