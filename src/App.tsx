@@ -6,7 +6,7 @@ import AppLayout from './layout/AppLayout';
 import { PageLoader } from './components/PageLoader';
 import { useAuth } from './context/AuthContext';
 import { useLoginData } from './hooks/useSessionData';
-import { canOpenReport, PAGE_MOBILE_SETTINGS, PAGE_VLC_MILK_ENTRY, REPORT_CLEANING, REPORT_EKO, REPORT_FARMERWISE, REPORT_UNIONWISE, REPORT_VARIANCE, REPORT_VLCC, REPORT_VLC_STATUS } from './config/reportAccess';
+import { canOpenReport, PAGE_FARMER_MILK_ENTRY, PAGE_MOBILE_SETTINGS, PAGE_VLC_MILK_ENTRY, REPORT_CLEANING, REPORT_EKO, REPORT_FARMERWISE, REPORT_UNIONWISE, REPORT_VARIANCE, REPORT_VLCC, REPORT_VLC_STATUS } from './config/reportAccess';
 import { applySession, isSessionDataLoaded, loadSessionData } from './services/bootstrap';
 
 const Login = lazy(() => import('./pages/Login'));
@@ -27,6 +27,7 @@ const VarianceReport = lazy(() => import('./pages/reports/VarianceReport'));
 const CleaningReport = lazy(() => import('./pages/reports/CleaningReport'));
 const EkoCalibration = lazy(() => import('./pages/reports/EkoCalibration'));
 const VlcMilkEntry = lazy(() => import('./pages/transactions/VlcMilkEntry'));
+const FarmerMilkEntry = lazy(() => import('./pages/transactions/FarmerMilkEntry'));
 const MobileAppSettings = lazy(() => import('./pages/settings/MobileAppSettings'));
 const FormPlaceholder = lazy(() => import('./pages/FormPlaceholder'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -99,6 +100,7 @@ const App: React.FC = () => {
               <Route path="reports/cleaning" element={<ReportGuard key="cleaning" to={REPORT_CLEANING}><CleaningReport /></ReportGuard>} />
               <Route path="reports/eko-calibration" element={<ReportGuard key="eko" to={REPORT_EKO}><EkoCalibration /></ReportGuard>} />
               <Route path="transactions/vlc-milk-entry" element={<ReportGuard key="vlcmilkentry" to={PAGE_VLC_MILK_ENTRY}><VlcMilkEntry /></ReportGuard>} />
+              <Route path="transactions/farmer-milk-entry" element={<ReportGuard key="farmermilkentry" to={PAGE_FARMER_MILK_ENTRY}><FarmerMilkEntry /></ReportGuard>} />
               <Route path="farmers" element={<Farmers />} />
               <Route path="centers" element={<Centers />} />
               <Route path="rates" element={<RateChart />} />

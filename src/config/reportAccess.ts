@@ -1,4 +1,3 @@
-
 export const REPORT_FARMER = '/collections';
 export const REPORT_FARMERWISE = '/reports/farmerwise';
 export const REPORT_VLCC = '/reports/vlcc';
@@ -9,9 +8,10 @@ export const REPORT_EKO = '/reports/eko-calibration';
 export const REPORT_UNIONWISE = '/reports/unionwise';
 
 export const PAGE_VLC_MILK_ENTRY = '/transactions/vlc-milk-entry';
+export const PAGE_FARMER_MILK_ENTRY = '/transactions/farmer-milk-entry';
 
 export const PAGE_MOBILE_SETTINGS = '/settings/mobile-app';
-export const EXCLUSIVE_PAGES: string[] = [PAGE_VLC_MILK_ENTRY, PAGE_MOBILE_SETTINGS];
+export const EXCLUSIVE_PAGES: string[] = [PAGE_VLC_MILK_ENTRY, PAGE_FARMER_MILK_ENTRY, PAGE_MOBILE_SETTINGS];
 export const ENTRY_USERS: string[] = ['abc@gmail.com'];
 
 export const EXCLUSIVE_REPORTS: string[] = [REPORT_FARMERWISE, REPORT_VLCC, REPORT_CLEANING, REPORT_EKO];
