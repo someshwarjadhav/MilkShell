@@ -41,7 +41,6 @@ const ScrollToTop: React.FC = () => {
   return null;
 };
 
-
 const SessionGate: React.FC = () => {
   const { logout } = useAuth();
   const profile = useLoginData();
@@ -62,13 +61,11 @@ const SessionGate: React.FC = () => {
   return ready ? <Outlet /> : <PageLoader />;
 };
 
-/** Opens a report page only for the logins that may have it (config/reportAccess.ts). */
 const ReportGuard: React.FC<{ to: string; children: ReactNode }> = ({ to, children }) => {
   const { user } = useAuth();
   return canOpenReport(user?.email, to) ? <>{children}</> : <NotFound />;
 };
 
-/** A login that has the separate Vlcc / Farmerwise report pages gets Farmer collection on its own; the others keep the three-tab page. */
 const FarmerCollectionRoute: React.FC = () => {
   const { user } = useAuth();
   return canOpenReport(user?.email, REPORT_VLCC) ? <Collections only="farmer" /> : <Collections />;

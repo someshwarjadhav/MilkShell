@@ -1,19 +1,19 @@
 import type * as React from 'react';
 import { useMemo, useState } from 'react';
-import { Building2, Droplets, FlaskConical, IndianRupee, Search, Users } from 'lucide-react';
+import { Droplets, FlaskConical, IndianRupee, Users } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useData } from '../../context/DataContext';
-import { Card, CardHeader } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import { Field, Input } from '../../components/ui/Fields';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { StatCard } from '../../components/ui/StatCard';
 import { QueryBoundary } from '../../components/Widget';
 import { MilkLoader } from '../../components/MilkLoader';
-import { CardTitle, ReportBar, ReportDataBadge, ReportPage, Reveal, type ExportKind } from '../../components/ReportKit';
+import { ReportBar, ReportDataBadge, ReportPage, Reveal, type ExportKind } from '../../components/ReportKit';
 import { fmtDate, nf, todayISO } from '../../lib/format';
 import { exportExcel, exportPDF, type ExportCol } from '../../lib/export';
-import { DEFAULT_PAGE_SIZE } from '../../lib/global';
+import { DEFAULT_PAGE_SIZE, GLOBALLABELS } from '../../lib/global';
+import { SubmitButton } from '../../components/ReportFilters';
 import { useSamples } from '../../hooks/useSmartxData';
 import { useCenters } from '../../hooks/useSessionData';
 import { unionTotals, unionwise, type UnionRow } from '../../services/mappers/report.mapper';
@@ -119,17 +119,14 @@ const UnionwiseCollection: React.FC = () => {
 
       <Reveal delay={0.05}>
         <Card>
-          <CardHeader title={<CardTitle icon={Building2}>Unionwise Collection</CardTitle>} subtitle="Pick the dates and press Submit. The portal can take up to a minute." />
-          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-[1fr_1fr_2fr]">
-            <Field label="From Date">
+          <div className="grid gap-x-4 gap-y-3 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
+            <Field label={GLOBALLABELS.fromDate}>
               <Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
             </Field>
-            <Field label="To Date">
+            <Field label={GLOBALLABELS.toDate}>
               <Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} />
             </Field>
-            <div className="flex items-end sm:col-span-2 lg:col-span-1">
-              <Button className="w-full" icon={<Search size={16} />} loading={q.fetching && q.rows.length === 0} onClick={() => setApplied({ from, to })}>Submit</Button>
-            </div>
+            <SubmitButton className="sm:col-span-2" loading={q.fetching && q.rows.length === 0} onClick={() => setApplied({ from, to })} />
           </div>
         </Card>
       </Reveal>

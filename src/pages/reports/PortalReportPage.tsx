@@ -4,20 +4,21 @@ import type { LucideIcon } from 'lucide-react';
 import { Building2, ListChecks, RotateCcw, Search } from 'lucide-react';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Field, Input, Select } from '../../components/ui/Fields';
+import { Field, Input } from '../../components/ui/Fields';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { StatCard } from '../../components/ui/StatCard';
 import { QueryBoundary } from '../../components/Widget';
 import { MilkLoader } from '../../components/MilkLoader';
-import { CardTitle, ReportBar, ReportDataBadge, ReportPage, Reveal, type ExportKind } from '../../components/ReportKit';
+import { ReportBar, ReportDataBadge, ReportPage, Reveal, type ExportKind } from '../../components/ReportKit';
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from '../../lib/export';
 import { useToast } from '../../context/ToastContext';
 import { addDays, fmtDate, nf, todayISO } from '../../lib/format';
-import { DEFAULT_PAGE_SIZE } from '../../lib/global';
+import { DEFAULT_PAGE_SIZE, GLOBALLABELS } from '../../lib/global';
+import { CentreField, SubmitButton } from '../../components/ReportFilters';
 import { useQuery } from '../../hooks/useQuery';
 import { useCenters } from '../../hooks/useSessionData';
 import { getSession } from '../../services/session';
-import { vlccOption, vlccTitle } from '../../services/vlcc/names';
+import { vlccTitle } from '../../services/vlcc/names';
 import { fetchPortalReport, type PortalRow } from '../../services/report/portalReport.api';
 import type { ShiftCode } from '../../services/types/raw';
 
@@ -30,6 +31,11 @@ interface Props {
   slug: string;
   icon: LucideIcon;
   note?: string;
+  formTitle?: string;
+  centreLabel?: string;
+  allCentres?: boolean;
+  withDates?: boolean;
+  submitLabel?: string;
 }
 
 const ALL = 'ALL';
@@ -49,7 +55,7 @@ const textOf = (v: unknown): string => {
 };
 
 
-const PortalReportPage: React.FC<Props> = ({ title, subtitle, endpoint, slug, icon: Icon, note }) => {
+const PortalReportPage: React.FC<Props> = ({ title, subtitle, endpoint, slug, note, formTitle, centreLabel, allCentres = true, withDates = true, submitLabel }) => {
   const today = todayISO();
   const toast = useToast();
   const centers = useCenters();
@@ -57,7 +63,7 @@ const PortalReportPage: React.FC<Props> = ({ title, subtitle, endpoint, slug, ic
   const allIds = centers.length ? centers.map((c) => c.id) : sessionIds;
 
   const weekAgo = addDays(today, -6);
-  const [scope, setScope] = useState(ALL);
+  const [scope, setScope] = useState(allCentres ? ALL : '');
   const [shift, setShift] = useState<ShiftCode>('Z');
   const [from, setFrom] = useState(weekAgo);
   const [to, setTo] = useState(today);
@@ -108,7 +114,7 @@ const PortalReportPage: React.FC<Props> = ({ title, subtitle, endpoint, slug, ic
 
   const submit = () => setApplied({ from, to, shift, scope });
   const reset = () => {
-    setScope(ALL);
+    setScope(allCentres ? ALL : '');
     setShift('Z');
     setFrom(weekAgo);
     setTo(today);
@@ -150,23 +156,33 @@ const PortalReportPage: React.FC<Props> = ({ title, subtitle, endpoint, slug, ic
 
       <Reveal delay={0.05}>
         <Card>
-          <CardHeader
-            title={<CardTitle icon={Icon}>{title}</CardTitle>}
-            subtitle="Choose a centre and dates, then press Submit. The portal can take up to a minute."
-            action={<Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={reset}>Reset</Button>}
-          />
-          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-[2fr_1fr_1fr_1.2fr]">
-            <Field label="Centre">
-              <Select value={scope} onChange={(e) => setScope(e.target.value)}>
-                <option value={ALL}>All centres</option>
-                {allIds.map((id) => <option key={id} value={id}>{vlccOption(id)}</option>)}
-              </Select>
-            </Field>
-            <Field label="From Date"><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
-            <Field label="To Date"><Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} /></Field>
-            <div className="flex items-end sm:col-span-2 lg:col-span-1">
-              <Button className="w-full" icon={<Search size={16} />} loading={q.fetching && q.rows.length === 0} disabled={allIds.length === 0 || !from || !to} onClick={submit}>Submit</Button>
-            </div>
+          {formTitle && (
+            <CardHeader
+              title={formTitle}
+              action={<Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={reset}>Reset</Button>}
+            />
+          )}
+          <div className={`grid gap-x-4 gap-y-3 sm:grid-cols-2 ${formTitle ? 'px-5 pb-5 pt-3 sm:px-6 sm:pb-6' : 'p-5 sm:p-6'} ${withDates ? 'lg:grid-cols-4' : ''}`}>
+            <CentreField
+              className={withDates ? 'sm:col-span-2 lg:col-span-4' : undefined}
+              label={centreLabel}
+              allValue={allCentres ? ALL : undefined}
+              value={scope}
+              onChange={setScope}
+            />
+            {withDates && (
+              <>
+                <Field label={GLOBALLABELS.fromDate} className="lg:col-span-2"><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
+                <Field label={GLOBALLABELS.toDate} className="lg:col-span-2"><Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} /></Field>
+              </>
+            )}
+            <SubmitButton
+              label={submitLabel}
+              className={withDates ? 'sm:col-span-2 lg:col-span-4' : undefined}
+              loading={q.fetching && q.rows.length === 0}
+              disabled={allIds.length === 0 || !scope || !from || !to}
+              onClick={submit}
+            />
           </div>
         </Card>
       </Reveal>

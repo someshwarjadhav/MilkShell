@@ -35,7 +35,7 @@ export interface MasterFarmer {
 
 export function mapMaster(rows: RawLoose[]): MasterFarmer[] {
   return rows.map((r, i) => {
-    const farmerId = pickLoose(r, ['farmer', 'farmerid', 'farmercode', 'farmer_id', 'fid', 'id']);
+    const farmerId = pickLoose(r, ['farmerid', 'farmer', 'farmercode', 'farmer_id', 'fid', 'id']);
     const vlccid = pickLoose(r, ['vlccid', 'villageid', 'vlcid', 'vlccode', 'centerid']);
     const status = pickLoose(r, ['farmerstatus', 'status', 'isactive', 'active']).toLowerCase();
     return {

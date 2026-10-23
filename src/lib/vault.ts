@@ -1,6 +1,5 @@
 import { decryptPayload, encryptPayload } from './crypto';
 
-
 export const LOGIN_KEY = 'dhara-login';
 export const DATA_KEY = 'dhara-session-data';
 
@@ -22,19 +21,19 @@ export function vaultLoad<T>(key: string): T | null {
     const value = decryptPayload(raw);
     return value && typeof value === 'object' ? (value as T) : null;
   } catch {
-    if (raw) localStorage.removeItem(key); // tampered or unreadable: drop it
+    if (raw) localStorage.removeItem(key);
     return null;
   }
 }
 
 export function vaultClear(): void {
   for (const k of [LOGIN_KEY, DATA_KEY, ...LEGACY_KEYS]) {
-    try { localStorage.removeItem(k); } catch { /* ignore */ }
+    try { localStorage.removeItem(k); } catch { }
   }
 }
 
 export function vaultDropLegacy(): void {
   for (const k of LEGACY_KEYS) {
-    try { localStorage.removeItem(k); } catch { /* ignore */ }
+    try { localStorage.removeItem(k); } catch { }
   }
 }

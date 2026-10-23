@@ -13,6 +13,7 @@ export interface LoginProfile {
   stationId?: string;
   plantId?: string;
   mccId?: string;
+  mccName?: string;
   userId?: string;
   centerStationId?: string;
 }
@@ -214,6 +215,7 @@ export function mapLoginResponse(decoded: unknown, username: string): LoginProfi
     stationId: pickIds(records, ["stationid", "station"])[0],
     plantId: pickIds(records, ["plantid"])[0],
     mccId: pickIds(records, ["mccid", "mcc"])[0],
+    mccName: pickString(user, ["mccname", "mccName", "mcc_name", "plantname"]),
 
     userId:
       pickIds(records.slice(0, 1), ["userid", "uid", "loginid", "usercode"])[0] ??

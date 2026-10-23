@@ -4,8 +4,8 @@ import {
   REQUEST_TIMEOUT_MS,
 } from "../config";
 import { getSession } from "../session";
+import { decryptPayload } from "../../lib/crypto";
 import { ApiError } from "./errors";
-
 
 export type Priority = 0 | 1 | 2;
 let active = 0;
@@ -44,9 +44,32 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
+const ENCRYPTED = /^[A-Za-z0-9+/=]{8,}:[A-Za-z0-9+/=]{16,}$/;
+const looksEncrypted = (s: string) => ENCRYPTED.test(s.trim());
+
+function decryptReply(v: unknown): unknown {
+  const open = (s: string): unknown => {
+    try {
+      return decryptPayload(s.trim());
+    } catch {
+      throw new ApiError("The server reply is encrypted and could not be decrypted. Check VITE_ENCRYPTION_KEY in .env.local.", "parse");
+    }
+  };
+  if (typeof v === "string" && looksEncrypted(v)) return decryptReply(open(v));
+  if (isObj(v)) {
+    for (const k of Object.keys(v)) {
+      if (!["data", "response", "result", "payload"].includes(k.toLowerCase())) continue;
+      const inner = v[k];
+      if (typeof inner === "string" && looksEncrypted(inner)) return decryptReply(open(inner));
+    }
+  }
+  return v;
+}
+
 export function parseGatewayText(text: string): unknown {
   const clean = text.replace(/[\r\n]+/g, "").trim();
   if (!clean) throw new ApiError("The server sent an empty reply.", "parse");
+  if (looksEncrypted(clean)) return decryptReply(clean);
   if (clean.startsWith("<")) {
     throw new ApiError(
       "The gateway returned a web page instead of data. Check the API base URL / proxy and sign in again.",
@@ -65,9 +88,8 @@ export function parseGatewayText(text: string): unknown {
       json = JSON.parse(json);
     } catch {}
   }
-  return json;
+  return decryptReply(json);
 }
-
 
 export function listOf<T>(json: unknown): T[] {
   if (Array.isArray(json)) return json as T[];
@@ -88,7 +110,6 @@ function urlFor(endpoint: string) {
 
   return `${environment.staticIP}${endpoint}`;
 }
-
 
 const retryable = (e: unknown) =>
   e instanceof ApiError &&
@@ -237,7 +258,7 @@ export function gatewayPost(
   const body = new FormData();
   for (const [k, v] of Object.entries(fields)) body.append(k, v);
   const ticket: Ticket = { priority };
-  const p = send(endpoint, { method: "POST", body }, fields, ticket); // no Content-Type: the browser adds the multipart boundary
+  const p = send(endpoint, { method: "POST", body }, fields, ticket);
   memo.set(key, { at: Date.now(), p, ticket });
   p.catch(() => memo.delete(key));
   return p;

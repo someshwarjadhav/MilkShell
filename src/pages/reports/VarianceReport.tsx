@@ -1,30 +1,29 @@
 import type * as React from 'react';
 import { useMemo, useState } from 'react';
-import { Droplets, GitCompareArrows, IndianRupee, Scale, Search } from 'lucide-react';
+import { Droplets, GitCompareArrows, IndianRupee, Scale } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
-import { Card, CardHeader } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
+import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Field, Input, Select } from '../../components/ui/Fields';
+import { Field, Input } from '../../components/ui/Fields';
+import { ALL_CENTRES, useCentreIds } from '../../hooks/useCentres';
+import { CentreField, SubmitButton } from '../../components/ReportFilters';
 import { GroupTable, type GCol } from '../../components/ui/GroupTable';
 import { StatCard } from '../../components/ui/StatCard';
 import { KindChip } from '../../components/KindChip';
 import { ErrorBlock, Notice } from '../../components/Widget';
 import { MilkLoader } from '../../components/MilkLoader';
-import { CardTitle, ReportBar, ReportDataBadge, ReportPage, Reveal, type ExportKind } from '../../components/ReportKit';
+import { ReportBar, ReportDataBadge, ReportPage, Reveal, type ExportKind } from '../../components/ReportKit';
 import { cn } from '../../lib/cn';
 import { fmtDate, nf, todayISO } from '../../lib/format';
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from '../../lib/export';
-import { DEFAULT_PAGE_SIZE } from '../../lib/global';
+import { DEFAULT_PAGE_SIZE, GLOBALLABELS, SHIFT_MORNING } from '../../lib/global';
 import { useQuery } from '../../hooks/useQuery';
-import { useCenters } from '../../hooks/useSessionData';
 import { fetchVlccCollection } from '../../services/vlcc/vlcc.api';
 import { fetchFarmerCollection } from '../../services/farmer/farmer.api';
 import { mapVlcc } from '../../services/mappers/vlcc.mapper';
 import { mapFarmers } from '../../services/mappers/farmer.mapper';
 import { variance, varianceTotals, type SideTotals, type VarianceRow } from '../../services/mappers/report.mapper';
-import { getSession } from '../../services/session';
-import { vlccOption, vlccTitle } from '../../services/vlcc/names';
+import { vlccTitle } from '../../services/vlcc/names';
 import type { RawFarmerRow, RawVlccRow } from '../../services/types/raw';
 
 
@@ -45,16 +44,15 @@ const FootCell: React.FC<{ span: number; children: React.ReactNode }> = ({ span,
 const VarianceReport: React.FC = () => {
   const toast = useToast();
   const today = todayISO();
-  const centers = useCenters();
-  const sessionIds = getSession()?.vlccIds ?? [];
+  const allIds = useCentreIds();
 
-  const [vlcc, setVlcc] = useState('');
+  const [vlcc, setVlcc] = useState(ALL_CENTRES);
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
-  const [applied, setApplied] = useState({ from: today, to: today, vlcc: '' });
+  const [applied, setApplied] = useState<{ from: string; to: string; vlcc: string; ids: string[] }>({ from: today, to: today, vlcc: '', ids: [] });
 
-  const hasAppliedCentre = Boolean(applied.vlcc);
-  const ids = hasAppliedCentre ? [applied.vlcc] : [];
+  const hasAppliedCentre = applied.ids.length > 0;
+  const ids = applied.ids;
   const key = `${applied.from}:${applied.to}:${ids.join(',')}`;
   const params = { from: applied.from, to: applied.to, shift: 'Z' as const, milk: 'ALL' as const, vlccIds: ids, priority: 0 as const };
 
@@ -76,7 +74,7 @@ const VarianceReport: React.FC = () => {
     { key: 'id', header: 'VLCC Id', cell: (r) => r.vlccid },
     { key: 'village', header: 'Village Name', cell: (r) => <span className="font-semibold">{vlccTitle(r.vlccid, r.village)}</span> },
     { key: 'date', header: 'Date', cell: (r) => r.date },
-    { key: 'shift', header: 'Shift', cell: (r) => (r.shift ? <Badge tone={r.shift === 'Morning' ? 'warn' : 'brand'}>{r.shift}</Badge> : '') },
+    { key: 'shift', header: 'Shift', cell: (r) => (r.shift ? <Badge tone={r.shift === SHIFT_MORNING ? 'warn' : 'brand'}>{r.shift}</Badge> : '') },
     { key: 'milk', header: 'Milk Type', cell: (r) => <KindChip kind={r.milk} label={r.milkLabel} /> },
 
     { key: 'vq', group: 'DOC Collection', header: 'Vendor Qty', align: 'right', cell: (r) => r.vendor.qty.toFixed(2) },
@@ -128,7 +126,7 @@ const VarianceReport: React.FC = () => {
       ];
       exportPDF(name, exportCols, rows, {
         subtitle: `DOC collection against VLC collection · ${fmtDate(applied.from)} to ${fmtDate(applied.to)}`,
-        meta: [['VLC', vlccTitle(applied.vlcc)], ['From', fmtDate(applied.from)], ['To', fmtDate(applied.to)]],
+        meta: [['VLC', applied.vlcc === ALL_CENTRES ? GLOBALLABELS.allCentres : vlccTitle(applied.vlcc)], ['From', fmtDate(applied.from)], ['To', fmtDate(applied.to)]],
         summary: [
           { label: 'DOC litres', value: nf(t.vendor.totLit, 2) },
           { label: 'VLC litres', value: nf(t.farmer.totLit, 2) },
@@ -182,21 +180,11 @@ const VarianceReport: React.FC = () => {
 
       <Reveal delay={0.05}>
         <Card>
-          <CardHeader title={<CardTitle icon={GitCompareArrows}>Variance Report</CardTitle>} subtitle="Press Submit to compare. The portal can take up to a minute." />
-          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-[2fr_1fr_1fr]">
-            <Field label="VLC Name" className="sm:col-span-2 lg:col-span-1">
-              <Select value={vlcc} onChange={(e) => setVlcc(e.target.value)}>
-                <option value="">Select a centre</option>
-                {centers.length
-                  ? centers.map((c) => <option key={c.id} value={c.id}>{c.label} · {c.id}</option>)
-                  : sessionIds.map((id) => <option key={id} value={id}>{vlccOption(id)}</option>)}
-              </Select>
-            </Field>
-            <Field label="From Date"><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
-            <Field label="To Date"><Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} /></Field>
-            <div className="sm:col-span-2 lg:col-span-3">
-              <Button className="w-full" icon={<Search size={16} />} loading={waiting && nothing} disabled={!vlcc} onClick={() => setApplied({ from, to, vlcc })}>Submit</Button>
-            </div>
+          <div className="grid gap-x-4 gap-y-3 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
+            <CentreField className="sm:col-span-2" allValue={ALL_CENTRES} value={vlcc} onChange={setVlcc} />
+            <Field label={GLOBALLABELS.fromDate}><Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></Field>
+            <Field label={GLOBALLABELS.toDate}><Input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} /></Field>
+            <SubmitButton className="sm:col-span-2 lg:col-span-4" loading={waiting && nothing} disabled={!vlcc || (vlcc === ALL_CENTRES && allIds.length === 0)} onClick={() => setApplied({ from, to, vlcc, ids: vlcc === ALL_CENTRES ? allIds : [vlcc] })} />
           </div>
         </Card>
       </Reveal>

@@ -1,7 +1,3 @@
-/**
- * Village directory of the dairy (id -> name), from the portal's village list.
- * Used only to name a centre before its data has loaded; names in the login response and in loaded rows win.
- */
 export const VILLAGE_NAMES: Record<string, string> = {
   '7090801': 'BHEELPURA',
   '7090802': 'UGARIYAVAS',

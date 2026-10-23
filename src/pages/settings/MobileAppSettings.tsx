@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { LayoutGrid, ShieldCheck, Smartphone } from 'lucide-react';
+import { LayoutGrid, ShieldCheck } from 'lucide-react';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Field, Input, Select } from '../../components/ui/Fields';
@@ -8,6 +8,7 @@ import { ErrorBlock, Skeleton } from '../../components/Widget';
 import { CardTitle, ReportPage, Reveal } from '../../components/ReportKit';
 import { useToast } from '../../context/ToastContext';
 import { todayISO } from '../../lib/format';
+import { GLOBALLABELS } from '../../lib/global';
 import { useCenters } from '../../hooks/useSessionData';
 import { getSession } from '../../services/session';
 import { vlccOption } from '../../services/vlcc/names';
@@ -36,9 +37,8 @@ const Check: React.FC<{ label: string; checked: boolean; onChange: (v: boolean) 
 );
 
 const CenterSelect: React.FC<{ value: string; onChange: (v: string) => void; ids: string[] }> = ({ value, onChange, ids }) => (
-  <Field label="Center Name">
+  <Field label={GLOBALLABELS.vlcName}>
     <Select value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">-- select center --</option>
       {ids.map((id) => <option key={id} value={id}>{vlccOption(id)}</option>)}
     </Select>
   </Field>
@@ -82,7 +82,6 @@ const MobileForm: React.FC<{ ids: string[] }> = ({ ids }) => {
 
   return (
     <Card>
-      <CardHeader title={<CardTitle icon={Smartphone}>Mobile App Settings</CardTitle>} subtitle="Settings the mobile collection app of a centre uses." />
       <div className="space-y-5 p-5 sm:p-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <CenterSelect value={s.stationId} onChange={(v) => set('stationId', v)} ids={ids} />
@@ -111,7 +110,7 @@ const MobileForm: React.FC<{ ids: string[] }> = ({ ids }) => {
 
 const MenuForm: React.FC<{ ids: string[] }> = ({ ids }) => {
   const toast = useToast();
-  const [center, setCenter] = useState('');
+  const [center, setCenter] = useState(ids[0] ?? '');
   const [values, setValues] = useState<MenuValues>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +168,7 @@ const MenuForm: React.FC<{ ids: string[] }> = ({ ids }) => {
 
 const AccessForm: React.FC<{ ids: string[] }> = ({ ids }) => {
   const toast = useToast();
-  const [center, setCenter] = useState('');
+  const [center, setCenter] = useState(ids[0] ?? '');
   const [values, setValues] = useState<AccessValues>(emptyAccess());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

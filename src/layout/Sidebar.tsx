@@ -30,7 +30,6 @@ export const Sidebar: React.FC<Props> = ({
   const sections = useNav();
   const slim = collapsed && !mobile;
 
-  // Only one module is open at a time; the module of the open page opens by itself.
   const activeId =
     sections.find((s) => s.items.some((i) => isActivePath(i.to, pathname)))?.id ?? null;
   const [openId, setOpenId] = useState<string | null>(activeId);
@@ -44,7 +43,6 @@ export const Sidebar: React.FC<Props> = ({
     const Icon = s.icon;
     const isActive = s.id === activeId;
 
-    // Module without children (Dashboard): a plain link.
     if (s.to) {
       return (
         <NavLink
@@ -69,7 +67,7 @@ export const Sidebar: React.FC<Props> = ({
                   transition={{ type: "spring", damping: 28, stiffness: 340 }}
                 />
               )}
-              <Icon size={19} className="relative shrink-0" />
+              <Icon size={18} className="relative shrink-0" />
               {!slim && <span className="relative truncate">{s.title}</span>}
             </>
           )}
@@ -86,7 +84,6 @@ export const Sidebar: React.FC<Props> = ({
           title={slim ? s.title : undefined}
           onClick={() => {
             if (slim) {
-              // The slim bar has no room for the sub menu: open the full bar on this module.
               setOpenId(s.id);
               onToggle();
               return;
@@ -99,7 +96,7 @@ export const Sidebar: React.FC<Props> = ({
             isActive ? "text-brand" : "text-mute hover:bg-soft hover:text-ink",
           )}
         >
-          <Icon size={19} className="relative shrink-0" />
+          <Icon size={18} className="relative shrink-0" />
           {!slim && (
             <>
               <span className="relative flex-1 truncate text-left">{s.title}</span>
@@ -197,8 +194,6 @@ export const Sidebar: React.FC<Props> = ({
         ))}
       </ul>
       {!slim && (
-        // The panel always fills the screen height. When the menu is short, this card takes the spare room
-        // (up to a limit) and the tanker sits in the middle of it, so there is no empty gap.
         <div className="mt-3 flex min-h-[132px] max-h-56 shrink-0 grow flex-col overflow-hidden rounded-2xl bg-deep p-4 text-white">
           <div className="grid flex-1 place-items-center">
             <Tanker size={104} className="opacity-95" />

@@ -1,3 +1,4 @@
+import { SHIFT_EVENING, SHIFT_MORNING } from '../lib/global';
 import type * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -46,7 +47,6 @@ const Dashboard: React.FC = () => {
   const ids = getSession()?.vlccIds ?? [];
   const idKey = ids.join(',');
 
-
   const lineQ = useQuery<RawLinePoint>(`line:${idKey}`, (emit) => fetchLineChart(ids, emit, 1));
 
   const centerLineQ = useQuery<RawLinePoint>(center === 'ALL' ? null : `line:${center}`, (emit) => fetchLineChart([center], emit, 0));
@@ -85,7 +85,7 @@ const Dashboard: React.FC = () => {
     if (res) console.table(res.map((r) => ({ check: r.name, expected: r.expected, actual: Number(r.actual.toFixed(2)), result: r.ok ? 'PASS' : 'FAIL' })));
   }, [vlccRows, farmerRows, vlccQ.fetching, farmerQ.fetching]);
   const trend = useMemo(() => buildTrend(chartQ.rows, today, Number(range)), [chartQ.rows, today, range]);
-  const centers = useMemo(() => buildCenters(ids, getSession()?.vlccNames ?? {}, vlccRows), [idKey, vlccRows]); // eslint-disable-line react-hooks/exhaustive-deps
+  const centers = useMemo(() => buildCenters(ids, getSession()?.vlccNames ?? {}, vlccRows), [idKey, vlccRows]);
   const centerLabel = center === 'ALL' ? 'All centres' : centers.find((c) => c.id === center)?.label ?? center;
   const top = useMemo(() => mapTop(topQ.rows, 10), [topQ.rows]);
 
@@ -106,8 +106,8 @@ const Dashboard: React.FC = () => {
     if (vlccRows.some((r) => r.milk === 'goat')) list.splice(2, 0, 'goat');
     return list.map((k) => ({
       name: KIND_META[k].label,
-      morning: Math.round(vlccRows.filter((r) => r.milk === k && r.shift === 'Morning').reduce((a, r) => a + r.liter, 0)),
-      evening: Math.round(vlccRows.filter((r) => r.milk === k && r.shift === 'Evening').reduce((a, r) => a + r.liter, 0)),
+      morning: Math.round(vlccRows.filter((r) => r.milk === k && r.shift === SHIFT_MORNING).reduce((a, r) => a + r.liter, 0)),
+      evening: Math.round(vlccRows.filter((r) => r.milk === k && r.shift === SHIFT_EVENING).reduce((a, r) => a + r.liter, 0)),
     }));
   }, [vlccRows]);
 
@@ -246,7 +246,7 @@ const Dashboard: React.FC = () => {
         </Card>
 
         <Card>
-          <CardHeader title="Morning vs evening" subtitle={`${isToday ? 'Today' : fmtDate(day!)}, litres by milk type`} />
+          <CardHeader title={`${SHIFT_MORNING} vs ${SHIFT_EVENING.toLowerCase()}`} subtitle={`${isToday ? 'Today' : fmtDate(day!)}, litres by milk type`} />
           <QueryBoundary q={vlccQ} skeleton={<LoadingBlock height="h-48" />} emptyTitle={`No collection ${when}`}>
             <div className="h-60 px-2 pb-4 pt-3">
               <ResponsiveContainer width="100%" height="100%">
@@ -255,8 +255,8 @@ const Dashboard: React.FC = () => {
                   <XAxis dataKey="name" tick={{ fill: cc.tick, fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: cc.tick, fontSize: 11 }} tickLine={false} axisLine={false} width={40} />
                   <Tooltip cursor={{ fill: cc.grid, opacity: 0.5 }} content={<ChartTip format={(v) => `${nf(v)} L`} />} />
-                  <Bar dataKey="morning" name="Morning" fill={cc.brand} radius={[6, 6, 0, 0]} animationDuration={900} />
-                  <Bar dataKey="evening" name="Evening" fill="#F2C86B" radius={[6, 6, 0, 0]} animationDuration={900} />
+                  <Bar dataKey="morning" name={SHIFT_MORNING} fill={cc.brand} radius={[6, 6, 0, 0]} animationDuration={900} />
+                  <Bar dataKey="evening" name={SHIFT_EVENING} fill="#F2C86B" radius={[6, 6, 0, 0]} animationDuration={900} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
