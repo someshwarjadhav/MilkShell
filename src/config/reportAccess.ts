@@ -11,8 +11,16 @@ export const PAGE_VLC_MILK_ENTRY = '/transactions/vlc-milk-entry';
 export const PAGE_FARMER_MILK_ENTRY = '/transactions/farmer-milk-entry';
 
 export const PAGE_MOBILE_SETTINGS = '/settings/mobile-app';
-export const EXCLUSIVE_PAGES: string[] = [PAGE_VLC_MILK_ENTRY, PAGE_FARMER_MILK_ENTRY, PAGE_MOBILE_SETTINGS];
+export const PAGE_DPU_SETTINGS = '/settings/dpu-settings';
+export const EXCLUSIVE_PAGES: string[] = [PAGE_VLC_MILK_ENTRY, PAGE_MOBILE_SETTINGS, PAGE_DPU_SETTINGS];
 export const ENTRY_USERS: string[] = ['abc@gmail.com'];
+
+
+export const PAGES_BY_USER: Record<string, string[]> = {
+  'abc@gmail.com': [PAGE_VLC_MILK_ENTRY, PAGE_MOBILE_SETTINGS, PAGE_DPU_SETTINGS],
+  
+  'prachidairykaladera@gmail.com': [PAGE_DPU_SETTINGS],
+};
 
 export const EXCLUSIVE_REPORTS: string[] = [REPORT_FARMERWISE, REPORT_VLCC, REPORT_CLEANING, REPORT_EKO];
 
@@ -44,7 +52,7 @@ export const reportsFor = (email?: string | null): string[] | null =>
 
 
 export function canOpenReport(email: string | null | undefined, route: string): boolean {
-  if (EXCLUSIVE_PAGES.includes(route)) return !!email && ENTRY_USERS.includes(email.trim().toLowerCase());
+  if (EXCLUSIVE_PAGES.includes(route)) return !!email && (PAGES_BY_USER[email.trim().toLowerCase()] ?? []).includes(route);
   const own = reportsFor(email);
   if (own) return !ALL_REPORTS.includes(route) || own.includes(route);
   return !EXCLUSIVE_REPORTS.includes(route);

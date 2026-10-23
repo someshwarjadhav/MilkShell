@@ -11,9 +11,9 @@ const ANALYZER = `${HOST}/api/analyzer`;
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-async function request(url: string, init: RequestInit = {}): Promise<unknown> {
+async function request(url: string, init: RequestInit = {}, timeoutMs: number = REQUEST_TIMEOUT_MS): Promise<unknown> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, { ...init, cache: 'no-store', headers: { Accept: 'application/json, text/plain, */*', ...((init.headers as Record<string, string>) ?? {}) }, signal: controller.signal });
     if (res.status === 401 || res.status === 403) throw new ApiError('Your session was rejected by the server. Please sign in again.', 'auth');
@@ -35,7 +35,7 @@ async function request(url: string, init: RequestInit = {}): Promise<unknown> {
     }
   } catch (e) {
     if (e instanceof ApiError) throw e;
-    if (controller.signal.aborted) throw new ApiError(`The server took longer than ${REQUEST_TIMEOUT_MS / 1000} seconds to answer.`, 'timeout');
+    if (controller.signal.aborted) throw new ApiError(`The server took longer than ${timeoutMs / 1000} seconds to answer.`, 'timeout');
     throw new ApiError('Cannot reach the server. Check your connection and try again.', 'network');
   } finally {
     clearTimeout(timer);
@@ -143,6 +143,53 @@ export const buildSettingsPayload = (s: MobileAppSettings) => ({
   txtcmixfat: '',
   txtcmixsnf: '',
 });
+
+
+const GET_TIMEOUT_MS = 20000;
+
+const timeOf = (v: unknown, fallback: string): string => {
+  const m = /(\d{1,2}):(\d{2})/.exec(String(v ?? ''));
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : fallback;
+};
+
+function toSettings(stationId: string, rec: Obj): MobileAppSettings | null {
+  if (get(rec, 'AutoWeight') === undefined && get(rec, 'AutoFat') === undefined) return null; 
+  return {
+    stationId,
+    settingOn: toBool(get(rec, 'SettingOn', 'ServerSetting')),
+    autoWeight: toBool(get(rec, 'AutoWeight')),
+    autoFat: toBool(get(rec, 'AutoFat')),
+    autoShift: toBool(get(rec, 'AutoShift')),
+    autoTear: toBool(get(rec, 'Tear', 'AutoTear')),
+    autoClr: toBool(get(rec, 'Clr', 'AutoClr')),
+    realData: toBool(get(rec, 'RealData')),
+    remoteDisplay: toBool(get(rec, 'RmtDisply', 'RDisplay', 'RemoteDisplay')),
+    receipt: toBool(get(rec, 'Receipt')),
+    multiCollection: toBool(get(rec, 'MltColl', 'MultiCol', 'MultiCollection')),
+    anyRate: toBool(get(rec, 'AnyRate')),
+    rateSync: toBool(get(rec, 'RateSync')),
+    salesSync: toBool(get(rec, 'SalesSync')),
+    appPass: String(get(rec, 'AdPass', 'AppPass', 'AppPassword') ?? '').replace(/\D/g, '').slice(0, 4),
+    morShiftEnd: timeOf(get(rec, 'MorShiftEnd', 'MShiftEnd'), '00:00'),
+    eveShiftEnd: timeOf(get(rec, 'EveShiftEnd', 'EShiftEnd'), '00:00'),
+  };
+}
+
+
+const buildFetchPayload = (stationId: string) => ({
+  AutoWeight: 0, AutoFat: 0, AutoShift: 0, AutoTear: 0, AutoClr: 0, RealData: 0, RDisplay: 0, Receipt: 0, MultiCol: 0,
+  AnyRate: 0, RateSync: 0, SalesSync: 0, AppPass: '', StationId: stationId, Level: '1', SettingOn: 0,
+  txtfatcc: '', txtsnfcc: '', txtfatbc: '', txtsnfbc: '', txtmixfat: '', txtmixsnf: '',
+  txtcfatcc: '', txtcsnfcc: '', txtcfatbc: '', txtcsnfbc: '', txtcmixfat: '', txtcmixsnf: '',
+});
+
+
+export async function getMobileSettings(stationId: string): Promise<MobileAppSettings | null> {
+  const body = new FormData();
+  body.append('data', JSON.stringify(buildFetchPayload(stationId)));
+  const rec = firstRecord(await request(`${GATEWAY}/dairy/dairy/settingUpdateWeb/`, { method: 'POST', body }, GET_TIMEOUT_MS));
+  return rec ? toSettings(stationId, rec) : null;
+}
 
 export async function saveMobileSettings(s: MobileAppSettings): Promise<void> {
   const body = new FormData();
