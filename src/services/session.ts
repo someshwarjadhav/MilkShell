@@ -2,12 +2,14 @@ import { ENV_MCC_ID, ENV_STATION_ID, ENV_VLCC_IDS } from './config';
 import { GLOBALS } from '../lib/global';
 import { VILLAGE_NAMES } from './vlcc/villages';
 
-
 export interface SmartxSession {
   vlccIds: string[];
   vlccNames: Record<string, string>;
   stationId: string;
   mccId: string;
+  mccName: string;
+  mccLoginId: string;
+  stationByVlcc: Record<string, string>;
   token?: string;
  
   scope: string;
@@ -25,10 +27,10 @@ export const splitIds = (v: unknown): string[] => {
 
 let current: SmartxSession | null = null;
 
-export function setSession(s: { vlccIds?: string[]; vlccNames?: Record<string, string>; stationId?: string; plantId?: string; mccId?: string; token?: string; email?: string } | null) {
+export function setSession(s: { vlccIds?: string[]; vlccNames?: Record<string, string>; stationId?: string; plantId?: string; mccId?: string; mccName?: string; stationByVlcc?: Record<string, string>; token?: string; email?: string } | null) {
   if (!s) {
     current = null;
-    Object.assign(GLOBALS, { plantid: null, sessionid: null, customsessionid: null, mccid: null, centerdata: null, id: null });
+    Object.assign(GLOBALS, { plantid: null, sessionid: null, customsessionid: null, mccid: null, mccname: null, mccLoginId: null, centerdata: null, id: null });
     return;
   }
   const fromLogin = !!s.vlccIds?.length;
@@ -43,6 +45,9 @@ export function setSession(s: { vlccIds?: string[]; vlccNames?: Record<string, s
     stationId: s.stationId || ENV_STATION_ID || vlccIds.join(','),
 
     mccId: (fromLogin ? '' : ENV_MCC_ID) || (vlccIds[0] ?? '').slice(0, 3) || s.mccId || '',
+    mccName: s.mccName ?? '',
+    mccLoginId: s.mccId ?? '',
+    stationByVlcc: s.stationByVlcc ?? {},
     token: s.token,
     scope: (s.email || 'user').toLowerCase(),
   };
@@ -51,8 +56,17 @@ export function setSession(s: { vlccIds?: string[]; vlccNames?: Record<string, s
     sessionid: vlccIds[0] ?? null,
     customsessionid: vlccIds.join(','),
     mccid: current.mccId || null,
+    mccname: s.mccName || null,
+    mccLoginId: s.mccId || null,
     id: vlccIds[0] ?? null,
   });
 }
 
 export const getSession = () => current;
+
+export function stationFor(ids: string[]): string {
+  const s = current;
+  if (!s) return '';
+  const own = [...new Set(ids.map((id) => s.stationByVlcc[id]).filter(Boolean))];
+  return own.length ? own.join(',') : s.stationId;
+}

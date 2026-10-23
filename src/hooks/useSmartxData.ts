@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { fetchFarmerCollection, fetchFarmerMaster } from '../services/farmer/farmer.api';
+import { fetchFarmerCollection, fetchFarmerMaster, fetchFarmersOf } from '../services/farmer/farmer.api';
 import { mapFarmers, type FarmerRow } from '../services/mappers/farmer.mapper';
 import { mapMaster, type MasterFarmer } from '../services/farmer/farmerBook';
 import { getSession } from '../services/session';
@@ -20,6 +20,15 @@ export function useFarmerMaster(enabled = true): { q: QueryState<RawLoose>; rows
   const idKey = ids.join(',');
   const q = useQuery<RawLoose>(enabled ? `master2:${idKey}` : null, (emit) => fetchFarmerMaster(ids, emit));
   const rows = useMemo(() => mapMaster(q.rows), [q.rows]);
+  return { q, rows };
+}
+
+export function useFarmersOf(vlcid: string, enabled = true): { q: QueryState<RawLoose>; rows: MasterFarmer[] } {
+  const q = useQuery<RawLoose>(enabled && vlcid ? `getfarmer:${vlcid}` : null, () => fetchFarmersOf(vlcid));
+  const rows = useMemo(() => {
+    const seen = new Set<string>();
+    return mapMaster(q.rows).filter((m) => m.farmerId && !seen.has(m.farmerId) && seen.add(m.farmerId));
+  }, [q.rows]);
   return { q, rows };
 }
 

@@ -16,7 +16,7 @@ import { ErrorBlock } from "../../components/Widget";
 import { exportExcel, type ExportCol } from "../../lib/export";
 import { useToast } from "../../context/ToastContext";
 import { fmtDate, nf, todayISO } from "../../lib/format";
-import { DEFAULT_PAGE_SIZE, GLOBALSSHIFT } from "../../lib/global";
+import { DEFAULT_PAGE_SIZE, GLOBALLABELS, GLOBALSMILK, GLOBALSSHIFT } from "../../lib/global";
 import { useCenters } from "../../hooks/useSessionData";
 import { getSession } from "../../services/session";
 import { vlccOption, vlccTitle } from "../../services/vlcc/names";
@@ -31,11 +31,7 @@ import { norm } from "../../services/utils/loose";
 const SHIFTS = GLOBALSSHIFT.shiftOptions.filter(
   (s) => s.Id === "M" || s.Id === "E",
 );
-const MILKS = [
-  { Id: "C", Name: "Cow" },
-  { Id: "B", Name: "Buffalo" },
-  { Id: "M", Name: "Mix" },
-];
+const MILKS = GLOBALSMILK.milkOptions.filter((m) => m.Id === "C" || m.Id === "B" || m.Id === "M");
 
 const val = (r: VlcMilkRow, ...keys: string[]): string => {
   const wanted = keys.map(norm);
@@ -146,8 +142,8 @@ const VlcMilkEntry: React.FC = () => {
   const ids = centers.length ? centers.map((c) => c.id) : sessionIds;
 
   const [vlc, setVlc] = useState("");
-  const [shift, setShift] = useState("M");
-  const [milk, setMilk] = useState("C");
+  const [shift, setShift] = useState<string>(SHIFTS[0].Id);
+  const [milk, setMilk] = useState<string>(MILKS[0].Id);
   const [date, setDate] = useState(todayISO());
   const [qty, setQty] = useState("");
   const [fat, setFat] = useState("");
@@ -380,9 +376,7 @@ const VlcMilkEntry: React.FC = () => {
                   ]}
                 />
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={<RotateCcw size={14} />}
+                  variant="ghost" icon={<RotateCcw size={15} />}
                   onClick={clearForm}
                 >
                   Clear
@@ -391,7 +385,7 @@ const VlcMilkEntry: React.FC = () => {
             }
           />
           <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
-            <Field label="VLC">
+            <Field label={GLOBALLABELS.vlcName}>
               <Select value={vlc} onChange={(e) => setVlc(e.target.value)}>
                 {ids.map((id) => (
                   <option key={id} value={id}>
@@ -400,7 +394,7 @@ const VlcMilkEntry: React.FC = () => {
                 ))}
               </Select>
             </Field>
-            <Field label="Shift">
+            <Field label={GLOBALLABELS.shift}>
               <Select value={shift} onChange={(e) => setShift(e.target.value)}>
                 {SHIFTS.map((s) => (
                   <option key={s.Id} value={s.Id}>
@@ -409,7 +403,7 @@ const VlcMilkEntry: React.FC = () => {
                 ))}
               </Select>
             </Field>
-            <Field label="Milk Type">
+            <Field label={GLOBALLABELS.milkType}>
               <Select value={milk} onChange={(e) => setMilk(e.target.value)}>
                 {MILKS.map((m) => (
                   <option key={m.Id} value={m.Id}>
@@ -469,7 +463,7 @@ const VlcMilkEntry: React.FC = () => {
 
             <div className="flex items-end sm:col-span-2 lg:col-span-4">
               <Button
-                className="w-full sm:w-auto sm:min-w-48"
+                className="w-full"
                 icon={<Save size={16} />}
                 loading={saving}
                 disabled={!valid}

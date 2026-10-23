@@ -1,15 +1,17 @@
 import type { VlccRow } from './vlcc.mapper';
 
-
 export interface Center {
   id: string;
   name: string;
 
   label: string;
 
+  routeId?: string;
+  routeName?: string;
+  stationId?: string;
+
   raw?: Record<string, unknown>;
 }
-
 
 export function buildCenters(ids: string[], loginNames: Record<string, string>, vlccRows: VlccRow[]): Center[] {
   const names = new Map<string, string>(Object.entries(loginNames));

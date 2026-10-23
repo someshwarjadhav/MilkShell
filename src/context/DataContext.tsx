@@ -29,7 +29,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [thresholds, setT] = useState<Thresholds>(loadThresholds);
   const setThresholds = useCallback((t: Thresholds) => {
     setT(t);
-    try { localStorage.setItem(KEY, JSON.stringify(t)); } catch { /* storage blocked: the limits still apply for this visit */ }
+    try { localStorage.setItem(KEY, JSON.stringify(t)); } catch { }
   }, []);
   const value = useMemo<DataCtx>(() => ({ dairyName: user?.dairyName || 'SmartX dairy', thresholds, setThresholds }), [user?.dairyName, thresholds, setThresholds]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

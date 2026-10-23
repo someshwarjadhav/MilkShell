@@ -46,7 +46,18 @@ export function applySession(profile: LoginProfile) {
   const centers = data.centers;
   const names: Record<string, string> = { ...(profile.vlccNames ?? {}) };
   for (const c of centers) if (c.name) names[c.id] = c.name;
-  setSession({ ...profile, vlccIds: centers.length ? centers.map((c) => c.id) : profile.vlccIds, vlccNames: names });
+  const stationByVlcc: Record<string, string> = {};
+  for (const c of centers) if (c.stationId) stationByVlcc[c.id] = c.stationId;
+  const stations = [...new Set(Object.values(stationByVlcc))];
+  setSession({
+    ...profile,
+    vlccIds: centers.length ? centers.map((c) => c.id) : profile.vlccIds,
+    vlccNames: names,
+    stationByVlcc,
+  });
+  if (import.meta.env.DEV) {
+    console.info('[getCenter] routes:', [...new Set(centers.map((c) => c.routeName || c.routeId).filter(Boolean))], '| station ids:', stations);
+  }
   Object.assign(GLOBALS, { centerdata: centers, userid: profile.userId ?? null, stationid: profile.centerStationId ?? null });
 }
 

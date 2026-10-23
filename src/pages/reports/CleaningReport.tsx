@@ -10,6 +10,8 @@ const CleaningReport: React.FC = () => (
     endpoint={CLEANING_REPORT_PATH}
     slug="cleaning"
     icon={Sparkles}
+    formTitle="Cleaning Info"
+    centreLabel="Center Name"
     note="Cleaning records are loaded from the SmartX portal using the selected filters."
   />
 );

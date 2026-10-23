@@ -10,6 +10,10 @@ const EkoCalibration: React.FC = () => (
     endpoint={EKO_CALIBRATION_PATH}
     slug="eko-calibration"
     icon={SlidersHorizontal}
+    centreLabel="VLC Name"
+    allCentres={false}
+    withDates={false}
+    submitLabel="Show"
     note="Calibration records are loaded from the SmartX portal using the selected filters."
   />
 );

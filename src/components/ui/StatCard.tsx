@@ -43,12 +43,12 @@ interface Props {
   compact?: boolean;
 }
 
-
 const bigIcon = (icon: ReactNode) => (isValidElement(icon) ? cloneElement(icon as ReactElement<{ size?: number; strokeWidth?: number }>, { size: 24, strokeWidth: 2 }) : icon);
 
-export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix = '', suffix = '', icon, tone = 'text-brand', delta, spark, hint, loading, error, onRetry, idle, compact }) => {
+export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix = '', suffix = '', icon, delta, spark, hint, loading, error, onRetry, idle, compact }) => {
   const v = useCountUp(value);
   const up = (delta ?? 0) >= 0;
+  const tone = 'text-brand';
   return (
     <Card className={cn('relative overflow-hidden', compact ? 'p-4' : 'p-5')}>
       
@@ -72,7 +72,7 @@ export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix =
               </div>
             )}
           </div>
-          {(hint || idle) && <p className="mt-1.5 min-h-4 truncate text-xs text-mute">{idle ? 'Press Search to load' : hint}</p>}
+          {(hint || idle) && <p className="mt-1.5 min-h-4 truncate text-xs text-mute">{idle ? 'Press Submit to load' : hint}</p>}
         </div>
         <span className={cn('grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-current/10 ring-1 ring-current/15', tone)}>
           <span className={tone}>{bigIcon(icon)}</span>
