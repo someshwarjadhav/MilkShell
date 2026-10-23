@@ -27,6 +27,7 @@ const VarianceReport = lazy(() => import('./pages/reports/VarianceReport'));
 const CleaningReport = lazy(() => import('./pages/reports/CleaningReport'));
 const EkoCalibration = lazy(() => import('./pages/reports/EkoCalibration'));
 const VlcMilkEntry = lazy(() => import('./pages/transactions/VlcMilkEntry'));
+const FarmerMilkEntry = lazy(() => import('./pages/transactions/FarmerMilkEntry'));
 const MobileAppSettings = lazy(() => import('./pages/settings/MobileAppSettings'));
 const DpuSettings = lazy(() => import('./pages/settings/DpuSettings'));
 const FormPlaceholder = lazy(() => import('./pages/FormPlaceholder'));
@@ -97,6 +98,7 @@ const App: React.FC = () => {
               <Route path="reports/cleaning" element={<ReportGuard key="cleaning" to={REPORT_CLEANING}><CleaningReport /></ReportGuard>} />
               <Route path="reports/eko-calibration" element={<ReportGuard key="eko" to={REPORT_EKO}><EkoCalibration /></ReportGuard>} />
               <Route path="transactions/vlc-milk-entry" element={<ReportGuard key="vlcmilkentry" to={PAGE_VLC_MILK_ENTRY}><VlcMilkEntry /></ReportGuard>} />
+              <Route path="transactions/farmer-milk-entry" element={<ReportGuard key="farmermilkentry" to={PAGE_FARMER_MILK_ENTRY}><FarmerMilkEntry /></ReportGuard>} />
               <Route path="farmers" element={<Farmers />} />
               <Route path="centers" element={<Centers />} />
               <Route path="rates" element={<RateChart />} />

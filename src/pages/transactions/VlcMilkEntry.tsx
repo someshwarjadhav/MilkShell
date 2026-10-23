@@ -1,9 +1,9 @@
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw, Save, Milk } from "lucide-react";
+import { Eye, RotateCcw, Save, Milk } from "lucide-react";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import { Field, Input, Segmented, Select } from "../../components/ui/Fields";
+import { Field, Input, Select } from "../../components/ui/Fields";
 import { DataTable, type Column } from "../../components/ui/DataTable";
 import { MilkLoader } from "../../components/MilkLoader";
 import {
@@ -16,7 +16,7 @@ import { ErrorBlock } from "../../components/Widget";
 import { exportExcel, type ExportCol } from "../../lib/export";
 import { useToast } from "../../context/ToastContext";
 import { fmtDate, nf, todayISO } from "../../lib/format";
-import { DEFAULT_PAGE_SIZE, GLOBALLABELS, GLOBALSMILK, GLOBALSSHIFT } from "../../lib/global";
+import { DEFAULT_PAGE_SIZE, GLOBALSSHIFT } from "../../lib/global";
 import { useCenters } from "../../hooks/useSessionData";
 import { getSession } from "../../services/session";
 import { vlccOption, vlccTitle } from "../../services/vlcc/names";
@@ -31,7 +31,11 @@ import { norm } from "../../services/utils/loose";
 const SHIFTS = GLOBALSSHIFT.shiftOptions.filter(
   (s) => s.Id === "M" || s.Id === "E",
 );
-const MILKS = GLOBALSMILK.milkOptions.filter((m) => m.Id === "C" || m.Id === "B" || m.Id === "M");
+const MILKS = [
+  { Id: "C", Name: "Cow" },
+  { Id: "B", Name: "Buffalo" },
+  { Id: "M", Name: "Mix" },
+];
 
 const val = (r: VlcMilkRow, ...keys: string[]): string => {
   const wanted = keys.map(norm);
@@ -54,8 +58,6 @@ const num = (s: string) => {
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 const clrFrom = (snf: number, fat: number) => r1((snf - 0.21 * fat - 0.36) * 4);
-
-const snfFrom = (clr: number, fat: number) => r1(clr / 4 + 0.21 * fat + 0.36);
 
 const COLS: Array<{
   key: string;
@@ -142,14 +144,19 @@ const VlcMilkEntry: React.FC = () => {
   const ids = centers.length ? centers.map((c) => c.id) : sessionIds;
 
   const [vlc, setVlc] = useState("");
-  const [shift, setShift] = useState<string>(SHIFTS[0].Id);
-  const [milk, setMilk] = useState<string>(MILKS[0].Id);
+  const [shift, setShift] = useState("M");
+  const [milk, setMilk] = useState("C");
   const [date, setDate] = useState(todayISO());
   const [qty, setQty] = useState("");
   const [fat, setFat] = useState("");
   const [snf, setSnf] = useState("");
   const [clr, setClr] = useState("");
-  const [enter, setEnter] = useState<"snf" | "clr">("snf");
+
+  const [applied, setApplied] = useState<{
+    vlc: string;
+    shift: string;
+    date: string;
+  } | null>(null);
 
   const [rows, setRows] = useState<VlcMilkRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -167,12 +174,14 @@ const VlcMilkEntry: React.FC = () => {
 
   const load = useCallback(
     async (silent = false) => {
-      if (!vlc || !date) return;
+      if (!applied) return;
+      const { vlc: aVlc, shift: aShift, date: aDate } = applied;
+      if (!aVlc || !aDate) return;
       const me = ++stamp.current;
       if (!silent) setLoading(true);
       setError(null);
       try {
-        const got = await getVlcMilk(vlc, shift, date);
+        const got = await getVlcMilk(aVlc, aShift, aDate);
         if (me === stamp.current) setRows(got);
       } catch (e) {
         if (me !== stamp.current) return;
@@ -186,7 +195,7 @@ const VlcMilkEntry: React.FC = () => {
         if (me === stamp.current) setLoading(false);
       }
     },
-    [vlc, shift, date],
+    [applied],
   );
 
   useEffect(() => {
@@ -204,26 +213,16 @@ const VlcMilkEntry: React.FC = () => {
   const onFat = (v: string) => {
     setFat(v);
     const f = num(v);
-    if (f === null) return;
-    if (enter === "snf") {
-      const s = num(snf);
-      if (s !== null) setClr(String(clrFrom(s, f)));
-    } else {
-      const c = num(clr);
-      if (c !== null) setSnf(String(snfFrom(c, f)));
-    }
+    const s = num(snf);
+    if (f !== null && s !== null) setClr(String(clrFrom(s, f)));
+    else setClr("");
   };
   const onSnf = (v: string) => {
     setSnf(v);
     const s = num(v);
     const f = num(fat);
     if (s !== null && f !== null) setClr(String(clrFrom(s, f)));
-  };
-  const onClr = (v: string) => {
-    setClr(v);
-    const c = num(v);
-    const f = num(fat);
-    if (c !== null && f !== null) setSnf(String(snfFrom(c, f)));
+    else setClr("");
   };
 
   const valid =
@@ -253,11 +252,20 @@ const VlcMilkEntry: React.FC = () => {
       snf: String(num(snf)),
       clr: String(num(clr)),
     };
+    const tableIsOnThese =
+      !!applied &&
+      applied.vlc === vlc &&
+      applied.shift === shift &&
+      applied.date === date;
     const milkName = MILKS.find((m) => m.Id === milk)?.Name ?? milk;
     const shiftName = SHIFTS.find((x) => x.Id === shift)?.Name ?? shift;
     try {
       const message = await postVlcMilk(entry);
       toast(message && message.length < 80 ? message : "Milk entry saved");
+      if (!tableIsOnThese) {
+        clearForm();
+        return;
+      }
       const p: Pending = {
         vlc,
         shift,
@@ -301,7 +309,7 @@ const VlcMilkEntry: React.FC = () => {
         e instanceof ApiError ? e.message : "The entry could not be saved",
         "warn",
       );
-      await load(true);
+      if (tableIsOnThese) await load(true);
     } finally {
       setSaving(false);
     }
@@ -313,14 +321,15 @@ const VlcMilkEntry: React.FC = () => {
       ...pending
         .filter(
           (p) =>
-            p.vlc === vlc &&
-            p.shift === shift &&
-            p.date === date &&
+            !!applied &&
+            p.vlc === applied.vlc &&
+            p.shift === applied.shift &&
+            p.date === applied.date &&
             !rows.some((r) => matches(p, r)),
         )
         .map((p) => p.row),
     ],
-    [rows, pending, vlc, shift, date],
+    [rows, pending, applied],
   );
 
   const visible = useMemo(() => {
@@ -352,40 +361,24 @@ const VlcMilkEntry: React.FC = () => {
   );
 
   return (
-    <ReportPage
-      title="VLC Milk Entry"
-      subtitle="Enter the milk a VLC delivered (litres, fat, SNF, CLR) and see the entries already saved."
-    >
+    <ReportPage title="VLC Milk Entry">
       <Reveal delay={0.05}>
         <Card>
           <CardHeader
             title={<CardTitle icon={Milk}>VLC Milk Collection</CardTitle>}
-            subtitle={
-              enter === "snf"
-                ? "Type Fat and SNF — CLR is calculated."
-                : "Type Fat and CLR — SNF is calculated."
-            }
             action={
-              <div className="flex items-center gap-2">
-                <Segmented
-                  value={enter}
-                  onChange={setEnter}
-                  options={[
-                    { value: "snf", label: "Enter SNF" },
-                    { value: "clr", label: "Enter CLR" },
-                  ]}
-                />
-                <Button
-                  variant="ghost" icon={<RotateCcw size={15} />}
-                  onClick={clearForm}
-                >
-                  Clear
-                </Button>
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<RotateCcw size={14} />}
+                onClick={clearForm}
+              >
+                Clear
+              </Button>
             }
           />
           <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
-            <Field label={GLOBALLABELS.vlcName}>
+            <Field label="VLC">
               <Select value={vlc} onChange={(e) => setVlc(e.target.value)}>
                 {ids.map((id) => (
                   <option key={id} value={id}>
@@ -394,7 +387,7 @@ const VlcMilkEntry: React.FC = () => {
                 ))}
               </Select>
             </Field>
-            <Field label={GLOBALLABELS.shift}>
+            <Field label="Shift">
               <Select value={shift} onChange={(e) => setShift(e.target.value)}>
                 {SHIFTS.map((s) => (
                   <option key={s.Id} value={s.Id}>
@@ -403,7 +396,7 @@ const VlcMilkEntry: React.FC = () => {
                 ))}
               </Select>
             </Field>
-            <Field label={GLOBALLABELS.milkType}>
+            <Field label="Milk Type">
               <Select value={milk} onChange={(e) => setMilk(e.target.value)}>
                 {MILKS.map((m) => (
                   <option key={m.Id} value={m.Id}>
@@ -453,17 +446,16 @@ const VlcMilkEntry: React.FC = () => {
             </Field>
             <Field label="CLR">
               <Input
-                type="number"
-                inputMode="decimal"
-                step="any"
+                readOnly
+                tabIndex={-1}
                 value={clr}
-                onChange={(e) => onClr(e.target.value)}
+                className="bg-soft/60"
               />
             </Field>
 
-            <div className="flex items-end sm:col-span-2 lg:col-span-4">
+            <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:flex-wrap sm:items-end lg:col-span-4">
               <Button
-                className="w-full"
+                className="w-full sm:w-auto sm:min-w-48"
                 icon={<Save size={16} />}
                 loading={saving}
                 disabled={!valid}
@@ -471,57 +463,69 @@ const VlcMilkEntry: React.FC = () => {
               >
                 Submit
               </Button>
+              <Button
+                className="w-full sm:w-auto sm:min-w-40"
+                variant="outline"
+                icon={<Eye size={16} />}
+                loading={loading}
+                disabled={!vlc || !date}
+                onClick={() => setApplied({ vlc, shift, date })}
+              >
+                Show
+              </Button>
             </div>
           </div>
         </Card>
       </Reveal>
 
-      <Reveal delay={0.1}>
-        <Card>
-          <ReportBar
-            count={visible.length}
-            hideCount={loading || !!error}
-            disabled={loading || !!error || visible.length === 0}
-            kinds={["xls"]}
-            onExport={() =>
-              exportExcel(
-                `vlc-milk-entry-${vlc}-${date}-${shift}`,
-                exportCols,
-                visible,
-              )
-            }
-            left={
-              <div className="w-56 max-w-full">
-                <Input
-                  placeholder="Search any column"
-                  value={needle}
-                  onChange={(e) => setNeedle(e.target.value)}
-                />
-              </div>
-            }
-          />
-          {loading ? (
-            <MilkLoader label="Loading entries…" />
-          ) : error ? (
-            <ErrorBlock message={error} onRetry={() => void load()} />
-          ) : visible.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-mute">
-              {shown.length === 0
-                ? `No entry for ${vlccTitle(vlc)} on ${fmtDate(date)}.`
-                : "Nothing matches your search."}
-            </p>
-          ) : (
-            <DataTable
-              columns={columns}
-              rows={visible}
-              rowKey={(r) => JSON.stringify(r)}
-              pageSize={DEFAULT_PAGE_SIZE}
-              pageSizes={[10, 25, 50, 100, 250]}
-              sizeLabel="Result per page"
+      {applied && (
+        <Reveal delay={0.1}>
+          <Card>
+            <ReportBar
+              count={visible.length}
+              hideCount={loading || !!error}
+              disabled={loading || !!error || visible.length === 0}
+              kinds={["xls"]}
+              onExport={() =>
+                exportExcel(
+                  `vlc-milk-entry-${applied.vlc}-${applied.date}-${applied.shift}`,
+                  exportCols,
+                  visible,
+                )
+              }
+              left={
+                <div className="w-56 max-w-full">
+                  <Input
+                    placeholder="Search any column"
+                    value={needle}
+                    onChange={(e) => setNeedle(e.target.value)}
+                  />
+                </div>
+              }
             />
-          )}
-        </Card>
-      </Reveal>
+            {loading ? (
+              <MilkLoader label="Loading entries…" />
+            ) : error ? (
+              <ErrorBlock message={error} onRetry={() => void load()} />
+            ) : visible.length === 0 ? (
+              <p className="px-6 py-10 text-center text-sm text-mute">
+                {shown.length === 0
+                  ? `No entry for ${vlccTitle(applied.vlc)} on ${fmtDate(applied.date)}.`
+                  : "Nothing matches your search."}
+              </p>
+            ) : (
+              <DataTable
+                columns={columns}
+                rows={visible}
+                rowKey={(r) => JSON.stringify(r)}
+                pageSize={DEFAULT_PAGE_SIZE}
+                pageSizes={[10, 25, 50, 100, 250]}
+                sizeLabel="Result per page"
+              />
+            )}
+          </Card>
+        </Reveal>
+      )}
       <span className="sr-only">{nf(shown.length)} entries</span>
     </ReportPage>
   );
