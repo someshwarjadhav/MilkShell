@@ -67,9 +67,9 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
           </button>
           <AnimatePresence>
             {bell && (
-              <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6 }} className="absolute right-0 top-12 w-80 overflow-hidden rounded-3xl border border-line bg-panel shadow-pop">
+              <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6 }} className="absolute right-[-3.5rem] top-12 w-[calc(100vw-2rem)] max-w-80 overflow-hidden rounded-3xl border border-line bg-panel shadow-pop sm:right-0 sm:w-80">
                 <p className="border-b border-line px-5 py-3 text-sm font-bold">Needs attention</p>
-                <ul className="max-h-80 divide-y divide-line/70 overflow-y-auto">
+                <ul className="max-h-[calc(100dvh-14rem)] divide-y divide-line/70 overflow-y-auto sm:max-h-80">
                   {alerts.map(({ c, f }) => (
                     <li key={c.key} className="px-5 py-3 text-sm"><p className="font-semibold">{FLAG_META[f!].label}: {c.farmerName}</p><p className="text-xs text-mute">Fat {c.fat} · SNF {c.snf} · {c.time}</p></li>
                   ))}
