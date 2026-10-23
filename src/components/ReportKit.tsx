@@ -25,7 +25,7 @@ export const IconBadge: React.FC<{
   size?: number;
 }> = ({ icon: Icon, tone = "text-brand", size = 18 }) => {
   const still = useReducedMotion();
-  const tone = 'text-brand';
+  
   return (
     <motion.span
       className={cn(
