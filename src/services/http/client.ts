@@ -287,3 +287,38 @@ export function gatewayPostJson(
   p.catch(() => memo.delete(key));
   return p;
 }
+
+export async function gatewayText(endpoint: string, init: RequestInit = {}, priority: Priority = 0): Promise<string> {
+  await acquire({ priority });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(urlFor(endpoint), {
+      ...init,
+      headers: { Accept: "application/json, text/plain, */*", ...((init.headers as Record<string, string>) ?? {}) },
+      signal: controller.signal,
+    });
+    if (res.status === 401 || res.status === 403)
+      throw new ApiError("Your session was rejected by the server. Please sign in again.", "auth");
+    const text = await res.text();
+    if (import.meta.env.DEV)
+      console.debug(`[smartx] ${init.method ?? 'GET'} ${endpoint} -> ${res.status}`, {
+        sent: typeof init.body === 'string' ? init.body.slice(0, 400) : init.body ? '[form data]' : endpoint,
+        reply: text.replace(/[\r\n]+/g, '').slice(0, 300),
+      });
+    if (!res.ok) {
+      const body = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+      throw new ApiError(`The server answered with error ${res.status}${body ? `: ${body}` : "."}`, "server");
+    }
+    return text;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (controller.signal.aborted)
+      throw new ApiError(`The server took longer than ${REQUEST_TIMEOUT_MS / 1000} seconds to answer.`, "timeout");
+    throw new ApiError("Cannot reach the server. Check your connection and try again.", "network");
+  } finally {
+    clearTimeout(timer);
+    release();
+    memo.clear();
+  }
+}

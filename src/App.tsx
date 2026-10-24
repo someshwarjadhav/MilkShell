@@ -10,6 +10,7 @@ import {
   canOpenReport,
   PAGE_FARMER_MILK_ENTRY,
   PAGE_DPU_SETTINGS,
+  PAGE_FARMER_MASTER,
   PAGE_EKO_MILK_SETTINGS,
   PAGE_MOBILE_SETTINGS,
   PAGE_VLC_MILK_ENTRY,
@@ -33,6 +34,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const LiveCollection = lazy(() => import("./pages/LiveCollection"));
 const Collections = lazy(() => import("./pages/reports/Collections"));
 const Farmers = lazy(() => import("./pages/Farmers"));
+const FarmerMaster = lazy(() => import("./pages/master/FarmerMaster"));
 const Centers = lazy(() => import("./pages/Centers"));
 const RateChart = lazy(() => import("./pages/RateChart"));
 const Billing = lazy(() => import("./pages/Billing"));
@@ -117,6 +119,12 @@ const FarmerCollectionRoute: React.FC = () => {
   );
 };
 
+
+const FarmersRoute: React.FC = () => {
+  const { user } = useAuth();
+  return canOpenReport(user?.email, PAGE_FARMER_MASTER) ? <FarmerMaster /> : <Farmers />;
+};
+
 const Protected: React.FC = () => {
   const { user } = useAuth();
   return user ? <SessionGate /> : <Navigate to="/login" replace />;
@@ -191,7 +199,16 @@ const App: React.FC = () => {
                   </ReportGuard>
                 }
               />
-              <Route path="farmers" element={<Farmers />} />
+              <Route path="farmers" element={<FarmersRoute />} />
+              <Route path="farmers/report" element={<Farmers />} />
+              <Route
+                path="master/farmer-master"
+                element={
+                  <ReportGuard key="farmermaster" to={PAGE_FARMER_MASTER}>
+                    <FarmerMaster />
+                  </ReportGuard>
+                }
+              />
               <Route path="centers" element={<Centers />} />
               <Route path="rates" element={<RateChart />} />
               <Route path="billing" element={<Billing />} />
