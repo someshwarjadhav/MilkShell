@@ -9,6 +9,7 @@ import { useLoginData } from "./hooks/useSessionData";
 import {
   canOpenReport,
   PAGE_FARMER_MILK_ENTRY,
+  PAGE_MANAGE_COLLECTION,
   PAGE_DPU_SETTINGS,
   PAGE_FARMER_MASTER,
   PAGE_EKO_MILK_SETTINGS,
@@ -27,6 +28,7 @@ import {
   isSessionDataLoaded,
   loadSessionData,
 } from "./services/bootstrap";
+
 
 const Login = lazy(() => import("./pages/Login"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -52,6 +54,7 @@ const VlcMilkEntry = lazy(() => import("./pages/transactions/VlcMilkEntry"));
 const FarmerMilkEntry = lazy(
   () => import("./pages/transactions/FarmerMilkEntry"),
 );
+const ManageCollection = lazy(() => import('./pages/transactions/ManageCollection'));
 const MobileAppSettings = lazy(
   () => import("./pages/settings/MobileAppSettings"),
 );
@@ -196,6 +199,14 @@ const App: React.FC = () => {
                     to={PAGE_FARMER_MILK_ENTRY}
                   >
                     <FarmerMilkEntry />
+                  </ReportGuard>
+                }
+              />
+              <Route
+                path="transactions/manage-collection"
+                element={
+                  <ReportGuard key="managecollection" to={PAGE_MANAGE_COLLECTION}>
+                    <ManageCollection />
                   </ReportGuard>
                 }
               />

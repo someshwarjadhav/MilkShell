@@ -11,8 +11,11 @@ import {
 } from "../utils/loose";
 
 export const getMenu = (userid: string): Promise<unknown> =>
-  gatewayGet(`/dairy/dairy/Getmilkshellmenu?userid=${encodeURIComponent(userid)}`, 0);
-  // gatewayGet(`/dairy/dairy/getmenu?userid=${encodeURIComponent(userid)}`, 0);
+  gatewayGet(
+    `/dairy/dairy/Getmilkshellmenu?userid=${encodeURIComponent(userid)}`,
+    0,
+  );
+// gatewayGet(`/dairy/dairy/getmenu?userid=${encodeURIComponent(userid)}`, 0);
 
 export interface MenuNode {
   id: string;
@@ -176,6 +179,7 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
     to: "/transactions/farmer-milk-entry",
     aliases: ["farmermilkentry", "farmermilkcollection"],
   },
+  { to: "/transactions/manage-collection", aliases: ["managecollection"] },
   {
     to: "/farmers",
     aliases: [
