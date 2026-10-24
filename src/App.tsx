@@ -10,6 +10,7 @@ import {
   canOpenReport,
   PAGE_FARMER_MILK_ENTRY,
   PAGE_DPU_SETTINGS,
+  PAGE_EKO_MILK_SETTINGS,
   PAGE_MOBILE_SETTINGS,
   PAGE_VLC_MILK_ENTRY,
   REPORT_CLEANING,
@@ -53,6 +54,7 @@ const MobileAppSettings = lazy(
   () => import("./pages/settings/MobileAppSettings"),
 );
 const DpuSettings = lazy(() => import("./pages/settings/DpuSettings"));
+const EkoMilkSettings = lazy(() => import("./pages/settings/EkoMilkSettings"));
 const FormPlaceholder = lazy(() => import("./pages/FormPlaceholder"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -232,6 +234,17 @@ const App: React.FC = () => {
                 element={
                   <ReportGuard key="dpusettings" to={PAGE_DPU_SETTINGS}>
                     <DpuSettings />
+                  </ReportGuard>
+                }
+              />
+              <Route
+                path="settings/eko-milk-settings"
+                element={
+                  <ReportGuard
+                    key="ekomilksettings"
+                    to={PAGE_EKO_MILK_SETTINGS}
+                  >
+                    <EkoMilkSettings />
                   </ReportGuard>
                 }
               />

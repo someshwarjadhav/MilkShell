@@ -206,7 +206,7 @@ export const NAV_MODULES: NavModule[] = [
     icon: Settings,
     children: [
       form('Mobile App Settings', '/Settings/settings', 'settings', '/settings/mobile-app'),
-      form('Eko Milk Settings', '/Settings/eko-milk-settings', 'eko-milk-settings'),
+      form('Eko Milk Settings', '/Settings/eko-milk-settings', 'eko-milk-settings', '/settings/eko-milk-settings'),
       form('DPU Settings', '/Settings/dpu-settings', 'dpu-settings', '/settings/dpu-settings'),
     ],
   },

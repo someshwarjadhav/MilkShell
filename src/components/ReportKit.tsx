@@ -66,11 +66,7 @@ export const Reveal: React.FC<{
     {children}
   </motion.div>
 );
-export const ReportPage: React.FC<{
-  title: string;
-  subtitle ?: string;
-  children: ReactNode;
-}> = ({ title, subtitle, children }) => (
+export const ReportPage: React.FC<{ title: string; subtitle?: string; children: ReactNode }> = ({ title, subtitle, children }) => (
   <div className="min-w-0 space-y-4">
     <Reveal>
       <PageHeader title={title} subtitle={subtitle} />
