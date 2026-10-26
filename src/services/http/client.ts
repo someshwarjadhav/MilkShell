@@ -82,7 +82,7 @@ export function parseGatewayText(text: string): unknown {
   } catch {
     throw new ApiError("The server reply could not be read.", "parse");
   }
- 
+
   if (typeof json === "string") {
     try {
       json = JSON.parse(json);
@@ -107,7 +107,6 @@ export function listOf<T>(json: unknown): T[] {
 }
 
 function urlFor(endpoint: string) {
-
   return `${environment.staticIP}${endpoint}`;
 }
 
@@ -150,13 +149,11 @@ async function sendOnce(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-   
     const res = await fetch(url, {
       ...init,
       headers: {
         Accept: "application/json, text/plain, */*",
         ...((init.headers as Record<string, string>) ?? {}),
-      
       },
       signal: controller.signal,
     });
@@ -288,12 +285,17 @@ export function gatewayPostJson(
   return p;
 }
 
-export async function gatewayText(endpoint: string, init: RequestInit = {}, priority: Priority = 0): Promise<string> {
+export async function gatewayText(
+  endpoint: string,
+  init: RequestInit = {},
+  priority: Priority = 0,
+  absolute = false,
+): Promise<string> {
   await acquire({ priority });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(urlFor(endpoint), {
+    const res = await fetch(absolute ? endpoint : urlFor(endpoint), {
       ...init,
       headers: { Accept: "application/json, text/plain, */*", ...((init.headers as Record<string, string>) ?? {}) },
       signal: controller.signal,
@@ -302,9 +304,9 @@ export async function gatewayText(endpoint: string, init: RequestInit = {}, prio
       throw new ApiError("Your session was rejected by the server. Please sign in again.", "auth");
     const text = await res.text();
     if (import.meta.env.DEV)
-      console.debug(`[smartx] ${init.method ?? 'GET'} ${endpoint} -> ${res.status}`, {
-        sent: typeof init.body === 'string' ? init.body.slice(0, 400) : init.body ? '[form data]' : endpoint,
-        reply: text.replace(/[\r\n]+/g, '').slice(0, 300),
+      console.debug(`[smartx] ${init.method ?? "GET"} ${endpoint} -> ${res.status}`, {
+        sent: typeof init.body === "string" ? init.body.slice(0, 400) : init.body ? "[form data]" : endpoint,
+        reply: text.replace(/[\r\n]+/g, "").slice(0, 300),
       });
     if (!res.ok) {
       const body = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);

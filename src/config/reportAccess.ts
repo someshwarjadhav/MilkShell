@@ -15,6 +15,8 @@ export const PAGE_MOBILE_SETTINGS = "/settings/mobile-app";
 export const PAGE_DPU_SETTINGS = "/settings/dpu-settings";
 export const PAGE_EKO_MILK_SETTINGS = "/settings/eko-milk-settings";
 export const PAGE_MANAGE_COLLECTION = "/transactions/manage-collection";
+export const PAGE_RATE_MASTER = "/master/excel-rate-upload";
+export const PAGE_RATE_STATUS = "/master/rate-status";
 
 export const EXCLUSIVE_PAGES: string[] = [
   PAGE_FARMER_MASTER,
@@ -23,6 +25,8 @@ export const EXCLUSIVE_PAGES: string[] = [
   PAGE_DPU_SETTINGS,
   PAGE_EKO_MILK_SETTINGS,
   PAGE_MANAGE_COLLECTION,
+  PAGE_RATE_MASTER,
+  PAGE_RATE_STATUS,
 ];
 export const ENTRY_USERS: string[] = ["abc@gmail.com"];
 
@@ -34,9 +38,16 @@ export const PAGES_BY_USER: Record<string, string[]> = {
     PAGE_MOBILE_SETTINGS,
     PAGE_DPU_SETTINGS,
     PAGE_EKO_MILK_SETTINGS,
+    PAGE_RATE_MASTER,
+    PAGE_RATE_STATUS,
   ],
 
-  "prachidairykaladera@gmail.com": [PAGE_FARMER_MASTER, PAGE_DPU_SETTINGS],
+  "prachidairykaladera@gmail.com": [
+    PAGE_FARMER_MASTER,
+    PAGE_DPU_SETTINGS,
+    PAGE_RATE_MASTER,
+    PAGE_RATE_STATUS,
+  ],
 };
 
 export const EXCLUSIVE_REPORTS: string[] = [REPORT_CLEANING, REPORT_EKO];

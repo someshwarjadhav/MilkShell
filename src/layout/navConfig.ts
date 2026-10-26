@@ -240,8 +240,18 @@ export const NAV_MODULES: NavModule[] = [
       ),
       form("Item Master", "/master/item-master", "item-master"),
       form("Rate Group Master", "/master/rategroup-master", "rategroup-master"),
-      form("Rate Master", "/master/excel-rate-upload", "excel-rate-upload"),
-      form("Rate Status", "/master/rate-status", "rate-status"),
+      form(
+        "Rate Master",
+        "/master/excel-rate-upload",
+        "excel-rate-upload",
+        "/master/excel-rate-upload",
+      ),
+      form(
+        "Rate Status",
+        "/master/rate-status",
+        "rate-status",
+        "/master/rate-status",
+      ),
     ],
   },
   {

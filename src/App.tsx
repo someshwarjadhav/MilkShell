@@ -12,6 +12,8 @@ import {
   PAGE_MANAGE_COLLECTION,
   PAGE_DPU_SETTINGS,
   PAGE_FARMER_MASTER,
+  PAGE_RATE_MASTER,
+  PAGE_RATE_STATUS,
   PAGE_EKO_MILK_SETTINGS,
   PAGE_MOBILE_SETTINGS,
   PAGE_VLC_MILK_ENTRY,
@@ -37,6 +39,8 @@ const LiveCollection = lazy(() => import("./pages/LiveCollection"));
 const Collections = lazy(() => import("./pages/reports/Collections"));
 const Farmers = lazy(() => import("./pages/Farmers"));
 const FarmerMaster = lazy(() => import("./pages/master/FarmerMaster"));
+const RateMaster = lazy(() => import("./pages/master/RateMaster"));
+const RateStatus = lazy(() => import("./pages/master/RateStatus"));
 const Centers = lazy(() => import("./pages/Centers"));
 const RateChart = lazy(() => import("./pages/RateChart"));
 const Billing = lazy(() => import("./pages/Billing"));
@@ -213,6 +217,22 @@ const App: React.FC = () => {
                 element={
                   <ReportGuard key="farmermaster" to={PAGE_FARMER_MASTER}>
                     <FarmerMaster />
+                  </ReportGuard>
+                }
+              />
+              <Route
+                path="master/excel-rate-upload"
+                element={
+                  <ReportGuard key="ratemaster" to={PAGE_RATE_MASTER}>
+                    <RateMaster />
+                  </ReportGuard>
+                }
+              />
+              <Route
+                path="master/rate-status"
+                element={
+                  <ReportGuard key="ratestatus" to={PAGE_RATE_STATUS}>
+                    <RateStatus />
                   </ReportGuard>
                 }
               />
