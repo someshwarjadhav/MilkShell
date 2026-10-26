@@ -337,11 +337,13 @@ export const NAV_MODULES: NavModule[] = [
         "Standard Deduction",
         "/billing/commission-master",
         "commission-master",
+        "/billing/standard-deduction",
       ),
       form(
         "VLC Standard Deduction",
         "/billing/commission-master-owner",
         "commission-master-owner",
+        "/billing/vlc-standard-deduction",
       ),
       form("Deduction Entry", "/billing/deduction-entry", "deduction-entry"),
       form("Farmer Bill", "/billing/farmer-bill", "farmer-bill"),

@@ -54,6 +54,8 @@ const VlcMilkEntry = lazy(() => import("./pages/transactions/VlcMilkEntry"));
 const FarmerMilkEntry = lazy(
   () => import("./pages/transactions/FarmerMilkEntry"),
 );
+const StandardDeduction = lazy(() => import("./pages/billing/StandardDeduction"));
+const VlcStandardDeduction = lazy(() => import("./pages/billing/VlcStandardDeduction"));
 const ManageCollection = lazy(() => import('./pages/transactions/ManageCollection'));
 const MobileAppSettings = lazy(
   () => import("./pages/settings/MobileAppSettings"),
@@ -223,6 +225,8 @@ const App: React.FC = () => {
               <Route path="centers" element={<Centers />} />
               <Route path="rates" element={<RateChart />} />
               <Route path="billing" element={<Billing />} />
+              <Route path="billing/standard-deduction" element={<StandardDeduction />} />
+              <Route path="billing/vlc-standard-deduction" element={<VlcStandardDeduction />} />
               <Route path="quality" element={<Quality />} />
               <Route path="pipeline" element={<Pipeline />} />
               <Route

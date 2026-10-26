@@ -204,6 +204,8 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
   },
   { to: "/rates", aliases: ["ratechart", "rates", "rate"] },
   { to: "/billing", aliases: ["billing", "tendaybill", "payslip"] },
+  { to: "/billing/standard-deduction", aliases: ["commissionmaster", "standarddeduction"] },
+  { to: "/billing/vlc-standard-deduction", aliases: ["commissionmasterowner", "vlcstandarddeduction"] },
   { to: "/quality", aliases: ["quality", "qualitywatch"] },
   { to: "/pipeline", aliases: ["pipeline", "datapipeline"] },
   {
