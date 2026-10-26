@@ -24,10 +24,11 @@ const slug = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').r
 const hintFor = (route: string) => APP_PAGE_LEAVES.find((p) => p.to === route)?.hint;
 const labelFor = (route: string) => APP_PAGE_LEAVES.find((p) => p.to === route)?.label;
 
+const RATE_MASTER_ROUTE = '/master/excel-rate-upload';
 
 export function buildNav(tree: MenuNode[]): NavSection[] {
   const leavesOf = (ns: MenuNode[]): MenuNode[] => ns.flatMap((n) => (n.children.length ? leavesOf(n.children) : [n]));
-  
+
   const honourSwitch = leavesOf(tree).some((n) => n.enabled);
   const on = (n: MenuNode) => !honourSwitch || n.enabled;
 
@@ -61,12 +62,14 @@ export function buildNav(tree: MenuNode[]): NavSection[] {
       return null;
     }
     if (built) {
-      if (used.has(to)) return null; 
+      if (used.has(to)) return null;
       used.add(to);
     }
     const order = sf && mod?.children ? mod.children.indexOf(sf) : 1000 + apiIndex;
+    const label =
+      to === RATE_MASTER_ROUTE ? 'Rate Master' : node.title || sf?.name || labelFor(to) || 'Menu';
     return {
-      leaf: { to, label: node.title || sf?.name || labelFor(to) || 'Menu', hint: hintFor(to) ?? moduleTitle, built, portalPath },
+      leaf: { to, label, hint: hintFor(to) ?? moduleTitle, built, portalPath },
       order,
     };
   };
@@ -77,7 +80,6 @@ export function buildNav(tree: MenuNode[]): NavSection[] {
     const mod = moduleOf(root.title);
     const title = mod?.name ?? (root.title || 'Menu');
     const order = mod ? NAV_MODULES.indexOf(mod) : 1000 + rootIndex;
-
 
     if (mod && !mod.children && mod.route) {
       if (root.children.length && !root.children.some(on)) return;
@@ -116,7 +118,6 @@ export function buildNav(tree: MenuNode[]): NavSection[] {
   }
   return result;
 }
-
 
 export function applyReportAccess(sections: NavSection[], email?: string | null): NavSection[] {
   const own = reportsFor(email);
