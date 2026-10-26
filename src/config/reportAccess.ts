@@ -39,11 +39,13 @@ export const PAGES_BY_USER: Record<string, string[]> = {
   "prachidairykaladera@gmail.com": [PAGE_FARMER_MASTER, PAGE_DPU_SETTINGS],
 };
 
-export const EXCLUSIVE_REPORTS: string[] = [
+export const EXCLUSIVE_REPORTS: string[] = [REPORT_CLEANING, REPORT_EKO];
+
+
+export const COLLECTION_REPORTS: string[] = [
+  REPORT_FARMER,
   REPORT_FARMERWISE,
   REPORT_VLCC,
-  REPORT_CLEANING,
-  REPORT_EKO,
 ];
 
 export const ALL_REPORTS: string[] = [
@@ -51,6 +53,8 @@ export const ALL_REPORTS: string[] = [
   REPORT_UNIONWISE,
   REPORT_VLC_STATUS,
   REPORT_VARIANCE,
+  REPORT_FARMERWISE,
+  REPORT_VLCC,
   ...EXCLUSIVE_REPORTS,
 ];
 
@@ -126,3 +130,28 @@ export function canOpenReport(
   if (own) return !ALL_REPORTS.includes(route) || own.includes(route);
   return !EXCLUSIVE_REPORTS.includes(route);
 }
+
+export const BILLING_BY_USER: Record<string, string[]> = {
+  "abc@gmail.com": [
+    "Standard Deduction",
+    "VLC Standard Deduction",
+    "Farmer Bill",
+    "CattleFeed Farmer Bill",
+    "Bank Payment Summary",
+    "Cash Payment Summary",
+    "VLC Milk Bill",
+  ],
+  "prachidairykaladera@gmail.com": [
+    "Farmer Bill",
+    "Bank Payment Summary",
+    "Cash Payment Summary",
+    "VLC Milk Bill",
+  ],
+};
+
+export const billingFor = (email?: string | null): string[] | null =>
+  (email ? BILLING_BY_USER[email.trim().toLowerCase()] : undefined) ?? null;
+
+export const BILL_EXTENDED_USERS: string[] = ["abc@gmail.com"];
+export const isExtendedBill = (email?: string | null): boolean =>
+  !!email && BILL_EXTENDED_USERS.includes(email.trim().toLowerCase());

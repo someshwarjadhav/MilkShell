@@ -40,6 +40,7 @@ const FarmerMaster = lazy(() => import("./pages/master/FarmerMaster"));
 const Centers = lazy(() => import("./pages/Centers"));
 const RateChart = lazy(() => import("./pages/RateChart"));
 const Billing = lazy(() => import("./pages/Billing"));
+const FarmerBill = lazy(() => import("./pages/billing/FarmerBill"));
 const Quality = lazy(() => import("./pages/Quality"));
 const Pipeline = lazy(() => import("./pages/Pipeline"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -113,14 +114,7 @@ const ReportGuard: React.FC<{ to: string; children: ReactNode }> = ({
   return canOpenReport(user?.email, to) ? <>{children}</> : <NotFound />;
 };
 
-const FarmerCollectionRoute: React.FC = () => {
-  const { user } = useAuth();
-  return canOpenReport(user?.email, REPORT_VLCC) ? (
-    <Collections only="farmer" />
-  ) : (
-    <Collections />
-  );
-};
+const FarmerCollectionRoute: React.FC = () => <Collections only="farmer" />;
 
 
 const FarmersRoute: React.FC = () => {
@@ -223,6 +217,7 @@ const App: React.FC = () => {
               <Route path="centers" element={<Centers />} />
               <Route path="rates" element={<RateChart />} />
               <Route path="billing" element={<Billing />} />
+              <Route path="billing/farmer-bill" element={<FarmerBill />} />
               <Route path="quality" element={<Quality />} />
               <Route path="pipeline" element={<Pipeline />} />
               <Route

@@ -204,6 +204,10 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
   },
   { to: "/rates", aliases: ["ratechart", "rates", "rate"] },
   { to: "/billing", aliases: ["billing", "tendaybill", "payslip"] },
+  {
+    to: "/billing/farmer-bill",
+    aliases: ["farmerbill", "farmerbillsinglecode"],
+  },
   { to: "/quality", aliases: ["quality", "qualitywatch"] },
   { to: "/pipeline", aliases: ["pipeline", "datapipeline"] },
   {

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { BarChart3 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMenuTree } from '../hooks/useSessionData';
-import { REPORT_LABELS, canOpenReport, reportsFor } from '../config/reportAccess';
+import { COLLECTION_REPORTS, REPORT_LABELS, billingFor, canOpenReport, reportsFor } from '../config/reportAccess';
 import { routeFor, urlKey, type MenuNode } from '../services/menu/menu.api';
 import { norm } from '../services/utils/loose';
 import {
@@ -123,9 +123,17 @@ export function applyReportAccess(sections: NavSection[], email?: string | null)
   const cleaned = sections
     .map((s) => ({ ...s, items: s.items.filter((i) => canOpenReport(email, i.to)) }))
     .filter((s) => s.to || s.items.length > 0);
-  if (!own) return cleaned;
+  const leafOf = (to: string): NavLeaf => ({ to, label: REPORT_LABELS[to]?.label ?? to, hint: REPORT_LABELS[to]?.hint ?? 'Report', built: true });
 
-  const leaves: NavLeaf[] = own.map((to) => ({ to, label: REPORT_LABELS[to]?.label ?? to, hint: REPORT_LABELS[to]?.hint ?? 'Report', built: true }));
+  if (!own) {
+    const sec = cleaned.find((s) => s.id === 'report');
+    const missing = COLLECTION_REPORTS.filter((to) => !sec?.items.some((i) => i.to === to)).map(leafOf);
+    if (!missing.length) return cleaned;
+    if (sec) return cleaned.map((s) => (s === sec ? { ...s, items: [...s.items, ...missing] } : s));
+    return [...cleaned.slice(0, 1), { id: 'report', title: 'Report', icon: BarChart3, items: missing }, ...cleaned.slice(1)];
+  }
+
+  const leaves: NavLeaf[] = own.map(leafOf);
   const reportSection: NavSection = { id: 'report', title: 'Report', icon: BarChart3, items: leaves };
   const mine = new Set(own);
 
@@ -139,10 +147,39 @@ export function applyReportAccess(sections: NavSection[], email?: string | null)
   return [...others.slice(0, insertAt), reportSection, ...others.slice(insertAt)];
 }
 
+export function applyBilling(sections: NavSection[], email?: string | null): NavSection[] {
+  const names = billingFor(email);
+  if (!names) return sections;
+  const mod = NAV_MODULES.find((m) => m.name === 'Billing');
+  if (!mod?.children) return sections;
+
+  const items: NavLeaf[] = names.map((name) => {
+    const f = [...mod.children!].reverse().find((x) => norm(x.name) === norm(name));
+    const built = !!f?.route;
+    return {
+      to: f?.route ?? `/portal${f?.url ?? `/billing/${slug(name)}`}`,
+      label: name,
+      hint: 'Billing',
+      built,
+      portalPath: f?.url,
+    };
+  });
+  const billing: NavSection = { id: 'billing', title: 'Billing', icon: mod.icon, items };
+
+  const rest = sections
+    .filter((s) => s.id !== 'billing')
+    .map((s) => (s.to ? s : { ...s, items: s.items.filter((i) => i.to !== '/billing') }))
+    .filter((s) => s.to || s.items.length > 0);
+  const after = rest.findIndex((s) => s.id === 'transactions');
+  const before = rest.findIndex((s) => s.id === 'settings' || s.id === 'support' || s.id === 'more');
+  const at = after >= 0 ? after + 1 : before >= 0 ? before : rest.length;
+  return [...rest.slice(0, at), billing, ...rest.slice(at)];
+}
+
 export function useNav(): NavSection[] {
   const tree = useMenuTree();
   const { user } = useAuth();
-  return useMemo(() => applyReportAccess(buildNav(tree), user?.email), [tree, user?.email]);
+  return useMemo(() => applyBilling(applyReportAccess(buildNav(tree), user?.email), user?.email), [tree, user?.email]);
 }
 
 export const flattenNav = (sections: NavSection[]): Array<NavLeaf & { section: string }> => {
