@@ -346,11 +346,12 @@ export const NAV_MODULES: NavModule[] = [
         "/billing/vlc-standard-deduction",
       ),
       form("Deduction Entry", "/billing/deduction-entry", "deduction-entry"),
-      form("Farmer Bill", "/billing/farmer-bill", "farmer-bill"),
+      form("Farmer Bill", "/billing/farmer-bill", "farmer-bill", "/billing/farmer-bill"),
       form(
         "Farmer Bill",
         "/billing/farmer-bill-single-code",
         "farmer-bill-single-code",
+        "/billing/farmer-bill",
       ),
       form(
         "CattleFeed Farmer Bill",
