@@ -15,7 +15,7 @@ export const getMenu = (userid: string): Promise<unknown> =>
     `/dairy/dairy/Getmilkshellmenu?userid=${encodeURIComponent(userid)}`,
     0,
   );
-// gatewayGet(`/dairy/dairy/getmenu?userid=${encodeURIComponent(userid)}`, 0);
+
 
 export interface MenuNode {
   id: string;
@@ -210,6 +210,14 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
   },
   { to: "/billing/standard-deduction", aliases: ["commissionmaster", "standarddeduction"] },
   { to: "/billing/vlc-standard-deduction", aliases: ["commissionmasterowner", "vlcstandarddeduction"] },
+  {
+    to: "/billing/bank-payment-summary",
+    aliases: ["paymentsummarysinglecode", "bankpaymentsummary"],
+  },
+  {
+    to: "/billing/cattlefeed-farmer-bill",
+    aliases: ["farmerbillcattlefeed", "cattlefeedfarmerbill"],
+  },
   { to: "/quality", aliases: ["quality", "qualitywatch"] },
   { to: "/pipeline", aliases: ["pipeline", "datapipeline"] },
   {

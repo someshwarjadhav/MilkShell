@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { BarChart3 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMenuTree } from '../hooks/useSessionData';
-import { COLLECTION_REPORTS, REPORT_LABELS, billingFor, canOpenReport, reportsFor } from '../config/reportAccess';
+import { COLLECTION_REPORTS, REPORT_LABELS, billingFor, canOpenReport, hideMoreFor, reportsFor } from '../config/reportAccess';
 import { routeFor, urlKey, type MenuNode } from '../services/menu/menu.api';
 import { norm } from '../services/utils/loose';
 import {
@@ -177,10 +177,14 @@ export function applyBilling(sections: NavSection[], email?: string | null): Nav
   return [...rest.slice(0, at), billing, ...rest.slice(at)];
 }
 
+export function removeMore(sections: NavSection[], email?: string | null): NavSection[] {
+  return hideMoreFor(email) ? sections.filter((s) => s.id !== 'more') : sections;
+}
+
 export function useNav(): NavSection[] {
   const tree = useMenuTree();
   const { user } = useAuth();
-  return useMemo(() => applyBilling(applyReportAccess(buildNav(tree), user?.email), user?.email), [tree, user?.email]);
+  return useMemo(() => removeMore(applyBilling(applyReportAccess(buildNav(tree), user?.email), user?.email), user?.email), [tree, user?.email]);
 }
 
 export const flattenNav = (sections: NavSection[]): Array<NavLeaf & { section: string }> => {

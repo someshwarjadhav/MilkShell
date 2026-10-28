@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ChevronDown, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -38,6 +38,29 @@ export const Sidebar: React.FC<Props> = ({
   }, [activeId]);
 
   const pillId = mobile ? "nav-pill-m" : "nav-pill";
+
+  const listRef = useRef<HTMLUListElement>(null);
+  const itemRefs = useRef(new Map<string, HTMLLIElement>());
+
+  // Section khulte hi uske items scroll karke dikha do (user ko khud neeche scroll na karna pade).
+  useEffect(() => {
+    if (!openId || slim) return;
+    const timer = window.setTimeout(() => {
+      const box = listRef.current;
+      const li = itemRefs.current.get(openId);
+      if (!box || !li) return;
+      const b = box.getBoundingClientRect();
+      const l = li.getBoundingClientRect();
+      const pad = 8;
+      let delta = 0;
+      if (l.height + pad * 2 >= b.height || l.top < b.top) delta = l.top - b.top - pad;
+      else if (l.bottom > b.bottom) delta = l.bottom - b.bottom + pad;
+      if (Math.abs(delta) < 1) return;
+      const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      box.scrollBy({ top: delta, behavior: still ? "auto" : "smooth" });
+    }, 230);
+    return () => window.clearTimeout(timer);
+  }, [openId, slim, sections.length]);
 
   const renderSection = (s: NavSection) => {
     const Icon = s.icon;
@@ -184,13 +207,22 @@ export const Sidebar: React.FC<Props> = ({
         )}
       </div>
       <ul
+        ref={listRef}
         className={cn(
-          "mt-2 min-h-0 space-y-0.5 overflow-y-auto pr-1",
+          "mt-2 min-h-0 space-y-0.5 overflow-y-auto overscroll-contain pr-1",
           slim ? "flex-1" : "flex-initial",
         )}
       >
         {sections.map((s) => (
-          <li key={s.id}>{renderSection(s)}</li>
+          <li
+            key={s.id}
+            ref={(el) => {
+              if (el) itemRefs.current.set(s.id, el);
+              else itemRefs.current.delete(s.id);
+            }}
+          >
+            {renderSection(s)}
+          </li>
         ))}
       </ul>
       {!slim && (
