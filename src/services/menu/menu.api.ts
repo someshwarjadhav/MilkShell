@@ -180,6 +180,7 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
     aliases: ["farmermilkentry", "farmermilkcollection"],
   },
   { to: "/transactions/manage-collection", aliases: ["managecollection"] },
+  { to: "/master/vlc-master", aliases: ["vlcmaster"] },
   {
     to: "/farmers",
     aliases: [
@@ -192,15 +193,7 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
   },
   {
     to: "/centers",
-    aliases: [
-      "centers",
-      "centres",
-      "center",
-      "centre",
-      "vlcc",
-      "vlccmaster",
-      "villagemaster",
-    ],
+    aliases: ["centers", "centres", "center", "centre", "vlcc"],
   },
   { to: "/rates", aliases: ["ratechart", "rates", "rate"] },
   { to: "/billing", aliases: ["billing", "tendaybill", "payslip"] },
@@ -208,8 +201,14 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
     to: "/billing/farmer-bill",
     aliases: ["farmerbill", "farmerbillsinglecode"],
   },
-  { to: "/billing/standard-deduction", aliases: ["commissionmaster", "standarddeduction"] },
-  { to: "/billing/vlc-standard-deduction", aliases: ["commissionmasterowner", "vlcstandarddeduction"] },
+  {
+    to: "/billing/standard-deduction",
+    aliases: ["commissionmaster", "standarddeduction"],
+  },
+  {
+    to: "/billing/vlc-standard-deduction",
+    aliases: ["commissionmasterowner", "vlcstandarddeduction"],
+  },
   { to: "/quality", aliases: ["quality", "qualitywatch"] },
   { to: "/pipeline", aliases: ["pipeline", "datapipeline"] },
   {
