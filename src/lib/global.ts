@@ -27,7 +27,7 @@ export const GLOBALS: GlobalData = {
 };
 
 export const GLOBALPAGESIZE = {
-  defaultPageSize: [{ size: 100 }],
+  defaultPageSize: [{ size: 10 }],
 };
 
 const MILK_OPTIONS = [

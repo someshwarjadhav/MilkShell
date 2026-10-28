@@ -356,7 +356,19 @@ export const NAV_MODULES: NavModule[] = [
         "/billing/vlc-standard-deduction",
       ),
       form("Deduction Entry", "/billing/deduction-entry", "deduction-entry"),
-      form("Farmer Bill", "/billing/farmer-bill", "farmer-bill", "/billing/farmer-bill"),
+      form(
+        "Cash Payment Summary",
+        "/billing/cash-payment-summary",
+        "cash-payment-summary",
+        "/billing/cash-payment-summary",
+      ),
+  
+      form(
+        "Farmer Bill",
+        "/billing/farmer-bill",
+        "farmer-bill",
+        "/billing/farmer-bill",
+      ),
       form(
         "Farmer Bill",
         "/billing/farmer-bill-single-code",
@@ -373,16 +385,6 @@ export const NAV_MODULES: NavModule[] = [
         "Bank Payment Summary",
         "/billing/payment-summary-single-code",
         "payment-summary-single-code",
-      ),
-      form(
-        "Cash Payment Summary",
-        "/billing/cash-payment-summary",
-        "cash-payment-summary",
-      ),
-      form(
-        "Cash Payment Summary",
-        "/billing/cash-payment-summary-single-code",
-        "cash-payment-summary-single-code",
       ),
       form("VLC Milk Bill", "/billing/vlc-milk-bill", "vlc-milk-bill"),
     ],
