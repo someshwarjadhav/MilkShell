@@ -11,6 +11,7 @@ export const PAGE_VLC_MILK_ENTRY = "/transactions/vlc-milk-entry";
 export const PAGE_FARMER_MILK_ENTRY = "/transactions/farmer-milk-entry";
 
 export const PAGE_FARMER_MASTER = "/master/farmer-master";
+export const PAGE_VLC_MASTER = "/master/vlc-master";
 export const PAGE_MOBILE_SETTINGS = "/settings/mobile-app";
 export const PAGE_DPU_SETTINGS = "/settings/dpu-settings";
 export const PAGE_EKO_MILK_SETTINGS = "/settings/eko-milk-settings";
@@ -22,6 +23,7 @@ export const PAGE_CATTLEFEED_FARMER_BILL = "/billing/cattlefeed-farmer-bill";
 
 export const EXCLUSIVE_PAGES: string[] = [
   PAGE_FARMER_MASTER,
+  PAGE_VLC_MASTER,
   PAGE_VLC_MILK_ENTRY,
   PAGE_MOBILE_SETTINGS,
   PAGE_DPU_SETTINGS,
@@ -37,6 +39,7 @@ export const ENTRY_USERS: string[] = ["abc@gmail.com"];
 export const PAGES_BY_USER: Record<string, string[]> = {
   "abc@gmail.com": [
     PAGE_FARMER_MASTER,
+    PAGE_VLC_MASTER,
     PAGE_VLC_MILK_ENTRY,
     PAGE_MANAGE_COLLECTION,
     PAGE_MOBILE_SETTINGS,
@@ -50,6 +53,7 @@ export const PAGES_BY_USER: Record<string, string[]> = {
 
   "prachidairykaladera@gmail.com": [
     PAGE_FARMER_MASTER,
+    PAGE_VLC_MASTER,
     PAGE_DPU_SETTINGS,
     PAGE_RATE_MASTER,
     PAGE_RATE_STATUS,
@@ -58,7 +62,6 @@ export const PAGES_BY_USER: Record<string, string[]> = {
 };
 
 export const EXCLUSIVE_REPORTS: string[] = [REPORT_CLEANING, REPORT_EKO];
-
 
 export const COLLECTION_REPORTS: string[] = [
   REPORT_FARMER,

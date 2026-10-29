@@ -180,6 +180,7 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
     aliases: ["farmermilkentry", "farmermilkcollection"],
   },
   { to: "/transactions/manage-collection", aliases: ["managecollection"] },
+  { to: "/master/vlc-master", aliases: ["vlcmaster"] },
   {
     to: "/farmers",
     aliases: [
@@ -192,15 +193,7 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
   },
   {
     to: "/centers",
-    aliases: [
-      "centers",
-      "centres",
-      "center",
-      "centre",
-      "vlcc",
-      "vlccmaster",
-      "villagemaster",
-    ],
+    aliases: ["centers", "centres", "center", "centre", "vlcc"],
   },
   { to: "/rates", aliases: ["ratechart", "rates", "rate"] },
   { to: "/billing", aliases: ["billing", "tendaybill", "payslip"] },

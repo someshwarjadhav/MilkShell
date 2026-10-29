@@ -220,7 +220,12 @@ export const NAV_MODULES: NavModule[] = [
     children: [
       form("MCC Master", "/master/mcc-master", "mcc-master"),
       form("Route Master", "/master/route-master", "route-master"),
-      form("VLC Master", "/master/vlc-master", "vlc-master"),
+      form(
+        "VLC Master",
+        "/master/vlc-master",
+        "vlc-master",
+        "/master/vlc-master",
+      ),
       form(
         "Farmer Master",
         "/master/farmer-master",
@@ -356,7 +361,12 @@ export const NAV_MODULES: NavModule[] = [
         "/billing/vlc-standard-deduction",
       ),
       form("Deduction Entry", "/billing/deduction-entry", "deduction-entry"),
-      form("Farmer Bill", "/billing/farmer-bill", "farmer-bill", "/billing/farmer-bill"),
+      form(
+        "Farmer Bill",
+        "/billing/farmer-bill",
+        "farmer-bill",
+        "/billing/farmer-bill",
+      ),
       form(
         "Farmer Bill",
         "/billing/farmer-bill-single-code",
