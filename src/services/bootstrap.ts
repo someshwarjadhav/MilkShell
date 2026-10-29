@@ -25,6 +25,26 @@ let errors: Record<string, string> = {};
 
 export const getCenters = (): Center[] => data.centers;
 export const getMenuTree = (): MenuNode[] => data.menu;
+
+const listeners = new Set<() => void>();
+export const subscribeMenu = (fn: () => void) => {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+};
+
+
+export async function refreshMenu(userId: string): Promise<void> {
+  try {
+    const raw = await getMenu(userId);
+    if (!rawData) return;
+    rawData = { ...rawData, menu: raw };
+    data = { ...data, menu: parseMenu(raw) };
+    vaultSave(DATA_KEY, { userId, raw: rawData } satisfies StoredData);
+    listeners.forEach((fn) => fn());
+  } catch (e) {
+    console.warn('[getMenu] refresh failed, saved menu kept:', e instanceof Error ? e.message : e);
+  }
+}
 export const getReportConfig = (): ReportConfig => data.report;
 
 export const getSessionErrors = () => errors;

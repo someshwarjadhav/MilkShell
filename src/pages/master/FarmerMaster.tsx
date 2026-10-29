@@ -806,7 +806,7 @@ const FarmerMaster: React.FC = () => {
               rowKey={(r) => r.key}
               pageSize={DEFAULT_PAGE_SIZE}
               pageSizes={[10, 25, 50, 100, 250]}
-              sizeLabel="Result"
+              sizeLabel="Result per page"
               empty={
                 <p className="px-6 py-10 text-center text-sm text-mute">
                   No farmers found.

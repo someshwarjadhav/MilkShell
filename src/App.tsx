@@ -1,37 +1,16 @@
 import type * as React from "react";
-import type { ReactNode } from "react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import AppLayout from "./layout/AppLayout";
 import { PageLoader } from "./components/PageLoader";
 import { useAuth } from "./context/AuthContext";
 import { useLoginData } from "./hooks/useSessionData";
-import {
-  canOpenReport,
-  PAGE_BANK_PAYMENT_SUMMARY,
-  PAGE_CATTLEFEED_FARMER_BILL,
-  PAGE_FARMER_MILK_ENTRY,
-  PAGE_MANAGE_COLLECTION,
-  PAGE_DPU_SETTINGS,
-  PAGE_FARMER_MASTER,
-  PAGE_VLC_MASTER,
-  PAGE_RATE_MASTER,
-  PAGE_RATE_STATUS,
-  PAGE_EKO_MILK_SETTINGS,
-  PAGE_MOBILE_SETTINGS,
-  PAGE_VLC_MILK_ENTRY,
-  REPORT_CLEANING,
-  REPORT_EKO,
-  REPORT_FARMERWISE,
-  REPORT_UNIONWISE,
-  REPORT_VARIANCE,
-  REPORT_VLCC,
-  REPORT_VLC_STATUS,
-} from "./config/reportAccess";
+import { useNav, isRouteAllowed } from "./layout/nav";
 import {
   applySession,
   isSessionDataLoaded,
   loadSessionData,
+  refreshMenu,
 } from "./services/bootstrap";
 
 const Login = lazy(() => import("./pages/Login"));
@@ -99,6 +78,7 @@ const SessionGate: React.FC = () => {
     }
     if (isSessionDataLoaded()) {
       setReady(true);
+      if (profile.userId) void refreshMenu(profile.userId);
       return;
     }
 
@@ -118,24 +98,14 @@ const SessionGate: React.FC = () => {
   return ready ? <Outlet /> : <PageLoader />;
 };
 
-const ReportGuard: React.FC<{ to: string; children: ReactNode }> = ({
-  to,
-  children,
-}) => {
-  const { user } = useAuth();
-  return canOpenReport(user?.email, to) ? <>{children}</> : <NotFound />;
+// Har page ka guard: route sidebar (getMenu API) mein ho tabhi khulega, warna NotFound.
+const RouteGate: React.FC = () => {
+  const { pathname } = useLocation();
+  const sections = useNav();
+  return isRouteAllowed(sections, pathname) ? <Outlet /> : <NotFound />;
 };
 
 const FarmerCollectionRoute: React.FC = () => <Collections only="farmer" />;
-
-const FarmersRoute: React.FC = () => {
-  const { user } = useAuth();
-  return canOpenReport(user?.email, PAGE_FARMER_MASTER) ? (
-    <FarmerMaster />
-  ) : (
-    <Farmers />
-  );
-};
 
 const Protected: React.FC = () => {
   const { user } = useAuth();
@@ -157,103 +127,76 @@ const App: React.FC = () => {
           <Route path="/contact" element={<Contact />} />
           <Route element={<Protected />}>
             <Route element={<AppLayout />}>
+            <Route element={<RouteGate />}>
               <Route index element={<Dashboard />} />
               <Route path="live" element={<LiveCollection />} />
               <Route path="collections" element={<FarmerCollectionRoute />} />
               <Route
                 path="reports/farmerwise"
                 element={
-                  <ReportGuard key="farmerwise" to={REPORT_FARMERWISE}>
-                    <Collections only="entry" />
-                  </ReportGuard>
+                  <Collections only="entry" />
                 }
               />
               <Route
                 path="reports/vlcc"
                 element={
-                  <ReportGuard key="vlcc" to={REPORT_VLCC}>
-                    <Collections only="vlcc" />
-                  </ReportGuard>
+                  <Collections only="vlcc" />
                 }
               />
               <Route
                 path="reports/cleaning"
                 element={
-                  <ReportGuard key="cleaning" to={REPORT_CLEANING}>
-                    <CleaningReport />
-                  </ReportGuard>
+                  <CleaningReport />
                 }
               />
               <Route
                 path="reports/eko-calibration"
                 element={
-                  <ReportGuard key="eko" to={REPORT_EKO}>
-                    <EkoCalibration />
-                  </ReportGuard>
+                  <EkoCalibration />
                 }
               />
               <Route
                 path="transactions/vlc-milk-entry"
                 element={
-                  <ReportGuard key="vlcmilkentry" to={PAGE_VLC_MILK_ENTRY}>
-                    <VlcMilkEntry />
-                  </ReportGuard>
+                  <VlcMilkEntry />
                 }
               />
               <Route
                 path="transactions/farmer-milk-entry"
                 element={
-                  <ReportGuard
-                    key="farmermilkentry"
-                    to={PAGE_FARMER_MILK_ENTRY}
-                  >
-                    <FarmerMilkEntry />
-                  </ReportGuard>
+                  <FarmerMilkEntry />
                 }
               />
               <Route
                 path="transactions/manage-collection"
                 element={
-                  <ReportGuard
-                    key="managecollection"
-                    to={PAGE_MANAGE_COLLECTION}
-                  >
-                    <ManageCollection />
-                  </ReportGuard>
+                  <ManageCollection />
                 }
               />
-              <Route path="farmers" element={<FarmersRoute />} />
+              <Route path="farmers" element={<Farmers />} />
               <Route path="farmers/report" element={<Farmers />} />
               <Route
                 path="master/farmer-master"
                 element={
-                  <ReportGuard key="farmermaster" to={PAGE_FARMER_MASTER}>
-                    <FarmerMaster />
-                  </ReportGuard>
+                  <FarmerMaster />
                 }
               />
               <Route
                 path="master/vlc-master"
                 element={
-                  <ReportGuard key="vlcmaster" to={PAGE_VLC_MASTER}>
-                    <VlcMaster />
-                  </ReportGuard>
+                  <VlcMaster />
                 }
               />
               <Route
                 path="master/excel-rate-upload"
                 element={
-                  <ReportGuard key="ratemaster" to={PAGE_RATE_MASTER}>
-                    <RateMaster />
-                  </ReportGuard>
+                  <RateMaster />
                 }
               />
               <Route
                 path="master/rate-status"
                 element={
-                  <ReportGuard key="ratestatus" to={PAGE_RATE_STATUS}>
-                    <RateStatus />
-                  </ReportGuard>
+                  <RateStatus />
                 }
               />
               <Route path="centers" element={<Centers />} />
@@ -266,17 +209,13 @@ const App: React.FC = () => {
               <Route
                 path="billing/bank-payment-summary"
                 element={
-                  <ReportGuard key="bankpayment" to={PAGE_BANK_PAYMENT_SUMMARY}>
-                    <BankPaymentSummary />
-                  </ReportGuard>
+                  <BankPaymentSummary />
                 }
               />
               <Route
                 path="billing/cattlefeed-farmer-bill"
                 element={
-                  <ReportGuard key="cattlefeedbill" to={PAGE_CATTLEFEED_FARMER_BILL}>
-                    <CattleFeedFarmerBill />
-                  </ReportGuard>
+                  <CattleFeedFarmerBill />
                 }
               />
               <Route path="quality" element={<Quality />} />
@@ -284,57 +223,43 @@ const App: React.FC = () => {
               <Route
                 path="reports/unionwise"
                 element={
-                  <ReportGuard key="unionwise" to={REPORT_UNIONWISE}>
-                    <UnionwiseCollection />
-                  </ReportGuard>
+                  <UnionwiseCollection />
                 }
               />
               <Route
                 path="reports/vlc-status"
                 element={
-                  <ReportGuard key="vlcstatus" to={REPORT_VLC_STATUS}>
-                    <VlcStatus />
-                  </ReportGuard>
+                  <VlcStatus />
                 }
               />
               <Route
                 path="reports/variance"
                 element={
-                  <ReportGuard key="variance" to={REPORT_VARIANCE}>
-                    <VarianceReport />
-                  </ReportGuard>
+                  <VarianceReport />
                 }
               />
               <Route
                 path="settings/mobile-app"
                 element={
-                  <ReportGuard key="mobileapp" to={PAGE_MOBILE_SETTINGS}>
-                    <MobileAppSettings />
-                  </ReportGuard>
+                  <MobileAppSettings />
                 }
               />
               <Route
                 path="settings/dpu-settings"
                 element={
-                  <ReportGuard key="dpusettings" to={PAGE_DPU_SETTINGS}>
-                    <DpuSettings />
-                  </ReportGuard>
+                  <DpuSettings />
                 }
               />
               <Route
                 path="settings/eko-milk-settings"
                 element={
-                  <ReportGuard
-                    key="ekomilksettings"
-                    to={PAGE_EKO_MILK_SETTINGS}
-                  >
-                    <EkoMilkSettings />
-                  </ReportGuard>
+                  <EkoMilkSettings />
                 }
               />
               <Route path="settings" element={<Settings />} />
               <Route path="portal/*" element={<FormPlaceholder />} />
               <Route path="*" element={<NotFound />} />
+            </Route>
             </Route>
           </Route>
         </Routes>

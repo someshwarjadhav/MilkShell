@@ -45,6 +45,11 @@ import {
 const msg = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : fallback;
 
+const BTN_SAVE =
+  "!bg-brand !text-white enabled:hover:!bg-deep dark:!bg-brand/25 dark:!text-brand dark:enabled:hover:!bg-brand/40 disabled:!opacity-50";
+const BTN_DANGER =
+  "!bg-danger !text-white enabled:hover:!bg-danger/85 dark:!text-[#2a0a0a] disabled:!opacity-50";
+
 const SHIFT_CODE = { morning: "1", evening: "2" } as const;
 const SHIFT_DEFAULT = "1";
 type ShiftPick = keyof typeof SHIFT_CODE;
@@ -356,12 +361,13 @@ const UploadCard: React.FC<{
             loading={saving}
             disabled={!canSave}
             onClick={() => void saveAll()}
-            className="!bg-ok !text-white hover:!opacity-90 disabled:!opacity-50 disabled:hover:!opacity-50"
+            className={BTN_SAVE}
           >
             Save All
           </Button>
           <Button
             variant="danger"
+            className={BTN_DANGER}
             icon={<FileSpreadsheet />}
             onClick={exportFile}
           >
@@ -724,12 +730,13 @@ const ShowRatesCard: React.FC<{
           <Button
             disabled={busy || !chosen}
             onClick={askUpdate}
-            className="!bg-ok !text-white hover:!opacity-90 disabled:!opacity-50 disabled:hover:!opacity-50"
+            className={BTN_SAVE}
           >
             Update
           </Button>
           <Button
             variant="danger"
+            className={BTN_DANGER}
             icon={<RefreshCw />}
             loading={syncing}
             disabled={busy || !chosen || syncing}

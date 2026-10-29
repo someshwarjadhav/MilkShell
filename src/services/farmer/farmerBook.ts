@@ -31,6 +31,8 @@ export interface MasterFarmer {
   bank: string;
   account: string;
   ifsc: string;
+
+  rateId: string;
 }
 
 export function mapMaster(rows: RawLoose[]): MasterFarmer[] {
@@ -51,6 +53,7 @@ export function mapMaster(rows: RawLoose[]): MasterFarmer[] {
       bank: pickLoose(r, ['farmerbank']),
       account: pickLoose(r, ['farmerbankac']),
       ifsc: pickLoose(r, ['farmerbankbranch']),
+      rateId: pickLoose(r, ['rateid', 'farmerrateid', 'villagerateid']),
     };
   });
 }

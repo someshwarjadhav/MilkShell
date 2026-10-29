@@ -176,6 +176,7 @@ export interface FarmerMilkEntry {
   shift: string;
   milktype: string;
   entrydate: string;
+  rateid: string;
   qty: string;
   fat: string;
   snf: string;
@@ -195,7 +196,6 @@ const PORTAL_CONST = {
   syncdirection: "1",
   usbflag: "1",
   paymentid: "1",
-  rateid: "1",
 };
 
 export const buildFarmerMilkPayload = (e: FarmerMilkEntry) => {
@@ -213,7 +213,7 @@ export const buildFarmerMilkPayload = (e: FarmerMilkEntry) => {
     clr: e.clr,
     rtpl: e.rate,
     amount: e.amount,
-    rateid: PORTAL_CONST.rateid,
+    rateid: e.rateid,
     dtdate: e.entrydate,
     shift: e.shift,
     qtyauto: "0",
