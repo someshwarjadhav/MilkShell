@@ -14,6 +14,7 @@ import {
   PAGE_MANAGE_COLLECTION,
   PAGE_DPU_SETTINGS,
   PAGE_FARMER_MASTER,
+  PAGE_VLC_MASTER,
   PAGE_RATE_MASTER,
   PAGE_RATE_STATUS,
   PAGE_EKO_MILK_SETTINGS,
@@ -33,7 +34,6 @@ import {
   loadSessionData,
 } from "./services/bootstrap";
 
-
 const Login = lazy(() => import("./pages/Login"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -41,6 +41,7 @@ const LiveCollection = lazy(() => import("./pages/LiveCollection"));
 const Collections = lazy(() => import("./pages/reports/Collections"));
 const Farmers = lazy(() => import("./pages/Farmers"));
 const FarmerMaster = lazy(() => import("./pages/master/FarmerMaster"));
+const VlcMaster = lazy(() => import("./pages/master/VlcMaster"));
 const RateMaster = lazy(() => import("./pages/master/RateMaster"));
 const RateStatus = lazy(() => import("./pages/master/RateStatus"));
 const Centers = lazy(() => import("./pages/Centers"));
@@ -127,10 +128,13 @@ const ReportGuard: React.FC<{ to: string; children: ReactNode }> = ({
 
 const FarmerCollectionRoute: React.FC = () => <Collections only="farmer" />;
 
-
 const FarmersRoute: React.FC = () => {
   const { user } = useAuth();
-  return canOpenReport(user?.email, PAGE_FARMER_MASTER) ? <FarmerMaster /> : <Farmers />;
+  return canOpenReport(user?.email, PAGE_FARMER_MASTER) ? (
+    <FarmerMaster />
+  ) : (
+    <Farmers />
+  );
 };
 
 const Protected: React.FC = () => {
@@ -210,7 +214,10 @@ const App: React.FC = () => {
               <Route
                 path="transactions/manage-collection"
                 element={
-                  <ReportGuard key="managecollection" to={PAGE_MANAGE_COLLECTION}>
+                  <ReportGuard
+                    key="managecollection"
+                    to={PAGE_MANAGE_COLLECTION}
+                  >
                     <ManageCollection />
                   </ReportGuard>
                 }
@@ -222,6 +229,14 @@ const App: React.FC = () => {
                 element={
                   <ReportGuard key="farmermaster" to={PAGE_FARMER_MASTER}>
                     <FarmerMaster />
+                  </ReportGuard>
+                }
+              />
+              <Route
+                path="master/vlc-master"
+                element={
+                  <ReportGuard key="vlcmaster" to={PAGE_VLC_MASTER}>
+                    <VlcMaster />
                   </ReportGuard>
                 }
               />

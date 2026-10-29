@@ -220,7 +220,12 @@ export const NAV_MODULES: NavModule[] = [
     children: [
       form("MCC Master", "/master/mcc-master", "mcc-master"),
       form("Route Master", "/master/route-master", "route-master"),
-      form("VLC Master", "/master/vlc-master", "vlc-master"),
+      form(
+        "VLC Master",
+        "/master/vlc-master",
+        "vlc-master",
+        "/master/vlc-master",
+      ),
       form(
         "Farmer Master",
         "/master/farmer-master",
