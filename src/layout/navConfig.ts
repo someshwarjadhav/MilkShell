@@ -377,12 +377,14 @@ export const NAV_MODULES: NavModule[] = [
         "CattleFeed Farmer Bill",
         "/billing/farmer-bill-cattlefeed",
         "farmer-bill-cattlefeed",
+        "/billing/cattlefeed-farmer-bill",
       ),
       form("Payment Summary", "/billing/payment-summary", "payment-summary"),
       form(
         "Bank Payment Summary",
         "/billing/payment-summary-single-code",
         "payment-summary-single-code",
+        "/billing/bank-payment-summary",
       ),
       form(
         "Cash Payment Summary",

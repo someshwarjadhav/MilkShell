@@ -18,6 +18,8 @@ export const PAGE_EKO_MILK_SETTINGS = "/settings/eko-milk-settings";
 export const PAGE_MANAGE_COLLECTION = "/transactions/manage-collection";
 export const PAGE_RATE_MASTER = "/master/excel-rate-upload";
 export const PAGE_RATE_STATUS = "/master/rate-status";
+export const PAGE_BANK_PAYMENT_SUMMARY = "/billing/bank-payment-summary";
+export const PAGE_CATTLEFEED_FARMER_BILL = "/billing/cattlefeed-farmer-bill";
 
 export const EXCLUSIVE_PAGES: string[] = [
   PAGE_FARMER_MASTER,
@@ -29,6 +31,8 @@ export const EXCLUSIVE_PAGES: string[] = [
   PAGE_MANAGE_COLLECTION,
   PAGE_RATE_MASTER,
   PAGE_RATE_STATUS,
+  PAGE_BANK_PAYMENT_SUMMARY,
+  PAGE_CATTLEFEED_FARMER_BILL,
 ];
 export const ENTRY_USERS: string[] = ["abc@gmail.com"];
 
@@ -43,6 +47,8 @@ export const PAGES_BY_USER: Record<string, string[]> = {
     PAGE_EKO_MILK_SETTINGS,
     PAGE_RATE_MASTER,
     PAGE_RATE_STATUS,
+    PAGE_BANK_PAYMENT_SUMMARY,
+    PAGE_CATTLEFEED_FARMER_BILL,
   ],
 
   "prachidairykaladera@gmail.com": [
@@ -51,6 +57,7 @@ export const PAGES_BY_USER: Record<string, string[]> = {
     PAGE_DPU_SETTINGS,
     PAGE_RATE_MASTER,
     PAGE_RATE_STATUS,
+    PAGE_BANK_PAYMENT_SUMMARY,
   ],
 };
 
@@ -169,3 +176,10 @@ export const billingFor = (email?: string | null): string[] | null =>
 export const BILL_EXTENDED_USERS: string[] = ["abc@gmail.com"];
 export const isExtendedBill = (email?: string | null): boolean =>
   !!email && BILL_EXTENDED_USERS.includes(email.trim().toLowerCase());
+
+export const HIDE_MORE_USERS: string[] = [
+  "abc@gmail.com",
+  "prachidairykaladera@gmail.com",
+];
+export const hideMoreFor = (email?: string | null): boolean =>
+  !!email && HIDE_MORE_USERS.includes(email.trim().toLowerCase());

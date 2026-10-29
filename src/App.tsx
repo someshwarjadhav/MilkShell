@@ -8,6 +8,8 @@ import { useAuth } from "./context/AuthContext";
 import { useLoginData } from "./hooks/useSessionData";
 import {
   canOpenReport,
+  PAGE_BANK_PAYMENT_SUMMARY,
+  PAGE_CATTLEFEED_FARMER_BILL,
   PAGE_FARMER_MILK_ENTRY,
   PAGE_MANAGE_COLLECTION,
   PAGE_DPU_SETTINGS,
@@ -60,15 +62,11 @@ const VlcMilkEntry = lazy(() => import("./pages/transactions/VlcMilkEntry"));
 const FarmerMilkEntry = lazy(
   () => import("./pages/transactions/FarmerMilkEntry"),
 );
-const StandardDeduction = lazy(
-  () => import("./pages/billing/StandardDeduction"),
-);
-const VlcStandardDeduction = lazy(
-  () => import("./pages/billing/VlcStandardDeduction"),
-);
-const ManageCollection = lazy(
-  () => import("./pages/transactions/ManageCollection"),
-);
+const StandardDeduction = lazy(() => import("./pages/billing/StandardDeduction"));
+const VlcStandardDeduction = lazy(() => import("./pages/billing/VlcStandardDeduction"));
+const BankPaymentSummary = lazy(() => import("./pages/billing/BankPaymentSummary"));
+const CattleFeedFarmerBill = lazy(() => import("./pages/billing/CattleFeedFarmerBill"));
+const ManageCollection = lazy(() => import('./pages/transactions/ManageCollection'));
 const MobileAppSettings = lazy(
   () => import("./pages/settings/MobileAppSettings"),
 );
@@ -261,13 +259,23 @@ const App: React.FC = () => {
               <Route path="rates" element={<RateChart />} />
               <Route path="billing" element={<Billing />} />
               <Route path="billing/farmer-bill" element={<FarmerBill />} />
+              <Route path="billing/standard-deduction" element={<StandardDeduction />} />
+              <Route path="billing/vlc-standard-deduction" element={<VlcStandardDeduction />} />
               <Route
-                path="billing/standard-deduction"
-                element={<StandardDeduction />}
+                path="billing/bank-payment-summary"
+                element={
+                  <ReportGuard key="bankpayment" to={PAGE_BANK_PAYMENT_SUMMARY}>
+                    <BankPaymentSummary />
+                  </ReportGuard>
+                }
               />
               <Route
-                path="billing/vlc-standard-deduction"
-                element={<VlcStandardDeduction />}
+                path="billing/cattlefeed-farmer-bill"
+                element={
+                  <ReportGuard key="cattlefeedbill" to={PAGE_CATTLEFEED_FARMER_BILL}>
+                    <CattleFeedFarmerBill />
+                  </ReportGuard>
+                }
               />
               <Route path="quality" element={<Quality />} />
               <Route path="pipeline" element={<Pipeline />} />
