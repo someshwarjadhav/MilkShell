@@ -1,5 +1,8 @@
 import { decryptPayload, encryptPayload } from "../../lib/crypto";
-import { resolveStaticLogin, staticLoginActive } from "../../config/staticLogin";
+import {
+  resolveStaticLogin,
+  staticLoginActive,
+} from "../../config/staticLogin";
 import { ApiError } from "../http/errors";
 
 export interface LoginProfile {
@@ -97,7 +100,13 @@ function pickVlccNames(rows: Obj[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const row of rows) {
     const id = pickIds([row], ["vlccid", "vlccode", "vlcid"])[0];
-    const name = pickString(row, ["villagename", "vlccname", "vlcname", "centername", "centrename"]);
+    const name = pickString(row, [
+      "villagename",
+      "vlccname",
+      "vlcname",
+      "centername",
+      "centrename",
+    ]);
     if (id && name) out[id] = name;
   }
   return out;
@@ -109,33 +118,46 @@ const nameFromEmail = (email: string) =>
     .replace(/[._]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase()) || "User";
 
-
 function pickStationId(records: Obj[]): string | undefined {
-
   const whole = (names: string[]) => {
     for (const w of names) {
       for (const row of records) {
         const key = Object.keys(row).find((k) => norm(k) === w);
         const v = key ? row[key] : undefined;
-        if ((typeof v === "string" && v.trim()) || typeof v === "number") return String(v).trim();
+        if ((typeof v === "string" && v.trim()) || typeof v === "number")
+          return String(v).trim();
       }
     }
     return undefined;
   };
   const forced = norm(import.meta.env.VITE_CENTER_ID_FIELD ?? "");
-  const exact = whole([...(forced ? [forced] : []), "customstationid", "stationid", "station", "stationcode", "stationno"]);
+  const exact = whole([
+    ...(forced ? [forced] : []),
+    "customstationid",
+    "stationid",
+    "station",
+    "stationcode",
+    "stationno",
+  ]);
   if (exact) return exact;
   for (const row of records) {
     for (const [key, value] of Object.entries(row)) {
       const k = norm(key);
       if (!k.includes("station") || k.includes("name")) continue;
-      if ((typeof value === "string" && value.trim()) || typeof value === "number") return String(value).trim();
+      if (
+        (typeof value === "string" && value.trim()) ||
+        typeof value === "number"
+      )
+        return String(value).trim();
     }
   }
   return undefined;
 }
 
-export function mapLoginResponse(decoded: unknown, username: string): LoginProfile {
+export function mapLoginResponse(
+  decoded: unknown,
+  username: string,
+): LoginProfile {
   const outer = Array.isArray(decoded) ? decoded[0] : decoded;
   if (!isObj(outer)) {
     throw new ApiError(
@@ -206,10 +228,24 @@ export function mapLoginResponse(decoded: unknown, username: string): LoginProfi
     name: name ?? nameFromEmail(resolvedEmail),
     email: resolvedEmail,
     role: role ?? "Dairy administrator",
-    dairyName: pickString(user, ["dairyname", "plantname", "plant", "companyname", "organizationname", "orgname", "societyname"]),
+    dairyName: pickString(user, [
+      "dairyname",
+      "plantname",
+      "plant",
+      "companyname",
+      "organizationname",
+      "orgname",
+      "societyname",
+    ]),
     token,
 
-    vlccIds: pickIds(records, ["sessionid", "vlccid", "vlccids", "vlccode", "vlcid"]),
+    vlccIds: pickIds(records, [
+      "sessionid",
+      "vlccid",
+      "vlccids",
+      "vlccode",
+      "vlcid",
+    ]),
     vlccNames: pickVlccNames(records),
 
     stationId: pickIds(records, ["stationid", "station"])[0],
@@ -218,12 +254,15 @@ export function mapLoginResponse(decoded: unknown, username: string): LoginProfi
     mccName: pickString(user, ["mccname", "mccName", "mcc_name", "plantname"]),
 
     userId:
-      pickIds(records.slice(0, 1), ["userid", "uid", "loginid", "usercode"])[0] ??
-      pickIds(records.slice(0, 1), ["id"])[0],
+      pickIds(records.slice(0, 1), [
+        "userid",
+        "uid",
+        "loginid",
+        "usercode",
+      ])[0] ?? pickIds(records.slice(0, 1), ["id"])[0],
     centerStationId: pickStationId(records),
   };
 }
-
 
 export function sanitizeLoginRecord(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeLoginRecord);
@@ -274,7 +313,6 @@ async function postJson(
       "text/html",
     );
     if (isHtml) {
-     
       console.error(
         `[api] Expected JSON but got HTML from ${res.url}. Check VITE_API_BASE_URL, VITE_LOGIN_PATH and the proxy.`,
       );
@@ -314,7 +352,6 @@ export async function loginApi(
   username: string,
   password: string,
 ): Promise<LoginResult> {
-
   if (staticLoginActive()) {
     const found = await resolveStaticLogin(username, password);
     if (found.kind === "denied") {
@@ -324,12 +361,10 @@ export async function loginApi(
       const profile = mapLoginResponse(found.record, username);
       return { profile, record: sanitizeLoginRecord(found.record) };
     }
-   
   }
 
   let payload: string;
   try {
-    
     payload = encryptPayload({ username, password });
   } catch (error) {
     console.error("[api] Encryption failed:", error);
@@ -348,12 +383,17 @@ export async function loginApi(
     decoded = json;
   }
 
-
   if (import.meta.env.DEV) {
     const rec = isObj(decoded) ? decoded : {};
     const data = Object.keys(rec).find((k) => k.toLowerCase() === "data");
-    const first = data && Array.isArray(rec[data]) ? (rec[data] as unknown[])[0] : rec;
-    console.log("[login] response keys:", Object.keys(rec), "| user record keys:", isObj(first) ? Object.keys(first) : first);
+    const first =
+      data && Array.isArray(rec[data]) ? (rec[data] as unknown[])[0] : rec;
+    console.log(
+      "[login] response keys:",
+      Object.keys(rec),
+      "| user record keys:",
+      isObj(first) ? Object.keys(first) : first,
+    );
   }
 
   if (!ok) {
@@ -366,5 +406,8 @@ export async function loginApi(
     throw new ApiError(`Sign-in failed (error ${status}). Please try again.`);
   }
 
-  return { profile: mapLoginResponse(decoded, username), record: sanitizeLoginRecord(decoded) };
+  return {
+    profile: mapLoginResponse(decoded, username),
+    record: sanitizeLoginRecord(decoded),
+  };
 }

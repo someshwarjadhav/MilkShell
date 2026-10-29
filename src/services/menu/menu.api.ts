@@ -201,6 +201,11 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
     to: "/billing/farmer-bill",
     aliases: ["farmerbill", "farmerbillsinglecode"],
   },
+
+  {
+    to: "/billing/cash-payment-summary",
+    aliases: ["cashpaymentsummary", "cashpaymentsummarysinglecode"],
+  },
   { to: "/billing/standard-deduction", aliases: ["commissionmaster", "standarddeduction"] },
   { to: "/billing/vlc-standard-deduction", aliases: ["commissionmasterowner", "vlcstandarddeduction"] },
   {
