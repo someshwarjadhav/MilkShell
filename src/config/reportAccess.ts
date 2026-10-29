@@ -51,6 +51,16 @@ export const PAGES_BY_USER: Record<string, string[]> = {
     PAGE_CATTLEFEED_FARMER_BILL,
   ],
 
+  "thelogicshell@gmail.com": [
+    PAGE_FARMER_MASTER,
+    PAGE_RATE_MASTER,
+    PAGE_RATE_STATUS,
+    PAGE_MOBILE_SETTINGS,
+    PAGE_VLC_MILK_ENTRY,
+    PAGE_MANAGE_COLLECTION,
+    PAGE_BANK_PAYMENT_SUMMARY,
+  ],
+
   "prachidairykaladera@gmail.com": [
     PAGE_FARMER_MASTER,
     PAGE_VLC_MASTER,
@@ -162,6 +172,11 @@ export const BILLING_BY_USER: Record<string, string[]> = {
     "Cash Payment Summary",
     "VLC Milk Bill",
   ],
+  "thelogicshell@gmail.com": [
+    "Farmer Bill",
+    "Bank Payment Summary",
+    "Cash Payment Summary",
+  ],
   "prachidairykaladera@gmail.com": [
     "Farmer Bill",
     "Bank Payment Summary",
@@ -183,3 +198,53 @@ export const HIDE_MORE_USERS: string[] = [
 ];
 export const hideMoreFor = (email?: string | null): boolean =>
   !!email && HIDE_MORE_USERS.includes(email.trim().toLowerCase());
+
+
+export const MASTER_BY_USER: Record<string, string[]> = {
+  "thelogicshell@gmail.com": [
+    PAGE_FARMER_MASTER,
+    PAGE_RATE_MASTER,
+    PAGE_RATE_STATUS,
+  ],
+};
+
+export const MASTER_LABELS: Record<string, string> = {
+  [PAGE_FARMER_MASTER]: "Farmer Master",
+  [PAGE_VLC_MASTER]: "VLC Master",
+  [PAGE_RATE_MASTER]: "Rate Master",
+  [PAGE_RATE_STATUS]: "Rate Status",
+};
+
+export const masterFor = (email?: string | null): string[] | null =>
+  (email ? MASTER_BY_USER[email.trim().toLowerCase()] : undefined) ?? null;
+
+export const SETTINGS_BY_USER: Record<string, string[]> = {
+  "thelogicshell@gmail.com": [PAGE_MOBILE_SETTINGS],
+};
+
+export const SETTINGS_LABELS: Record<string, string> = {
+  [PAGE_MOBILE_SETTINGS]: "Mobile App Settings",
+  [PAGE_DPU_SETTINGS]: "DPU Settings",
+  [PAGE_EKO_MILK_SETTINGS]: "Eko Milk Settings",
+};
+
+export const settingsFor = (email?: string | null): string[] | null =>
+  (email ? SETTINGS_BY_USER[email.trim().toLowerCase()] : undefined) ?? null;
+
+
+export const TRANSACTIONS_BY_USER: Record<string, string[]> = {
+  "thelogicshell@gmail.com": [
+    PAGE_VLC_MILK_ENTRY,
+    PAGE_FARMER_MILK_ENTRY,
+    PAGE_MANAGE_COLLECTION,
+  ],
+};
+
+export const TRANSACTIONS_LABELS: Record<string, string> = {
+  [PAGE_VLC_MILK_ENTRY]: "BMC Milk Entry",
+  [PAGE_FARMER_MILK_ENTRY]: "Farmer Milk Entry",
+  [PAGE_MANAGE_COLLECTION]: "Manage Collection",
+};
+
+export const transactionsFor = (email?: string | null): string[] | null =>
+  (email ? TRANSACTIONS_BY_USER[email.trim().toLowerCase()] : undefined) ?? null;

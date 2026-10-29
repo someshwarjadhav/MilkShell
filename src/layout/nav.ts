@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Inbox, Library, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMenuTree } from '../hooks/useSessionData';
-import { COLLECTION_REPORTS, REPORT_LABELS, billingFor, canOpenReport, hideMoreFor, reportsFor } from '../config/reportAccess';
+import { COLLECTION_REPORTS, MASTER_LABELS, REPORT_LABELS, SETTINGS_LABELS, TRANSACTIONS_LABELS, billingFor, canOpenReport, hideMoreFor, masterFor, reportsFor, settingsFor, transactionsFor } from '../config/reportAccess';
 import { routeFor, urlKey, type MenuNode } from '../services/menu/menu.api';
 import { norm } from '../services/utils/loose';
 import {
@@ -177,6 +177,65 @@ export function applyBilling(sections: NavSection[], email?: string | null): Nav
   return [...rest.slice(0, at), billing, ...rest.slice(at)];
 }
 
+export function applyMaster(sections: NavSection[], email?: string | null): NavSection[] {
+  const routes = masterFor(email);
+  if (!routes) return sections;
+
+  const items: NavLeaf[] = routes
+    .filter((to) => canOpenReport(email, to))
+    .map((to) => ({ to, label: MASTER_LABELS[to] ?? to, hint: 'Master', built: true }));
+  if (!items.length) return sections;
+
+  const master: NavSection = { id: 'master', title: 'Master', icon: Library, items };
+  const at = sections.findIndex((s) => s.id === 'master');
+  if (at >= 0) return sections.map((s, i) => (i === at ? master : s));
+
+  const rest = sections.map((s) => (s.to ? s : { ...s, items: s.items.filter((i) => !routes.includes(i.to)) })).filter((s) => s.to || s.items.length > 0);
+  const afterReport = rest.findIndex((s) => s.id === 'report');
+  const insertAt = afterReport >= 0 ? afterReport + 1 : Math.min(1, rest.length);
+  return [...rest.slice(0, insertAt), master, ...rest.slice(insertAt)];
+}
+
+export function applyTransactions(sections: NavSection[], email?: string | null): NavSection[] {
+  const routes = transactionsFor(email);
+  if (!routes) return sections;
+
+  const items: NavLeaf[] = routes
+    .filter((to) => canOpenReport(email, to))
+    .map((to) => ({ to, label: TRANSACTIONS_LABELS[to] ?? to, hint: 'Transactions', built: true }));
+  if (!items.length) return sections;
+
+  const tx: NavSection = { id: 'transactions', title: 'Transactions', icon: Inbox, items };
+  const at = sections.findIndex((s) => s.id === 'transactions');
+  if (at >= 0) return sections.map((s, i) => (i === at ? tx : s));
+
+  const rest = sections.map((s) => (s.to ? s : { ...s, items: s.items.filter((i) => !routes.includes(i.to)) })).filter((s) => s.to || s.items.length > 0);
+  const afterMaster = rest.findIndex((s) => s.id === 'master');
+  const afterReport = rest.findIndex((s) => s.id === 'report');
+  const after = afterMaster >= 0 ? afterMaster : afterReport;
+  const insertAt = after >= 0 ? after + 1 : Math.min(1, rest.length);
+  return [...rest.slice(0, insertAt), tx, ...rest.slice(insertAt)];
+}
+
+export function applySettings(sections: NavSection[], email?: string | null): NavSection[] {
+  const routes = settingsFor(email);
+  if (!routes) return sections;
+
+  const items: NavLeaf[] = routes
+    .filter((to) => canOpenReport(email, to))
+    .map((to) => ({ to, label: SETTINGS_LABELS[to] ?? to, hint: 'Settings', built: true }));
+  if (!items.length) return sections;
+
+  const settings: NavSection = { id: 'settings', title: 'Settings', icon: Settings, items };
+  const at = sections.findIndex((s) => s.id === 'settings');
+  if (at >= 0) return sections.map((s, i) => (i === at ? settings : s));
+
+  const rest = sections.map((s) => (s.to ? s : { ...s, items: s.items.filter((i) => !routes.includes(i.to)) })).filter((s) => s.to || s.items.length > 0);
+  const before = rest.findIndex((s) => s.id === 'support' || s.id === 'more');
+  const insertAt = before >= 0 ? before : rest.length;
+  return [...rest.slice(0, insertAt), settings, ...rest.slice(insertAt)];
+}
+
 export function removeMore(sections: NavSection[], email?: string | null): NavSection[] {
   return hideMoreFor(email) ? sections.filter((s) => s.id !== 'more') : sections;
 }
@@ -184,7 +243,7 @@ export function removeMore(sections: NavSection[], email?: string | null): NavSe
 export function useNav(): NavSection[] {
   const tree = useMenuTree();
   const { user } = useAuth();
-  return useMemo(() => removeMore(applyBilling(applyReportAccess(buildNav(tree), user?.email), user?.email), user?.email), [tree, user?.email]);
+  return useMemo(() => removeMore(applySettings(applyBilling(applyTransactions(applyMaster(applyReportAccess(buildNav(tree), user?.email), user?.email), user?.email), user?.email), user?.email), user?.email), [tree, user?.email]);
 }
 
 export const flattenNav = (sections: NavSection[]): Array<NavLeaf & { section: string }> => {
