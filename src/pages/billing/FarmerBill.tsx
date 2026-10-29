@@ -1,10 +1,11 @@
 import type * as React from 'react';
 import { useCallback, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Search, Snowflake, Wallet } from 'lucide-react';
+import { Search, Snowflake, Wallet } from 'lucide-react';
 import { Card, CardHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { Field, Input, Select } from '../../components/ui/Fields';
+import { Field, Input } from '../../components/ui/Fields';
+import { ReportPager } from '../../components/ui/ReportPager';
 import { MilkLoader } from '../../components/MilkLoader';
 import { CardTitle, ReportBar, Reveal, type ExportKind } from '../../components/ReportKit';
 import { CentreField } from '../../components/ReportFilters';
@@ -12,13 +13,11 @@ import { useCentreOptions } from '../../hooks/useCentres';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { isExtendedBill } from '../../config/reportAccess';
-import { GLOBALLABELS } from '../../lib/global';
+import { DEFAULT_PAGE_SIZE, GLOBALLABELS } from '../../lib/global';
 import { todayISO } from '../../lib/format';
 import { cn } from '../../lib/cn';
-import { billExportRows, getPrintTableData, parseFarmerBills, postBillFreeze, type BillExportRow, type BillShift, type FarmerBillData } from '../../services/billing/farmerBill.service';
+import { billExportRows, getPrintTableData, parseFarmerBills, postBillFreeze, type BillExportRow, type BillShift, type FarmerBillData } from '../../services/billing/farmerBill.api';
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from '../../lib/export';
-
-const PAGE_SIZES = [10, 25, 50, 100];
 
 const dmy = (s: string) => s.split('-').reverse().join('-');
 const SHIFT_KEYS: Array<keyof BillShift> = ['wt', 'fat', 'snf', 'rate', 'amt'];
@@ -122,8 +121,8 @@ const FarmerBill: React.FC = () => {
   const [bills, setBills] = useState<FarmerBillData[]>([]);
   const [rawReply, setRawReply] = useState<unknown>(null);
   const [applied, setApplied] = useState({ vlc: '', from: '', to: '' });
-  const [pageSize, setPageSize] = useState(100);
-  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [page, setPage] = useState(1);
   const [freezeOpen, setFreezeOpen] = useState(false);
   const [freezing, setFreezing] = useState(false);
   const ticket = useRef(0);
@@ -132,10 +131,8 @@ const FarmerBill: React.FC = () => {
   const ready = status === 'ready' && bills.length > 0;
   const total = bills.length;
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, pages - 1);
-  const start = safePage * pageSize + 1;
-  const end = Math.min(total, (safePage + 1) * pageSize);
-  const shown = bills.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const safePage = Math.min(page, pages);
+  const shown = bills.slice((safePage - 1) * pageSize, safePage * pageSize);
   const meta = { vlc: vlcLabel(applied.vlc), from: applied.from, to: applied.to };
 
   const show = useCallback(async () => {
@@ -144,7 +141,7 @@ const FarmerBill: React.FC = () => {
     const mine = ++ticket.current;
     setStatus('loading');
     setError('');
-    setPage(0);
+    setPage(1);
     try {
       const raw = await getPrintTableData(from, to, vlc);
       if (mine !== ticket.current) return;
@@ -234,26 +231,9 @@ const FarmerBill: React.FC = () => {
         <Card>
           <ReportBar
             count={total}
-            hideCount
             disabled={!ready}
             kinds={['xls', 'pdf', 'csv']}
             onExport={run}
-            left={
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                <p className="text-sm"><span className="font-bold">Record Count:</span> <span className="tnum text-mute">{start} - {end} of {total}</span></p>
-                <label className="flex items-center gap-2 text-sm">
-                  <span className="font-bold">Result per page:</span>
-                  <div className="w-24"><Select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}>{PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}</Select></div>
-                </label>
-                {pages > 1 && (
-                  <div className="flex items-center gap-1">
-                    <Button size="sm" variant="outline" aria-label="Previous page" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}><ChevronLeft size={14} /></Button>
-                    <span className="px-2 text-xs font-semibold tnum text-mute">{safePage + 1} / {pages}</span>
-                    <Button size="sm" variant="outline" aria-label="Next page" disabled={safePage >= pages - 1} onClick={() => setPage(safePage + 1)}><ChevronRight size={14} /></Button>
-                  </div>
-                )}
-              </div>
-            }
           />
         </Card>
       </Reveal>
@@ -263,6 +243,11 @@ const FarmerBill: React.FC = () => {
       {status === 'idle' && <Card className="px-6 py-10 text-center text-sm text-mute">Select a VLC and dates, then press Show Record.</Card>}
       {status === 'ready' && total === 0 && <Card className="px-6 py-10 text-center text-sm text-mute">No record found for this VLC and these dates.</Card>}
       {status === 'ready' && shown.map((b, i) => <BillCard key={`${b.name}-${safePage}-${i}`} bill={b} range={`${dmy(applied.from)} To ${dmy(applied.to)}`} />)}
+      {ready && (
+        <Card>
+          <ReportPager total={total} page={safePage} size={pageSize} onPage={setPage} onSize={(n) => { setPageSize(n); setPage(1); }} />
+        </Card>
+      )}
 
       <Modal open={freezeOpen} onClose={() => (freezing ? undefined : setFreezeOpen(false))} title="Freeze Bill" subtitle={`${meta.vlc} · ${dmy(applied.from)} To ${dmy(applied.to)}`}
         footer={<>
