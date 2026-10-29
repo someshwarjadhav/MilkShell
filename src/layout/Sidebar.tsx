@@ -7,7 +7,6 @@ import { isActivePath, useNav, type NavSection } from "./nav";
 import { Logo } from "../components/Illustrations";
 import { cn } from "../lib/cn";
 import { useData } from "../context/DataContext";
-import { Tanker } from "../components/Illustrations";
 
 interface Props {
   collapsed: boolean;
@@ -31,7 +30,8 @@ export const Sidebar: React.FC<Props> = ({
   const slim = collapsed && !mobile;
 
   const activeId =
-    sections.find((s) => s.items.some((i) => isActivePath(i.to, pathname)))?.id ?? null;
+    sections.find((s) => s.items.some((i) => isActivePath(i.to, pathname)))
+      ?.id ?? null;
   const [openId, setOpenId] = useState<string | null>(activeId);
   useEffect(() => {
     if (activeId) setOpenId(activeId);
@@ -42,7 +42,7 @@ export const Sidebar: React.FC<Props> = ({
   const listRef = useRef<HTMLUListElement>(null);
   const itemRefs = useRef(new Map<string, HTMLLIElement>());
 
-  // Section khulte hi uske items scroll karke dikha do (user ko khud neeche scroll na karna pade).
+  
   useEffect(() => {
     if (!openId || slim) return;
     const timer = window.setTimeout(() => {
@@ -53,10 +53,13 @@ export const Sidebar: React.FC<Props> = ({
       const l = li.getBoundingClientRect();
       const pad = 8;
       let delta = 0;
-      if (l.height + pad * 2 >= b.height || l.top < b.top) delta = l.top - b.top - pad;
+      if (l.height + pad * 2 >= b.height || l.top < b.top)
+        delta = l.top - b.top - pad;
       else if (l.bottom > b.bottom) delta = l.bottom - b.bottom + pad;
       if (Math.abs(delta) < 1) return;
-      const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      const still = window.matchMedia?.(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
       box.scrollBy({ top: delta, behavior: still ? "auto" : "smooth" });
     }, 230);
     return () => window.clearTimeout(timer);
@@ -76,7 +79,7 @@ export const Sidebar: React.FC<Props> = ({
           className={({ isActive: a }) =>
             cn(
               rowBase,
-              slim && "justify-center px-0 py-3.5",
+              slim && "justify-center px-0 py-3.5 ",
               a ? "text-brand" : "text-mute hover:bg-soft hover:text-ink",
             )
           }
@@ -122,7 +125,9 @@ export const Sidebar: React.FC<Props> = ({
           <Icon size={18} className="relative shrink-0" />
           {!slim && (
             <>
-              <span className="relative flex-1 truncate text-left">{s.title}</span>
+              <span className="relative flex-1 truncate text-left">
+                {s.title}
+              </span>
               <ChevronDown
                 size={16}
                 className={cn(
@@ -153,7 +158,9 @@ export const Sidebar: React.FC<Props> = ({
                     className={({ isActive: a }) =>
                       cn(
                         "relative flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-semibold transition-colors",
-                        a ? "text-brand" : "text-mute hover:bg-soft hover:text-ink",
+                        a
+                          ? "text-brand"
+                          : "text-mute hover:bg-soft hover:text-ink",
                       )
                     }
                   >
@@ -163,7 +170,11 @@ export const Sidebar: React.FC<Props> = ({
                           <motion.span
                             layoutId={pillId}
                             className="absolute inset-0 rounded-xl bg-brand/12"
-                            transition={{ type: "spring", damping: 28, stiffness: 340 }}
+                            transition={{
+                              type: "spring",
+                              damping: 28,
+                              stiffness: 340,
+                            }}
                           />
                         )}
                         <span
@@ -209,8 +220,7 @@ export const Sidebar: React.FC<Props> = ({
       <ul
         ref={listRef}
         className={cn(
-          "mt-2 min-h-0 space-y-0.5 overflow-y-auto overscroll-contain pr-1",
-          slim ? "flex-1" : "flex-initial",
+          "mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-contain pr-1 ",
         )}
       >
         {sections.map((s) => (
@@ -225,17 +235,6 @@ export const Sidebar: React.FC<Props> = ({
           </li>
         ))}
       </ul>
-      {!slim && (
-        <div className="mt-3 flex min-h-[132px] max-h-56 shrink-0 grow flex-col overflow-hidden rounded-2xl bg-deep p-4 text-white">
-          <div className="grid flex-1 place-items-center">
-            <Tanker size={104} className="opacity-95" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold">Tanker leaves at 9:30</p>
-            <p className="text-xs text-white/60">Check stock before dispatch.</p>
-          </div>
-        </div>
-      )}
       {!mobile && (
         <button
           onClick={onToggle}

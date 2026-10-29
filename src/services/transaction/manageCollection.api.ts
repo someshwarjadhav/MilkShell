@@ -138,16 +138,11 @@ export async function updateEntry(e: UpdateEntry): Promise<number> {
   return rate;
 }
 
-export const buildDeletePayload = (row: {
-  recordId: string;
-  vlccid: string;
-  date: string;
-}) => ({
-  recordid: row.recordId,
-  id: row.recordId,
-  vlccid: row.vlccid,
-  dtdate: row.date,
-});
+export const buildDeleteForm = (recordId: string): FormData => {
+  const form = new FormData();
+  form.append("id", recordId);
+  return form;
+};
 
 export async function deleteEntry(row: {
   recordId: string;
@@ -156,8 +151,7 @@ export async function deleteEntry(row: {
 }): Promise<string> {
   const text = await call(MANAGE_DELETE_PATH, {
     method: "POST",
-    body: JSON.stringify(buildDeletePayload(row)),
-    headers: { "Content-Type": "application/json" },
+    body: buildDeleteForm(row.recordId),
   });
   clearRequestMemo();
   return readReply(text).message;

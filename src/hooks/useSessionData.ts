@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useLocation } from "react-router-dom";
 import {
   getCenters,
   getMenuTree,
   getReportConfig,
   restoreSession,
+  subscribeMenu,
 } from "../services/bootstrap";
 import { columnOrder, columnVisible } from "../services/report/report.api";
 import type { Center } from "../services/mappers/center.mapper";
@@ -15,10 +16,10 @@ export function useLoginData(): LoginProfile | null {
   return useMemo(() => restoreSession(), [pathname]);
 }
 
-
 export const useCenters = (): Center[] => getCenters();
 
-export const useMenuTree = () => getMenuTree();
+export const useMenuTree = () =>
+  useSyncExternalStore(subscribeMenu, getMenuTree);
 
 export function useReportColumns(report: string) {
   const cfg = getReportConfig();

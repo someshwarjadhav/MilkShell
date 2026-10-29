@@ -169,6 +169,8 @@ const FarmerMilkEntry: React.FC = () => {
         shift,
         milktype: milk,
         entrydate: date,
+        
+        rateid: farmer.rateId || farmer.farmerId,
         qty: String(qtyN),
         fat: String(fatN),
         snf: String(snfN),
