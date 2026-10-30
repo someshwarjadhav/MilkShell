@@ -1,5 +1,5 @@
 import { gatewayGet, gatewayText, listOf } from "../http/client";
-import { ApiError } from "../http/errors";
+import { ApiError, isEmptyReply } from "../http/errors";
 import { isObj, pick, pickValue, rowsFrom, type Obj } from "../utils/loose";
 import { checkReply } from "./farmerMaster.api";
 import { getSession } from "../session";
@@ -67,6 +67,21 @@ export const VLC_TYPES = ["Cooperative Society", "Private", "Individual"];
 
 const q = encodeURIComponent;
 
+async function orNone<T>(
+  call: () => Promise<unknown>,
+  onData: (json: unknown) => T,
+  none: T,
+): Promise<T> {
+  let json: unknown;
+  try {
+    json = await call();
+  } catch (e) {
+    if (isEmptyReply(e)) return none;
+    throw e;
+  }
+  return onData(json);
+}
+
 const asObj = (json: unknown): Obj => {
   if (Array.isArray(json)) return (json.find(isObj) as Obj | undefined) ?? {};
   if (isObj(json)) {
@@ -83,25 +98,32 @@ export async function getMccRoute(
   mccid: string,
   plantid: string,
 ): Promise<VlcRoute[]> {
-  const json = await gatewayGet(
-    `/home/getMccRoute?mccid=${q(mccid)}&plantid=${q(plantid)}`,
-    0,
+  return orNone<VlcRoute[]>(
+    () =>
+      gatewayGet(
+        `/home/getMccRoute?mccid=${q(mccid)}&plantid=${q(plantid)}`,
+        0,
+      ),
+    (json) =>
+      rowsFrom(json)
+        .map((r) => ({
+          routeId: pick(r, ["routeid", "id"]),
+          routeName: pick(r, ["routename", "name"]),
+        }))
+        .filter((r) => r.routeId),
+    [],
   );
-  return rowsFrom(json)
-    .map((r) => ({
-      routeId: pick(r, ["routeid", "id"]),
-      routeName: pick(r, ["routename", "name"]),
-    }))
-    .filter((r) => r.routeId);
 }
 
 export async function getMaxVlcc(
   mccid: string,
   plantid: string,
 ): Promise<VlcSlots | null> {
-  const json = await gatewayGet(
-    `/home/getMaxVlcc?mccid=${q(mccid)}&plantid=${q(plantid)}`,
-    0,
+  const json = await orNone<unknown>(
+    () =>
+      gatewayGet(`/home/getMaxVlcc?mccid=${q(mccid)}&plantid=${q(plantid)}`, 0),
+    (j) => j,
+    null,
   );
   const o = asObj(json);
   const s = (...k: string[]) => {
@@ -158,19 +180,24 @@ export async function getVillageDetails(
   mccid: string,
   routeid: string,
 ): Promise<VlcRecord[]> {
-  const json = await gatewayGet(
-    `/home/getVillageDetails?mccid=${q(mccid)}&routeid=%20${q(routeid)}`,
-    0,
+  return orNone<VlcRecord[]>(
+    () =>
+      gatewayGet(
+        `/home/getVillageDetails?mccid=${q(mccid)}&routeid=%20${q(routeid)}`,
+        0,
+      ),
+    (json) => listOf<Obj>(json).map((r, i) => mapVillage(r, i, routeid)),
+    [],
   );
-  return listOf<Obj>(json).map((r, i) => mapVillage(r, i, routeid));
 }
 
 export async function getVillageById(
   villageid: string,
 ): Promise<VlcRecord | null> {
-  const json = await gatewayGet(
-    `/home/getVillageId?villageid=${q(villageid)}`,
-    0,
+  const json = await orNone<unknown>(
+    () => gatewayGet(`/home/getVillageId?villageid=${q(villageid)}`, 0),
+    (j) => j,
+    null,
   );
   const o = asObj(json);
   return Object.keys(o).length ? mapVillage(o, 0, "") : null;

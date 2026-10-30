@@ -163,7 +163,7 @@ const Login: React.FC = () => {
                 <span className="text-sm font-semibold">Collector app</span>
               </div>
               <div className="mt-2 flex -space-x-2">
-                {(["cow", "buffalo", "goat"] as const).map((t) => (
+                {(["cow", "buffalo", "mix"] as const).map((t) => (
                   <AnimalHead
                     key={t}
                     type={t}

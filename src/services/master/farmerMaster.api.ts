@@ -154,7 +154,6 @@ export async function getDataById(
   return { ...rec, farmerId: rec.farmerId || farmerId };
 }
 
-
 export function toPayload(f: FarmerInput, isEdit = false) {
   return {
     farmer: String(f.farmerId).trim(),
@@ -169,7 +168,7 @@ export function toPayload(f: FarmerInput, isEdit = false) {
     nameinbank: f.nameInBank.trim(),
     farmeraadhaar: f.aadhaar,
     farmerstatus: f.active ? "1" : "0",
-    action: isEdit ? "update" : "insert", 
+    action: isEdit ? "update" : "insert",
   };
 }
 
@@ -192,7 +191,6 @@ export function toExcelPayload(f: FarmerInput) {
 const BAD_LENIENT = /(fail|error|exception|invalid|not\s+(saved|updated))/i;
 const BAD_TEXT =
   /(fail|error|exception|invalid|not\s+(saved|deleted|updated|found)|already|duplicate|exist)/i;
-
 
 export function checkReply(
   text: string,
@@ -265,7 +263,6 @@ export interface StatusChange {
   active: boolean;
 }
 
-
 export async function updateFarmerStatus(all: StatusChange[]): Promise<string> {
   const byVillage = new Map<string, { off: string[]; on: string[] }>();
   for (const c of all) {
@@ -287,15 +284,4 @@ export async function updateFarmerStatus(all: StatusChange[]): Promise<string> {
     last = checkReply(text, "The status could not be updated.");
   }
   return last;
-}
-
-export async function deleteFarmer(
-  farmerId: string,
-  vlccid: string,
-): Promise<string> {
-  const text = await gatewayText(
-    `/home/DeleteFarmer?farmerid=${encodeURIComponent(farmerId)}&vlccid=${encodeURIComponent(vlccid)}`,
-    { method: "GET" },
-  );
-  return checkReply(text, "The farmer could not be deleted.");
 }
