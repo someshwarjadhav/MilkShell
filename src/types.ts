@@ -1,4 +1,4 @@
-export type MilkType = "cow" | "buffalo" | "goat";
+export type MilkType = "cow" | "buffalo" | "mix";
 
 export type Flag = "low-fat" | "low-snf" | "water" | "adulterated";
 

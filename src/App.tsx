@@ -130,6 +130,9 @@ const App: React.FC = () => {
             <Route element={<RouteGate />}>
               <Route index element={<Dashboard />} />
               <Route path="live" element={<LiveCollection />} />
+
+
+              {/* Reports */}
               <Route path="collections" element={<FarmerCollectionRoute />} />
               <Route
                 path="reports/farmerwise"
@@ -155,6 +158,8 @@ const App: React.FC = () => {
                   <EkoCalibration />
                 }
               />
+
+              {/* Transactions */}
               <Route
                 path="transactions/vlc-milk-entry"
                 element={
@@ -173,6 +178,8 @@ const App: React.FC = () => {
                   <ManageCollection />
                 }
               />
+
+              {/* master */}
               <Route path="farmers" element={<Farmers />} />
               <Route path="farmers/report" element={<Farmers />} />
               <Route

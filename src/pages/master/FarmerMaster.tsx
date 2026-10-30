@@ -7,14 +7,12 @@ import {
   Plus,
   RotateCcw,
   Search,
-  Trash2,
   Upload,
   Users,
 } from "lucide-react";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
-import { Modal } from "../../components/ui/Modal";
 import { Field, Input, Select } from "../../components/ui/Fields";
 import { DataTable, type Column } from "../../components/ui/DataTable";
 import { ErrorBlock } from "../../components/Widget";
@@ -28,7 +26,6 @@ import { ApiError } from "../../services/http/errors";
 import { nf } from "../../lib/format";
 import { DEFAULT_PAGE_SIZE } from "../../lib/global";
 import {
-  deleteFarmer,
   getData,
   getDataById,
   getMaxId,
@@ -280,25 +277,6 @@ const FarmerMaster: React.FC = () => {
     );
   };
 
-  const [toDelete, setToDelete] = useState<MasterRecord | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  const confirmDelete = async () => {
-    if (!toDelete) return;
-    setDeleting(true);
-    try {
-      await deleteFarmer(toDelete.farmerId, toDelete.vlccid);
-      toast("Farmer deleted successfully!");
-      if (editing?.key === toDelete.key) resetForm();
-      setToDelete(null);
-      await load();
-    } catch (e) {
-      toast(msg(e, "The farmer could not be deleted"), "warn");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   const saveStatus = async () => {
     if (changed.length === 0 || savingStatus) return;
     setSavingStatus(true);
@@ -463,14 +441,6 @@ const FarmerMaster: React.FC = () => {
             className="text-brand hover:opacity-70 disabled:opacity-40"
           >
             <Pencil size={16} />
-          </button>
-          <button
-            aria-label={`Delete ${r.name}`}
-            title="Delete"
-            onClick={() => setToDelete(r)}
-            className="text-danger hover:opacity-70"
-          >
-            <Trash2 size={16} />
           </button>
           <input
             type="checkbox"
@@ -816,39 +786,6 @@ const FarmerMaster: React.FC = () => {
           )}
         </Card>
       </Reveal>
-
-      <Modal
-        open={!!toDelete}
-        onClose={() => (deleting ? undefined : setToDelete(null))}
-        title="Delete farmer?"
-        subtitle={
-          toDelete
-            ? `${toDelete.name || "Farmer"} · code ${toDelete.farmerId} · ${vlccOption(toDelete.vlccid)}`
-            : ""
-        }
-        footer={
-          <>
-            <Button
-              variant="ghost"
-              disabled={deleting}
-              onClick={() => setToDelete(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              loading={deleting}
-              onClick={() => void confirmDelete()}
-            >
-              Delete
-            </Button>
-          </>
-        }
-      >
-        <p className="text-sm text-mute">
-          This removes the farmer from the portal. This cannot be undone.
-        </p>
-      </Modal>
     </ReportPage>
   );
 };

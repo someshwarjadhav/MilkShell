@@ -8,3 +8,12 @@ export class ApiError extends Error {
     this.kind = kind;
   }
 }
+
+export class EmptyReplyError extends ApiError {
+  constructor(message = 'The server sent an empty reply.') {
+    super(message, 'parse');
+    this.name = 'EmptyReplyError';
+  }
+}
+
+export const isEmptyReply = (e: unknown): e is EmptyReplyError => e instanceof EmptyReplyError;

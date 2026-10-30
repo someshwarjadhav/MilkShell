@@ -5,7 +5,7 @@ import {
 } from "../config";
 import { getSession } from "../session";
 import { decryptPayload } from "../../lib/crypto";
-import { ApiError } from "./errors";
+import { ApiError, EmptyReplyError } from "./errors";
 
 export type Priority = 0 | 1 | 2;
 let active = 0;
@@ -52,15 +52,20 @@ function decryptReply(v: unknown): unknown {
     try {
       return decryptPayload(s.trim());
     } catch {
-      throw new ApiError("The server reply is encrypted and could not be decrypted. Check VITE_ENCRYPTION_KEY in .env.local.", "parse");
+      throw new ApiError(
+        "The server reply is encrypted and could not be decrypted. Check VITE_ENCRYPTION_KEY in .env.local.",
+        "parse",
+      );
     }
   };
   if (typeof v === "string" && looksEncrypted(v)) return decryptReply(open(v));
   if (isObj(v)) {
     for (const k of Object.keys(v)) {
-      if (!["data", "response", "result", "payload"].includes(k.toLowerCase())) continue;
+      if (!["data", "response", "result", "payload"].includes(k.toLowerCase()))
+        continue;
       const inner = v[k];
-      if (typeof inner === "string" && looksEncrypted(inner)) return decryptReply(open(inner));
+      if (typeof inner === "string" && looksEncrypted(inner))
+        return decryptReply(open(inner));
     }
   }
   return v;
@@ -68,7 +73,7 @@ function decryptReply(v: unknown): unknown {
 
 export function parseGatewayText(text: string): unknown {
   const clean = text.replace(/[\r\n]+/g, "").trim();
-  if (!clean) throw new ApiError("The server sent an empty reply.", "parse");
+  if (!clean) throw new EmptyReplyError();
   if (looksEncrypted(clean)) return decryptReply(clean);
   if (clean.startsWith("<")) {
     throw new ApiError(
@@ -297,27 +302,54 @@ export async function gatewayText(
   try {
     const res = await fetch(absolute ? endpoint : urlFor(endpoint), {
       ...init,
-      headers: { Accept: "application/json, text/plain, */*", ...((init.headers as Record<string, string>) ?? {}) },
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        ...((init.headers as Record<string, string>) ?? {}),
+      },
       signal: controller.signal,
     });
     if (res.status === 401 || res.status === 403)
-      throw new ApiError("Your session was rejected by the server. Please sign in again.", "auth");
+      throw new ApiError(
+        "Your session was rejected by the server. Please sign in again.",
+        "auth",
+      );
     const text = await res.text();
     if (import.meta.env.DEV)
-      console.debug(`[smartx] ${init.method ?? "GET"} ${endpoint} -> ${res.status}`, {
-        sent: typeof init.body === "string" ? init.body.slice(0, 400) : init.body ? "[form data]" : endpoint,
-        reply: text.replace(/[\r\n]+/g, "").slice(0, 300),
-      });
+      console.debug(
+        `[smartx] ${init.method ?? "GET"} ${endpoint} -> ${res.status}`,
+        {
+          sent:
+            typeof init.body === "string"
+              ? init.body.slice(0, 400)
+              : init.body
+                ? "[form data]"
+                : endpoint,
+          reply: text.replace(/[\r\n]+/g, "").slice(0, 300),
+        },
+      );
     if (!res.ok) {
-      const body = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
-      throw new ApiError(`The server answered with error ${res.status}${body ? `: ${body}` : "."}`, "server");
+      const body = text
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 200);
+      throw new ApiError(
+        `The server answered with error ${res.status}${body ? `: ${body}` : "."}`,
+        "server",
+      );
     }
     return text;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (controller.signal.aborted)
-      throw new ApiError(`The server took longer than ${REQUEST_TIMEOUT_MS / 1000} seconds to answer.`, "timeout");
-    throw new ApiError("Cannot reach the server. Check your connection and try again.", "network");
+      throw new ApiError(
+        `The server took longer than ${REQUEST_TIMEOUT_MS / 1000} seconds to answer.`,
+        "timeout",
+      );
+    throw new ApiError(
+      "Cannot reach the server. Check your connection and try again.",
+      "network",
+    );
   } finally {
     clearTimeout(timer);
     release();

@@ -39,6 +39,7 @@ import { ChartTip } from "../components/ChartTip";
 import { PageHeader } from "../components/ui/PageHeader";
 import { LoadingBlock, QueryBoundary } from "../components/Widget";
 import { MILK_META } from "../lib/milk";
+import type { MilkType } from "../types";
 import { fmtDate, fmtShort, nf, todayISO } from "../lib/format";
 import { KIND_META, type Kind } from "../services/utils/milk";
 import {
@@ -218,13 +219,9 @@ const Dashboard: React.FC = () => {
   }, [trend30]);
   const fill = target ? Math.min(100, (t.liter / target) * 100) : 0;
 
-  const kinds: Kind[] = [
-    "cow",
-    "buffalo",
-    "goat",
-    ...(t.byKind.mix > 0 ? (["mix"] as Kind[]) : []),
-  ];
-  const donut = (["cow", "buffalo", "goat", "mix"] as Kind[])
+  // This dairy collects cow, buffalo and mix milk only (no goat).
+  const kinds: Kind[] = ["cow", "buffalo", "mix"];
+  const donut = (["cow", "buffalo", "mix"] as Kind[])
     .filter((k) => t.byKind[k] > 0)
     .map((k) => ({
       name: KIND_META[k].label,
@@ -234,7 +231,6 @@ const Dashboard: React.FC = () => {
 
   const shiftBars = useMemo(() => {
     const list: Kind[] = ["cow", "buffalo", "mix"];
-    if (vlccRows.some((r) => r.milk === "goat")) list.splice(2, 0, "goat");
     return list.map((k) => ({
       name: KIND_META[k].label,
       morning: Math.round(
@@ -402,11 +398,9 @@ const Dashboard: React.FC = () => {
                         <span className="flex items-center gap-2 font-semibold">
                           <KindDot kind={k} />
                           {KIND_META[k].label}{" "}
-                          {k !== "mix" && (
-                            <span className="hidden text-xs font-normal text-mute 2xl:inline">
-                              {MILK_META[k].local}
-                            </span>
-                          )}
+                          <span className="hidden text-xs font-normal text-mute 2xl:inline">
+                            {MILK_META[k as MilkType].local}
+                          </span>
                         </span>
                         <span className="whitespace-nowrap tnum font-bold">
                           {nf(t.byKind[k])} L
