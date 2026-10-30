@@ -63,7 +63,12 @@ export const NAV_MODULES: NavModule[] = [
         "/administrator/system-administrator",
         "system-administrator",
       ),
-      form("User Access", "/administrator/useraccess", "useraccess"),
+      form(
+        "User Access",
+        "/administrator/useraccess",
+        "useraccess",
+        "/administrator/user-access",
+      ),
       form(
         "Route Master",
         "/administrator/route-supervisor",

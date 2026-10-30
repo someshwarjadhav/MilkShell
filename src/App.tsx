@@ -52,6 +52,7 @@ const MobileAppSettings = lazy(
 );
 const DpuSettings = lazy(() => import("./pages/settings/DpuSettings"));
 const EkoMilkSettings = lazy(() => import("./pages/settings/EkoMilkSettings"));
+const UserAccess = lazy(() => import("./pages/administrator/UserAccess"));
 const FormPlaceholder = lazy(() => import("./pages/FormPlaceholder"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -264,6 +265,7 @@ const App: React.FC = () => {
                 }
               />
               <Route path="settings" element={<Settings />} />
+              <Route path="administrator/user-access" element={<UserAccess />} />
               <Route path="portal/*" element={<FormPlaceholder />} />
               <Route path="*" element={<NotFound />} />
             </Route>
