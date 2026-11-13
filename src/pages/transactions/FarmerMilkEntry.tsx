@@ -6,7 +6,8 @@ import { Button } from "../../components/ui/Button";
 import { Field, Input, Select } from "../../components/ui/Fields";
 import { CardTitle, ReportPage, Reveal } from "../../components/ReportKit";
 import { useToast } from "../../context/ToastContext";
-import { todayISO } from "../../lib/format";
+import { farmerCode, todayISO } from "../../lib/format";
+import { enterNext } from "../../lib/enterNav";
 import { GLOBALSSHIFT } from "../../lib/global";
 import { useCenters } from "../../hooks/useSessionData";
 import { getSession } from "../../services/session";
@@ -40,7 +41,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const clrFrom = (snf: number, fat: number) => r1((snf - 0.21 * fat - 0.36) * 4);
 
 const farmerLabel = (f: MasterFarmer) =>
-  f.name ? `${f.farmerId} - ${f.name}` : f.farmerId;
+  f.name ? `${farmerCode(f.farmerId)} | ${f.name}` : farmerCode(f.farmerId);
 
 const FarmerMilkEntry: React.FC = () => {
   const toast = useToast();
@@ -118,6 +119,10 @@ const FarmerMilkEntry: React.FC = () => {
     return (
       farmers.find((f) => farmerLabel(f).toLowerCase() === t) ??
       farmers.find((f) => f.farmerId.toLowerCase() === t) ??
+      farmers.find((f) => farmerCode(f.farmerId).toLowerCase() === t) ??
+      (/^\d+$/.test(t)
+        ? farmers.find((f) => /^\d+$/.test(f.farmerId) && Number(f.farmerId) === Number(t))
+        : undefined) ??
       null
     );
   }, [farmerText, farmers]);
@@ -225,6 +230,9 @@ const FarmerMilkEntry: React.FC = () => {
             }
           />
 
+          <div
+          onKeyDown={(e) => enterNext(e, () => void submit())}
+        >
           <div className="grid gap-4 px-5 pt-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-3 xl:grid-cols-5">
             <Field label="Date">
               <Input
@@ -351,6 +359,7 @@ const FarmerMilkEntry: React.FC = () => {
                 Submit
               </Button>
             </div>
+          </div>
           </div>
         </Card>
       </Reveal>

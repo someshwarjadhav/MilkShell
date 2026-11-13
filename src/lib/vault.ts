@@ -2,6 +2,7 @@ import { decryptPayload, encryptPayload } from "./crypto";
 
 export const LOGIN_KEY = "dhara-login";
 export const DATA_KEY = "dhara-session-data";
+export const MENU_KEY = "dhara-menu";
 
 const LEGACY_KEYS = ["dhara-user"];
 
@@ -25,7 +26,7 @@ export function vaultLoad<T>(key: string): T | null {
 }
 
 export function vaultClear(): void {
-  for (const k of [LOGIN_KEY, DATA_KEY, ...LEGACY_KEYS]) {
+  for (const k of [LOGIN_KEY, DATA_KEY, MENU_KEY, ...LEGACY_KEYS]) {
     try {
       sessionStorage.removeItem(k);
     } catch {}

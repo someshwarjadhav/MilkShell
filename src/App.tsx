@@ -53,6 +53,9 @@ const MobileAppSettings = lazy(
 const DpuSettings = lazy(() => import("./pages/settings/DpuSettings"));
 const EkoMilkSettings = lazy(() => import("./pages/settings/EkoMilkSettings"));
 const UserAccess = lazy(() => import("./pages/administrator/UserAccess"));
+const BillFreeze = lazy(() => import("./pages/administrator/BillFreeze"));
+const PaymentVoucher = lazy(() => import("./pages/account/PaymentVoucher"));
+const ReceiptVoucher = lazy(() => import("./pages/account/ReceiptVoucher"));
 const FormPlaceholder = lazy(() => import("./pages/FormPlaceholder"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -266,6 +269,9 @@ const App: React.FC = () => {
               />
               <Route path="settings" element={<Settings />} />
               <Route path="administrator/user-access" element={<UserAccess />} />
+              <Route path="administrator/bill-freeze" element={<BillFreeze />} />
+              <Route path="account/payment-voucher" element={<PaymentVoucher />} />
+              <Route path="account/receipt-voucher" element={<ReceiptVoucher />} />
               <Route path="portal/*" element={<FormPlaceholder />} />
               <Route path="*" element={<NotFound />} />
             </Route>

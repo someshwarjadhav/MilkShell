@@ -65,6 +65,13 @@
     animation: shimmer 1.6s linear infinite;
   }
   .tnum { font-variant-numeric: tabular-nums; }
+  /* the one scroll bar of the dropdown list: visible on the light panel and on dark themes */
+  .dd-scroll { scrollbar-width: thin; scrollbar-color: rgb(var(--mute) / 0.45) transparent; }
+  .dd-scroll::-webkit-scrollbar { width: 8px; }
+  .dd-scroll::-webkit-scrollbar-track { background: transparent; margin: 4px 0; }
+  .dd-scroll::-webkit-scrollbar-thumb { background: rgb(var(--mute) / 0.4); border-radius: 9999px; }
+  .dd-scroll::-webkit-scrollbar-thumb:hover { background: rgb(var(--mute) / 0.65); }
+
 }
 
 @keyframes wave { to { transform: translateX(-90px); } }

@@ -1,3 +1,5 @@
+import { excelFileName, exactExcelFileName } from './fileName';
+
 export interface ExportCol<T = unknown> {
   header: string;
   value: (row: T) => string | number;
@@ -31,27 +33,195 @@ export function exportCSV<T>(name: string, cols: ExportCol<T>[], rows: T[]) {
   download(`${name}.csv`, 'text/csv;charset=utf-8', '\ufeff' + head + '\n' + body);
 }
 
-function tableHTML<T>(title: string, cols: ExportCol<T>[], rows: T[]) {
-  const th = cols.map((column) => `<th>${htmlEsc(column.header)}</th>`).join('');
-  const tr = rows.map((row) => `<tr>${cols.map((column) => `<td>${htmlEsc(column.value(row))}</td>`).join('')}</tr>`).join('');
-  const generated = new Date().toLocaleString();
-  return `
-    <header class="report-header">
-      <div class="brand-mark" aria-hidden="true">D</div>
-      <div class="report-heading">
-        <p class="eyebrow">DHARA DAIRY</p>
-        <h1>${htmlEsc(title)}</h1>
-        <p class="generated">Generated ${htmlEsc(generated)}</p>
-      </div>
-    </header>
-    <table><thead><tr>${th}</tr></thead><tbody>${tr || `<tr><td colspan="${cols.length}">No records in this report.</td></tr>`}</tbody></table>
-    <footer>Dhara Dairy · Data from the SmartX portal</footer>
-  `;
+/* ------------------------------------------------------------------ */
+/*  Excel  (real .xlsx, same engine rules as the SmartX portal)        */
+/* ------------------------------------------------------------------ */
+
+export interface ExcelOptions {
+  /** true = the file is saved with exactly `name` (no download date added) */
+  exactFileName?: boolean;
+  /** worksheet name (default "Sheet1") */
+  sheetName?: string;
 }
 
-export function exportExcel<T>(name: string, cols: ExportCol<T>[], rows: T[]) {
-  const html = `<html><head><meta charset="utf-8"></head><body>${tableHTML(name, cols, rows)}</body></html>`;
-  download(`${name}.xls`, 'application/vnd.ms-excel', html);
+type XlsxApi = typeof import('xlsx');
+
+/**
+ * xlsx-js-style = SheetJS with cell styles (bold Total row). It is used when it is installed (`npm install`);
+ * if it cannot be loaded the Excel still downloads with the same data and formulas, just without the bold Total row.
+ */
+async function loadXlsx(): Promise<XlsxApi> {
+  try {
+    const mod = (await import('xlsx-js-style')) as unknown as XlsxApi & { default?: XlsxApi };
+    const api = mod.default && mod.default.utils ? mod.default : mod;
+    if (api.utils) return api;
+  } catch {
+    /* fall back to the plain build below */
+  }
+  return import('xlsx');
+}
+
+/** columns that look like numbers but are identifiers / codes / phone numbers stay text (leading zeros, long numbers) */
+const TEXT_HEADER = /(^|\s)(id|code|mobile|phone|contact|account|a\/c|acc|ifsc|aadhaar|aadhar|pan|pin|sample|no\.?|number|date|time|village|name)(\s|$)|farmer id|village id|station id|bill no|sr\.? ?no/i;
+const ID_HEADER = /(^|\s)(id|farmer id|village id|station id|sample no|sr\.? ?no|no\.?)(\s|$)/i;
+
+const NUM_TEXT = /^-?\d+(\.\d+)?$/;
+const toNumber = (v: string | number): number | null => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const t = String(v).replace(/[₹,\s]/g, '').replace(/^Rs\.?/i, '');
+  return NUM_TEXT.test(t) ? Number(t) : null;
+};
+
+type CellKind = 'text' | 'id' | 'int' | 'dec';
+interface Shape {
+  kind: CellKind;
+  decimals: number;
+}
+
+function shapeOf(header: string, values: Array<string | number>): Shape {
+  const filled = values.filter((v) => !(v === '' || v === null || v === undefined));
+  if (!filled.length) return { kind: 'text', decimals: 0 };
+  // numbers that arrive as real numbers are numbers, unless the heading says it is an id (then no thousands comma)
+  const allNumeric = filled.every((v) => toNumber(v) !== null);
+  if (!allNumeric) return { kind: 'text', decimals: 0 };
+  const anyRealNumber = filled.some((v) => typeof v === 'number');
+  if (!anyRealNumber && TEXT_HEADER.test(header)) return { kind: 'text', decimals: 0 }; // "0012", mobile numbers ... kept as typed
+  if (ID_HEADER.test(header.trim())) return { kind: 'id', decimals: 0 };
+  let decimals = 0;
+  for (const v of filled) {
+    const n = toNumber(v)!;
+    const frac = (String(n).split('.')[1] ?? '').length;
+    decimals = Math.max(decimals, Math.min(3, frac));
+  }
+  // text like "12.50" typed with 2 decimals keeps 2 decimals
+  for (const v of filled) {
+    if (typeof v === 'string') decimals = Math.max(decimals, Math.min(3, (v.replace(/,/g, '').split('.')[1] ?? '').length));
+  }
+  return { kind: decimals ? 'dec' : 'int', decimals };
+}
+
+const SUM_HEADERS = ['liter', 'liters', 'litre', 'litres', 'qty', 'total liter', 'kg', 'amount', 'total amount', 'kg fat', 'kg snf', 'net payment', 'total sale', 'total receipt', 'balance', 'milk amount', 'total'];
+const AVG_HEADERS = ['fat', 'snf', 'clr', 'water', 'avg fat', 'avg. fat', 'avg snf', 'avg. snf'];
+const RATE_HEADERS = ['rate', 'avg rate', 'avg. rate'];
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * One worksheet for every Excel export (same rules as SmartX):
+ *  header on row 1, real numbers underneath, Total row with REAL formulas (=SUM, weighted average ...),
+ *  so clicking a Total cell in Excel shows its formula in the formula bar and the sheet keeps working when a value is edited.
+ */
+export async function exportExcel<T>(name: string, cols: ExportCol<T>[], rows: T[], options: ExcelOptions = {}): Promise<void> {
+  const XLSX = await loadXlsx();
+  const raw = rows.map((row) => cols.map((c) => c.value(row)));
+  const shapes = cols.map((c, i) => shapeOf(c.header, raw.map((r) => r[i] as string | number)));
+  const n = raw.length;
+  const ncol = cols.length;
+
+  // cell values: numbers are written as numbers, everything else as typed
+  const body: Array<Array<string | number>> = raw.map((r) =>
+    r.map((v, i) => {
+      const shape = shapes[i]!;
+      if (v === '' || v === null || v === undefined) return '';
+      if (shape.kind === 'text') return v;
+      return toNumber(v) ?? v;
+    }),
+  );
+
+  const lower = cols.map((c) => c.header.trim().toLowerCase());
+  const numericCol = (i: number) => shapes[i]!.kind === 'dec' || shapes[i]!.kind === 'int';
+  const qty = lower.findIndex((h, i) => ['liter', 'liters', 'litre', 'litres', 'qty', 'total liter'].includes(h) && numericCol(i));
+  const amount = lower.findIndex((h, i) => ['amount', 'total amount', 'milk amount'].includes(h) && numericCol(i));
+  type Total = 'sum' | { wavg: number } | { ratio: [number, number] } | undefined;
+  const totalKind = (i: number): Total => {
+    if (!numericCol(i) || n === 0) return undefined;
+    const h = lower[i]!;
+    if (SUM_HEADERS.includes(h)) return 'sum';
+    if (AVG_HEADERS.includes(h) && qty >= 0 && i !== qty) return { wavg: qty };
+    if (RATE_HEADERS.includes(h) && qty >= 0 && amount >= 0) return { ratio: [amount, qty] };
+    return undefined;
+  };
+  const kinds = cols.map((_, i) => totalKind(i));
+  const hasTotals = kinds.some(Boolean);
+
+  const colNum = (i: number): number[] => body.map((r) => Number(r[i]) || 0);
+  const sumOf = (i: number) => colNum(i).reduce((a, b) => a + b, 0);
+  const totals: Array<string | number> = cols.map((_, i) => {
+    const k = kinds[i];
+    if (!k) return '';
+    if (k === 'sum') return r2(sumOf(i));
+    if ('wavg' in k) {
+      const w = sumOf(k.wavg);
+      const v = colNum(i);
+      const wt = colNum(k.wavg);
+      return w ? r2(v.reduce((a, x, j) => a + x * (wt[j] ?? 0), 0) / w) : 0;
+    }
+    const d = sumOf(k.ratio[1]);
+    return d ? r2(sumOf(k.ratio[0]) / d) : 0;
+  });
+  if (hasTotals && totals[0] === '') totals[0] = 'Total';
+
+  const aoa: Array<Array<string | number>> = [cols.map((c) => c.header), ...body];
+  if (hasTotals) aoa.push(totals);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // widths: every column fits its longest value or its heading, so nothing is shown as ####
+  const fmt = (v: string | number, s: Shape): string => {
+    if (typeof v !== 'number') return String(v ?? '');
+    if (s.kind === 'dec') return v.toLocaleString('en-IN', { minimumFractionDigits: s.decimals, maximumFractionDigits: s.decimals });
+    if (s.kind === 'int') return v.toLocaleString('en-IN');
+    return String(v);
+  };
+  ws['!cols'] = cols.map((c, i) => {
+    let longest = c.header.length + 3;
+    for (const r of body) longest = Math.max(longest, fmt(r[i]!, shapes[i]!).length);
+    if (hasTotals) longest = Math.max(longest, fmt(totals[i]!, shapes[i]!).length);
+    const isName = /name/i.test(c.header);
+    return { wch: isName ? 32 : Math.min(70, Math.max(9, longest + 2)) };
+  });
+
+  // filter arrows on the header row
+  if (n > 0) ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: n, c: Math.max(0, ncol - 1) } }) };
+
+  // number formats
+  const lastRow = n + (hasTotals ? 1 : 0);
+  for (let r = 1; r <= lastRow; r++) {
+    shapes.forEach((s, ci) => {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: ci })];
+      if (!cell || cell.t !== 'n') return;
+      if (s.kind === 'dec') cell.z = `#,##0.${'0'.repeat(s.decimals)}`;
+      else if (s.kind === 'int') cell.z = '#,##0';
+      else if (s.kind === 'id') cell.z = '0';
+    });
+  }
+
+  // Total row = formulas (cached values stay, so viewers that do not recalculate still show the numbers)
+  if (hasTotals) {
+    const L = (i: number) => XLSX.utils.encode_col(i);
+    const rng = (i: number) => `${L(i)}2:${L(i)}${n + 1}`;
+    const totalRow = n + 1; // 0-based row index of the Total row
+    cols.forEach((_, ci) => {
+      const k = kinds[ci];
+      if (!k) return;
+      let f: string;
+      if (k === 'sum') f = `SUM(${rng(ci)})`;
+      else if ('wavg' in k) f = `IFERROR(SUMPRODUCT(${rng(k.wavg)},${rng(ci)})/SUM(${rng(k.wavg)}),0)`;
+      else f = `IFERROR(SUM(${rng(k.ratio[0])})/SUM(${rng(k.ratio[1])}),0)`;
+      const s = shapes[ci]!;
+      const z = s.kind === 'dec' ? `#,##0.${'0'.repeat(Math.max(2, s.decimals))}` : s.kind === 'int' ? '#,##0.00' : '0.00';
+      ws[XLSX.utils.encode_cell({ r: totalRow, c: ci })] = { t: 'n', v: Number(totals[ci]) || 0, f, z };
+    });
+    // the whole Total row is bold (needs xlsx-js-style, otherwise the style is simply ignored)
+    for (let ci = 0; ci < ncol; ci++) {
+      const addr = XLSX.utils.encode_cell({ r: totalRow, c: ci });
+      const cell = ws[addr] ?? (ws[addr] = { t: 's', v: '' });
+      (cell as unknown as { s?: unknown }).s = { font: { bold: true } };
+    }
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, (options.sheetName ?? 'Sheet1').slice(0, 31).replace(/[\\/?*[\]:]/g, ' '));
+  XLSX.writeFile(wb, options.exactFileName ? exactExcelFileName(name) : excelFileName(name), { compression: true });
 }
 
 

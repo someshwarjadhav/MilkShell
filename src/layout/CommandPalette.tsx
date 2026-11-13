@@ -6,7 +6,7 @@ import { CornerDownLeft, Search } from 'lucide-react';
 import { flattenNav, useNav } from './nav';
 import { useFarmerMaster, useSamples } from '../hooks/useSmartxData';
 import { buildFarmerBook } from '../services/farmer/farmerBook';
-import { addDays, todayISO } from '../lib/format';
+import { addDays, farmerCode, todayISO } from '../lib/format';
 import { cn } from '../lib/cn';
 import { vlccOption } from '../services/vlcc/names';
 
@@ -24,7 +24,7 @@ export const CommandPalette: React.FC<{ open: boolean; onClose: () => void }> = 
     const s = q.trim().toLowerCase();
     const pages = flattenNav(menu).filter((p) => !s || p.label.toLowerCase().includes(s) || (p.hint ?? '').toLowerCase().includes(s) || p.section.toLowerCase().includes(s)).map((p) => ({ key: p.to, label: p.label, hint: p.hint ?? p.section, to: p.to }));
     const people = s.length > 1
-      ? farmers.filter((f) => f.name.toLowerCase().includes(s) || f.farmerId.includes(s)).slice(0, 4).map((f) => ({ key: f.key, label: f.name, hint: `Farmer ${f.farmerId} · ${vlccOption(f.vlccid)}${f.village ? ` · ${f.village}` : ''}`, to: `/farmers?open=${encodeURIComponent(f.key)}` }))
+      ? farmers.filter((f) => f.name.toLowerCase().includes(s) || f.farmerId.includes(s) || farmerCode(f.farmerId).includes(s)).slice(0, 4).map((f) => ({ key: f.key, label: f.name, hint: `Farmer ${farmerCode(f.farmerId)} · ${vlccOption(f.vlccid)}${f.village ? ` · ${f.village}` : ''}`, to: `/farmers?open=${encodeURIComponent(f.key)}` }))
       : [];
     return [...pages, ...people];
   }, [q, farmers, menu]);

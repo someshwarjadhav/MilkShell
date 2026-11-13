@@ -2,8 +2,9 @@ import { BASE_URL } from "../config";
 import { getSession } from "../session";
 import { ApiError } from "../http/errors";
 import { gatewayText, parseGatewayText } from "../http/client";
-import { getMenu } from "../menu/menu.api";
-import { asFlag } from "../report/report.api";
+import { sendPath } from "../account/voucher.http";
+import { getMenu } from "../menu/menu.api.ts";
+import { asFlag } from "../report/report.api.ts";
 import {
   isObj,
   norm,
@@ -17,7 +18,7 @@ import {
 const HOST = BASE_URL || "https://smartx.shivinfotech.co.in";
 const GET_USER_URL = `${HOST}/home/getuser`;
 
-const ADD_USER_ACCESS_PATH = "/dairy/dairy/addUserAccessMS";
+const ADD_USER_ACCESS_PATH = "/dairy/dairy/addUserAccess";
 
 export interface AccessUser {
   id: string;
@@ -173,14 +174,12 @@ export function buildAccessFormData(
   return fd;
 }
 
-
 export const checkedKeys = (modules: AccessModule[]): Set<string> =>
   new Set(
     modules.flatMap((m) =>
       m.forms.filter((f) => f.checked).map((f) => `${m.moduleId}:${f.formId}`),
     ),
   );
-
 
 export const sameAccess = (a: Set<string>, b: Set<string>): boolean =>
   a.size === b.size && [...a].every((k) => b.has(k));
@@ -209,15 +208,22 @@ function assertSaved(text: string) {
 }
 
 export async function postData(formData: FormData): Promise<void> {
-  if (import.meta.env.DEV)
-    console.info(
-      "[addUserAccess] sending",
-      Object.fromEntries(formData.entries()),
-    );
-  const text = await gatewayText(
+  console.info(
+    "[UserAccess] addUserAccess -> POST",
     ADD_USER_ACCESS_PATH,
-    { method: "POST", body: formData },
-    0,
+    "rows:",
+    (() => {
+      try {
+        return (JSON.parse(String(formData.get("data"))) as unknown[]).length;
+      } catch {
+        return "?";
+      }
+    })(),
   );
+  const text = await sendPath(ADD_USER_ACCESS_PATH, () => ({
+    method: "POST",
+    body: formData,
+  }));
+  console.info("[UserAccess] addUserAccess reply <-", text.slice(0, 200));
   assertSaved(text);
 }

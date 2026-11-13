@@ -89,6 +89,16 @@ export const LOGIC_SHELL_USERNAME = "thelogicshell@gmail.com";
 export const LOGIC_SHELL_PASSWORD_SHA256 =
   "aa93eb3454c468f60f993efb06f8c71dde2a1a0fefcb8c4bc04e6c5f38cc2ae7"; 
 
+/**
+ * BANSI (Bansi Dairy, Nagpur).
+ * record = null  ->  this user is allowed and signs in through the real SmartX login API (the password is checked by the server).
+ * To make it a fully static login: sign in once with `npm run dev`, copy the record printed in the console
+ * ("[static-login] paste this into ...") into BANSI_LOGIN_RECORD, and set BANSI_PASSWORD_SHA256 to the SHA-256 of the password.
+ */
+export const BANSI_LOGIN_RECORD: unknown | null = null;
+export const BANSI_USERNAME = "bansidairynagpur@gmail.com";
+export const BANSI_PASSWORD_SHA256 = "";
+
 export interface StaticLoginEntry {
   username: string;
 
@@ -111,6 +121,11 @@ export const STATIC_LOGINS: StaticLoginEntry[] = [
     username: LOGIC_SHELL_USERNAME,
     passwordSha256: LOGIC_SHELL_PASSWORD_SHA256,
     record: LOGIC_SHELL_LOGIN_RECORD,
+  },
+  {
+    username: BANSI_USERNAME,
+    passwordSha256: BANSI_PASSWORD_SHA256,
+    record: BANSI_LOGIN_RECORD,
   },
 ];
 

@@ -2,7 +2,7 @@ import { SHIFT_EVENING, SHIFT_MORNING } from '../lib/global';
 import type * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, CircleUserRound, LifeBuoy, LogOut, Menu, Moon, Search, Sun } from 'lucide-react';
+import { Bell, LifeBuoy, LogOut, Menu, Moon, Search, Settings as SettingsIcon, Sun, UserCog } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ import { sampleStamp } from '../services/farmer/farmerBook';
 import { flagOf, FLAG_META } from '../lib/quality';
 import { initials, todayISO } from '../lib/format';
 import { Badge } from '../components/ui/Badge';
+import { ProfileModal } from '../components/ProfileModal';
 
 interface Props { onMenu: () => void; onSearch: () => void }
 
@@ -31,6 +32,7 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
   const { rows: samples } = useSamples(todayISO(), todayISO(), true, 2);
   const [bell, setBell] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [profile, setProfile] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   useOutside(bellRef, () => setBell(false));
@@ -90,7 +92,8 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
             {menu && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute right-0 top-12 w-64 rounded-3xl border border-line bg-panel p-2 shadow-pop">
                 <div className="px-3 py-2"><p className="font-bold">{user?.name}</p><p className="truncate text-xs text-mute">{user?.email}</p><p className="mt-1 text-xs text-brand">{user?.role}</p></div>
-                <Link to="/settings" onClick={() => setMenu(false)} className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold text-ink hover:bg-soft"><CircleUserRound size={16} />Account and settings</Link>
+                <button onClick={() => { setMenu(false); setProfile(true); }} className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold text-ink hover:bg-soft"><UserCog size={16} />Profile settings</button>
+                <Link to="/settings" onClick={() => setMenu(false)} className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold text-ink hover:bg-soft"><SettingsIcon size={16} />Account and settings</Link>
                 <Link to="/contact" onClick={() => setMenu(false)} className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold text-ink hover:bg-soft"><LifeBuoy size={16} />Contact support</Link>
                 <button onClick={logout} className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold text-danger hover:bg-danger/10"><LogOut size={16} />Sign out</button>
               </motion.div>
@@ -98,6 +101,7 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
           </AnimatePresence>
         </div>
       </div>
+      <ProfileModal open={profile} onClose={() => setProfile(false)} />
     </header>
   );
 };

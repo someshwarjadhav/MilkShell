@@ -56,7 +56,7 @@ import {
 } from "../services/dashboard/dashboard.api";
 import { fetchVlccCollection } from "../services/vlcc/vlcc.api";
 import { getSession } from "../services/session";
-import { vlccName } from "../services/vlcc/names";
+import { vlccCode, vlccName } from "../services/vlcc/names";
 import { buildCenters } from "../services/mappers/center.mapper";
 import { sampleDayCheck } from "../dev/selfcheck";
 import { refetchAll, useQuery, type QueryState } from "../hooks/useQuery";
@@ -78,7 +78,8 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
   const cc = useChartColors();
-  const [range, setRange] = useState<"7" | "14" | "30">("30");
+  // like SmartX: Today first, then the last 10 / 20 / 30 days
+  const [range, setRange] = useState<"1" | "10" | "20" | "30">("1");
   const [center, setCenter] = useState<string>("ALL");
   const today = todayISO();
   const ids = getSession()?.vlccIds ?? [];
@@ -197,8 +198,9 @@ const Dashboard: React.FC = () => {
       );
   }, [vlccRows, farmerRows, vlccQ.fetching, farmerQ.fetching]);
   const trend = useMemo(
-    () => buildTrend(chartQ.rows, today, Number(range)),
-    [chartQ.rows, today, range],
+    // "Today" shows the day the cards above show (today, or the latest day with milk when nothing came in yet)
+    () => buildTrend(chartQ.rows, range === "1" ? (day ?? today) : today, Number(range)),
+    [chartQ.rows, today, range, day],
   );
   const centers = useMemo(
     () => buildCenters(ids, getSession()?.vlccNames ?? {}, vlccRows),
@@ -491,7 +493,7 @@ const Dashboard: React.FC = () => {
 
                 {centers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name ? `${c.name} | ${c.id}` : c.id}
+                    {c.name ? `${c.name} | ${vlccCode(c.id)}` : vlccCode(c.id)}
                   </option>
                 ))}
               </Select>
@@ -499,8 +501,9 @@ const Dashboard: React.FC = () => {
                 value={range}
                 onChange={setRange}
                 options={[
-                  { value: "7", label: "7 days" },
-                  { value: "14", label: "14 days" },
+                  { value: "1", label: "Today" },
+                  { value: "10", label: "10 days" },
+                  { value: "20", label: "20 days" },
                   { value: "30", label: "30 days" },
                 ]}
               />
@@ -514,6 +517,45 @@ const Dashboard: React.FC = () => {
           emptyHint="The portal returned no days with milk for this selection."
         >
           <div className="h-[320px] px-2 pb-4 pt-4 sm:px-4">
+            {range === "1" ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={trend.days}
+                  margin={{ left: 0, right: 12, top: 8 }}
+                >
+                  <CartesianGrid stroke={cc.grid} vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: cc.tick, fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    domain={[0, "auto"]}
+                    allowDataOverflow
+                    tick={{ fill: cc.tick, fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={44}
+                  />
+                  <Tooltip
+                    cursor={false}
+                    content={<ChartTip format={(v) => `${nf(v, 1)} L`} />}
+                  />
+                  {(["cow", "buffalo", "mix"] as const).map((k) => (
+                    <Bar
+                      key={k}
+                      dataKey={k}
+                      name={KIND_META[k].label}
+                      fill={KIND_META[k].hex}
+                      radius={[8, 8, 0, 0]}
+                      maxBarSize={72}
+                      animationDuration={900}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={trend.days}
@@ -577,6 +619,7 @@ const Dashboard: React.FC = () => {
                 ))}
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </div>
           {trend.hasNegative && (
             <p className="flex items-center gap-1.5 px-5 pb-4 text-xs text-mute sm:px-6">

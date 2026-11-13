@@ -11,8 +11,8 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { StatCard } from '../components/ui/StatCard';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LoadingBlock, Notice } from '../components/Widget';
-import { vlccOption } from '../services/vlcc/names';
-import { addDays, fmtDate, inr, nf, todayISO } from '../lib/format';
+import { vlccCode, vlccOption } from '../services/vlcc/names';
+import { addDays, farmerCode, fmtDate, inr, nf, todayISO } from '../lib/format';
 import { exportCSV, exportPDF, type ExportCol } from '../lib/export';
 import { DEFAULT_PAGE_SIZE } from '../lib/global';
 import { KIND_META, type Kind } from '../services/utils/milk';
@@ -76,7 +76,7 @@ const Billing: React.FC = () => {
   const kinds = KINDS.filter((k) => bills.some((b) => b.liters[k] > 0));
 
   const cols: Column<Bill>[] = [
-    { key: 'f', header: 'Farmer', sort: (b) => b.name, cell: (b) => <div><p className="font-semibold">{b.name}</p><p className="text-xs text-mute">ID {b.farmerId} · {vlccOption(b.vlccid)}</p></div> },
+    { key: 'f', header: 'Farmer', sort: (b) => b.name, cell: (b) => <div><p className="font-semibold">{b.name}</p><p className="text-xs text-mute">ID {farmerCode(b.farmerId)} · {vlccOption(b.vlccid)}</p></div> },
     ...kinds.map<Column<Bill>>((k) => ({ key: k, header: `${KIND_META[k].label} L`, align: 'right', sort: (b) => b.liters[k], cell: (b) => (b.liters[k] ? nf(b.liters[k], 1) : '—') })),
     { key: 'total', header: 'Total L', align: 'right', sort: (b) => b.total, cell: (b) => nf(b.total, 1) },
     { key: 'gross', header: 'Amount payable', align: 'right', sort: (b) => b.gross, cell: (b) => <span className="font-bold">{inr(b.gross, 2)}</span> },
@@ -85,7 +85,7 @@ const Billing: React.FC = () => {
   ];
 
   const ex: ExportCol<Bill>[] = [
-    { header: 'Farmer ID', value: (b) => b.farmerId }, { header: 'VLC', value: (b) => b.vlccid }, { header: 'Farmer', value: (b) => b.name },
+    { header: 'Farmer ID', value: (b) => farmerCode(b.farmerId) }, { header: 'VLC', value: (b) => vlccCode(b.vlccid) }, { header: 'Farmer', value: (b) => b.name },
     ...KINDS.map<ExportCol<Bill>>((k) => ({ header: `${KIND_META[k].label} litres`, value: (b) => Math.round(b.liters[k] * 10) / 10 })),
     { header: 'Amount payable', value: (b) => Math.round(b.gross * 100) / 100 },
   ];
@@ -118,7 +118,7 @@ const Billing: React.FC = () => {
         </>}>
         {slip && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between"><div><p className="font-display text-xl font-extrabold">{slip.name}</p><p className="text-sm text-mute">Farmer {slip.farmerId} · {vlccOption(slip.vlccid)}{slip.village ? ` · ${slip.village}` : ''}</p></div><Badge tone={paid.has(pk(slip)) ? 'ok' : 'warn'} dot>{paid.has(pk(slip)) ? 'Paid' : 'Due'}</Badge></div>
+            <div className="flex items-center justify-between"><div><p className="font-display text-xl font-extrabold">{slip.name}</p><p className="text-sm text-mute">Farmer {farmerCode(slip.farmerId)} · {vlccOption(slip.vlccid)}{slip.village ? ` · ${slip.village}` : ''}</p></div><Badge tone={paid.has(pk(slip)) ? 'ok' : 'warn'} dot>{paid.has(pk(slip)) ? 'Paid' : 'Due'}</Badge></div>
             <ul className="divide-y divide-line/70 rounded-2xl border border-line">
               {KINDS.filter((k) => slip.liters[k] > 0).map((k) => (<li key={k} className="flex justify-between px-4 py-3 text-sm"><span className="font-semibold">{KIND_META[k].label} milk</span><span className="tnum">{nf(slip.liters[k], 1)} L</span></li>))}
               <li className="flex justify-between bg-soft px-4 py-4"><span className="font-bold">Amount payable</span><span className="font-display text-2xl font-extrabold tnum">{inr(slip.gross, 2)}</span></li>

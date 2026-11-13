@@ -18,7 +18,7 @@ import { CentreField, SubmitButton } from '../../components/ReportFilters';
 import { useQuery } from '../../hooks/useQuery';
 import { useCenters } from '../../hooks/useSessionData';
 import { getSession } from '../../services/session';
-import { vlccTitle } from '../../services/vlcc/names';
+import { vlccLabel, vlccTitle } from '../../services/vlcc/names';
 import { fetchPortalReport, type PortalRow } from '../../services/report/portalReport.api';
 import type { ShiftCode } from '../../services/types/raw';
 
@@ -93,7 +93,7 @@ const PortalReportPage: React.FC<Props> = ({ title, subtitle, endpoint, slug, no
 
   const columns: Column<PortalRow>[] = useMemo(
     () => [
-      { key: '__centre', header: 'Centre', sort: (r) => vlccTitle(textOf(r.vlccid)), cell: (r) => <span className="font-semibold">{vlccTitle(textOf(r.vlccid))}</span> },
+      { key: '__centre', header: 'Centre', sort: (r) => vlccLabel(textOf(r.vlccid)), cell: (r) => <span className="font-semibold">{vlccLabel(textOf(r.vlccid))}</span> },
       ...keys.map<Column<PortalRow>>((k) => ({ key: k, header: headerOf(k), sort: (r) => textOf(r[k]), cell: (r) => textOf(r[k]) || '—' })),
     ],
     [keys],
@@ -101,7 +101,7 @@ const PortalReportPage: React.FC<Props> = ({ title, subtitle, endpoint, slug, no
 
   const exportCols: ExportCol<PortalRow>[] = useMemo(
     () => [
-      { header: 'Centre', value: (r) => vlccTitle(textOf(r.vlccid)) },
+      { header: 'Centre', value: (r) => vlccLabel(textOf(r.vlccid)) },
       ...keys.map<ExportCol<PortalRow>>((k) => ({ header: headerOf(k), value: (r) => textOf(r[k]) })),
     ],
     [keys],
