@@ -189,8 +189,8 @@ export function buildDpuPayload(s: DpuSettings, entryDate: string): Record<strin
     EStartTime: s.eStart,
     EEndTime: s.eEnd,
     datetime: entryDate,
-    p1: s.operatorPass,
-    p2: s.supervisorPass,
+    p1: '0',
+    p2: '0',
     p3: s.adminPass,
     p4: '0000',
   };

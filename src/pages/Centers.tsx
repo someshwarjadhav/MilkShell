@@ -13,7 +13,7 @@ import { isoFromTrdate } from '../services/utils/date';
 import { sampleStamp } from '../services/farmer/farmerBook';
 import { isLoadingQ, useSamples } from '../hooks/useSmartxData';
 import { getSession } from '../services/session';
-import { vlccTitle } from '../services/vlcc/names';
+import { vlccCode, vlccTitle } from '../services/vlcc/names';
 import { refetchAll } from '../hooks/useQuery';
 import { type Kind } from '../services/utils/milk';
 
@@ -48,7 +48,7 @@ const Centers: React.FC = () => {
             <motion.div key={c.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
               <Card className="h-full p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div><h3 className="text-lg font-bold">{vlccTitle(c.id, c.village)}</h3><p className="mt-0.5 flex items-center gap-1 text-sm text-mute"><MapPin size={13} />VLC {c.id}</p></div>
+                  <div><h3 className="text-lg font-bold">{vlccTitle(c.id, c.village)}</h3><p className="mt-0.5 flex items-center gap-1 text-sm text-mute"><MapPin size={13} />VLC {vlccCode(c.id)}</p></div>
                   <Badge tone={c.samples > 0 ? 'ok' : 'neutral'} dot>{c.samples > 0 ? 'Receiving' : 'No milk yet'}</Badge>
                 </div>
                 <div className="mt-5 grid grid-cols-3 gap-3 text-center">

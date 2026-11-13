@@ -4,7 +4,7 @@ import {
   REQUEST_TIMEOUT_MS,
 } from "../config";
 import { getSession } from "../session";
-import { decryptPayload } from "../../lib/crypto";
+import { decryptPayload, decryptXorPayload } from "../../lib/crypto";
 import { ApiError, EmptyReplyError } from "./errors";
 
 export type Priority = 0 | 1 | 2;
@@ -46,6 +46,8 @@ const isObj = (v: unknown): v is Record<string, unknown> =>
 
 const ENCRYPTED = /^[A-Za-z0-9+/=]{8,}:[A-Za-z0-9+/=]{16,}$/;
 const looksEncrypted = (s: string) => ENCRYPTED.test(s.trim());
+const looksXorEncrypted = (s: string) =>
+  /^[A-Za-z0-9+/=_-]{16,}$/.test(s.trim()) && !s.includes(":");
 
 function decryptReply(v: unknown): unknown {
   const open = (s: string): unknown => {
@@ -66,6 +68,13 @@ function decryptReply(v: unknown): unknown {
       const inner = v[k];
       if (typeof inner === "string" && looksEncrypted(inner))
         return decryptReply(open(inner));
+      if (typeof inner === "string" && looksXorEncrypted(inner)) {
+        try {
+          return decryptReply(decryptXorPayload(inner));
+        } catch {
+          // Leave the original response unchanged if this value is not the portal's encrypted payload.
+        }
+      }
     }
   }
   return v;
@@ -107,6 +116,28 @@ export function listOf<T>(json: unknown): T[] {
     }
     const data = json.Data ?? json.data;
     if (Array.isArray(data)) return data as T[];
+    // DPU API: { Success: true, Message: "[{...},{...}]" } - the list arrives as JSON TEXT inside Message (or Data).
+    for (const cand of [json.Message, json.message, data]) {
+      if (typeof cand !== "string") continue;
+      const t = cand.trim();
+      if (!t) continue;
+      if (/^[\[{]/.test(t)) {
+        try {
+          let parsed: unknown = JSON.parse(t);
+          if (typeof parsed === "string") parsed = JSON.parse(parsed);
+          if (Array.isArray(parsed)) return parsed as T[];
+          if (isObj(parsed)) {
+            const inner = parsed.Data ?? parsed.data ?? parsed.Message ?? parsed.message;
+            if (Array.isArray(inner)) return inner as T[];
+            if (typeof inner === "string") return listOf<T>({ Success: true, Message: inner });
+          }
+        } catch {
+          /* not JSON - fall through */
+        }
+      }
+    }
+    // Success with a plain message such as "No Record Found" = empty list
+    if (ok !== false && (data === null || data === undefined || data === "" || /no\s*(record|data)/i.test(msg))) return [];
   }
   throw new ApiError("The server reply has an unexpected shape.", "parse");
 }
@@ -134,7 +165,7 @@ async function send(
         return await sendOnce(endpoint, init, fields, url);
       } catch (e) {
         if (attempt === 0 && retryable(e)) {
-          await sleep(700);
+          await sleep(250);
           continue;
         }
         throw e;
@@ -146,9 +177,9 @@ async function send(
 }
 
 async function sendOnce(
-  endpoint: string,
+  _endpoint: string,
   init: RequestInit,
-  fields: unknown,
+  _fields: unknown,
   url: string,
 ): Promise<unknown> {
   const controller = new AbortController();
@@ -173,22 +204,12 @@ async function sendOnce(
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 200);
-      if (import.meta.env.DEV)
-        console.warn(`[smartx] HTTP ${res.status} on ${endpoint}`, {
-          sent: fields ?? "GET",
-          response: body,
-        });
       throw new ApiError(
         `The server answered with error ${res.status}${body ? `: ${body}` : "."}`,
         "server",
       );
     }
     const text = await res.text();
-    if (import.meta.env.DEV)
-      console.debug(`[smartx] OK ${endpoint}`, {
-        sent: fields ?? "GET",
-        reply: text.replace(/[\r\n]+/g, "").slice(0, 160),
-      });
     return parseGatewayText(text);
   } catch (error) {
     if (error instanceof ApiError) throw error;
@@ -290,16 +311,30 @@ export function gatewayPostJson(
   return p;
 }
 
+export interface TextOptions {
+  /** abort = the request is dropped (queued ones never leave the browser) */
+  signal?: AbortSignal;
+  /** shorter timeout for small requests, so a hung one frees its slot early */
+  timeoutMs?: number;
+}
+
 export async function gatewayText(
   endpoint: string,
   init: RequestInit = {},
   priority: Priority = 0,
   absolute = false,
+  opts: TextOptions = {},
 ): Promise<string> {
+  const { signal, timeoutMs = REQUEST_TIMEOUT_MS } = opts;
+  if (signal?.aborted) throw new ApiError("Cancelled.", "cancelled");
   await acquire({ priority });
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort, { once: true });
   try {
+    // dropped while it was waiting in the queue: do not send it at all
+    if (signal?.aborted) throw new ApiError("Cancelled.", "cancelled");
     const res = await fetch(absolute ? endpoint : urlFor(endpoint), {
       ...init,
       headers: {
@@ -314,19 +349,6 @@ export async function gatewayText(
         "auth",
       );
     const text = await res.text();
-    if (import.meta.env.DEV)
-      console.debug(
-        `[smartx] ${init.method ?? "GET"} ${endpoint} -> ${res.status}`,
-        {
-          sent:
-            typeof init.body === "string"
-              ? init.body.slice(0, 400)
-              : init.body
-                ? "[form data]"
-                : endpoint,
-          reply: text.replace(/[\r\n]+/g, "").slice(0, 300),
-        },
-      );
     if (!res.ok) {
       const body = text
         .replace(/<[^>]*>/g, " ")
@@ -341,9 +363,10 @@ export async function gatewayText(
     return text;
   } catch (error) {
     if (error instanceof ApiError) throw error;
+    if (signal?.aborted) throw new ApiError("Cancelled.", "cancelled");
     if (controller.signal.aborted)
       throw new ApiError(
-        `The server took longer than ${REQUEST_TIMEOUT_MS / 1000} seconds to answer.`,
+        `The server took longer than ${timeoutMs / 1000} seconds to answer.`,
         "timeout",
       );
     throw new ApiError(
@@ -352,6 +375,7 @@ export async function gatewayText(
     );
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener("abort", onAbort);
     release();
     memo.clear();
   }

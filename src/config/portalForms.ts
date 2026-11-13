@@ -57,7 +57,12 @@ export const NAV_MODULES: NavModule[] = [
     icon: UserCog,
     children: [
       form("Center Access", "/administrator/center-access", "center-access"),
-      form("Bill Unfreeze", "/administrator/bill-freeze", "bill-freeze"),
+      form(
+        "Bill Unfreeze",
+        "/administrator/bill-freeze",
+        "bill-freeze",
+        "/administrator/bill-freeze",
+      ),
       form(
         "System Administrator",
         "/administrator/system-administrator",
@@ -96,8 +101,18 @@ export const NAV_MODULES: NavModule[] = [
     url: "/account",
     icon: Landmark,
     children: [
-      form("Receipt Voucher", "/account/receipt-voucher", "receipt-voucher"),
-      form("Payment Voucher", "/account/payment-voucher", "payment-voucher"),
+      form(
+        "Receipt Voucher",
+        "/account/receipt-voucher",
+        "receipt-voucher",
+        "/account/receipt-voucher",
+      ),
+      form(
+        "Payment Voucher",
+        "/account/payment-voucher",
+        "payment-voucher",
+        "/account/payment-voucher",
+      ),
     ],
   },
   {

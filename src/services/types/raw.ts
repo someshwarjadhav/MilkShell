@@ -46,6 +46,9 @@ export interface RawFarmerRow {
   villagename: string; 
   villageagentaddress: string; 
   beneficiaryname: string;
+  /** station code printed in the portal's Station Id column (when the reply has one) */
+  stationcode?: string;
+  branchid?: string;
 }
 
 

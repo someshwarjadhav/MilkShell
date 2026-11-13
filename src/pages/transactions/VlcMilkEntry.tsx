@@ -20,6 +20,7 @@ import { DEFAULT_PAGE_SIZE, GLOBALSSHIFT } from "../../lib/global";
 import { useCenters } from "../../hooks/useSessionData";
 import { getSession } from "../../services/session";
 import { vlccOption, vlccTitle } from "../../services/vlcc/names";
+import { enterNext } from "../../lib/enterNav";
 import {
   getVlcMilk,
   postVlcMilk,
@@ -377,7 +378,10 @@ const VlcMilkEntry: React.FC = () => {
               </Button>
             }
           />
-          <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
+          <div
+            className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4"
+            onKeyDown={(e) => enterNext(e, () => void submit())}
+          >
             <Field label="VLC">
               <Select value={vlc} onChange={(e) => setVlc(e.target.value)}>
                 {ids.map((id) => (

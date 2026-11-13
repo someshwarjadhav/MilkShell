@@ -32,7 +32,9 @@ const subscribe = (l: () => void) => {
 export const ALL_CENTRES = 'ALL';
 
 const centreLabel = (id: string, name: string, station?: string): string => {
-  const code = station || id;
+  // the custom station id of the login (CustomStationId) first, like SmartX; the raw VLC / session id only when there is none
+  const mapped = getSession()?.stationByVlcc?.[id];
+  const code = mapped || station || id;
   return name ? `${name} | ${code}` : code;
 };
 

@@ -14,7 +14,7 @@ import { LoadingBlock, Notice } from "../components/Widget";
 import { vlccTitle } from "../services/vlcc/names";
 import { useData } from "../context/DataContext";
 import { flagOf, FLAG_META } from "../lib/quality";
-import { inr, nf, todayISO } from "../lib/format";
+import { farmerCode, inr, nf, todayISO } from "../lib/format";
 import { KIND_META, type Kind } from "../services/utils/milk";
 import { isoFromTrdate } from "../services/utils/date";
 import { sampleStamp } from "../services/farmer/farmerBook";
@@ -158,7 +158,7 @@ const LiveCollection: React.FC = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-xs text-mute">
-                          Farmer {latest.farmerId}
+                          Farmer {farmerCode(latest.farmerId)}
                         </p>
                         <p className="font-display text-xl font-extrabold">
                           {latest.farmerName}

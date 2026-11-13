@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, Search } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import { Card, CardHeader } from "../../components/ui/Card";
@@ -11,7 +11,7 @@ import { StatCard } from "../../components/ui/StatCard";
 import { KindChip } from "../../components/KindChip";
 import { QueryBoundary } from "../../components/Widget";
 import { MilkLoader } from "../../components/MilkLoader";
-import { nf, todayISO } from "../../lib/format";
+import { farmerCode, nf, todayISO } from "../../lib/format";
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from "../../lib/export";
 import { ReportBar, ReportDataBadge, ReportPage } from "../../components/ReportKit";
 import { GLOBALLABELS, GLOBALSMILK, GLOBALSSHIFT, DEFAULT_PAGE_SIZE, DEFAULT_MILK, DEFAULT_SHIFT, SHIFT_MORNING } from "../../lib/global";
@@ -29,7 +29,7 @@ import {
   fetchFarmerCollection,
 } from "../../services/farmer/farmer.api";
 import { fetchVlccCollection } from "../../services/vlcc/vlcc.api";
-import { vlccOption, vlccTitle } from "../../services/vlcc/names";
+import { vlccCode, vlccOption, vlccTitle } from "../../services/vlcc/names";
 import type {
   MilkCode,
   RawFarmerRow,
@@ -193,7 +193,8 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
         (r) =>
           !needle ||
           r.village.toLowerCase().includes(needle) ||
-          r.vlccid.includes(needle),
+          r.vlccid.includes(needle) ||
+          vlccCode(r.vlccid).toLowerCase().includes(needle),
       ),
     [vlccQ.rows, needle],
   );
@@ -209,6 +210,15 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
       ),
     [master.rows],
   );
+  // Farmerwise collection: one farmer is always selected (the first of the centre), there is no "All farmers" row
+  useEffect(() => {
+    if (view !== "entry") return;
+    if (!farmers.rows.length) {
+      if (farmer) setFarmer("");
+      return;
+    }
+    if (!farmers.rows.some((m) => m.farmerId === farmer)) setFarmer(farmers.rows[0]!.farmerId);
+  }, [view, farmers.rows, farmer]);
   const farmerRows = useMemo(
     () =>
       mapFarmers(farmerQ.rows)
@@ -222,7 +232,8 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
           (r) =>
             !needle ||
             r.farmerName.toLowerCase().includes(needle) ||
-            r.farmerId.includes(needle),
+            r.farmerId.includes(needle) ||
+            farmerCode(r.farmerId).includes(needle),
         ),
     [farmerQ.rows, needle, masterNames, view, applied.farmer],
   );
@@ -272,6 +283,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
           !needle ||
           r.name.toLowerCase().includes(needle) ||
           r.farmerId.includes(needle) ||
+          farmerCode(r.farmerId).includes(needle) ||
           vlccTitle(r.vlccid).toLowerCase().includes(needle),
       ),
     [farmerwiseAll, needle],
@@ -321,6 +333,12 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
         : "Loading farmerwise collection…";
 
   const vlccCols: Column<VlccRow>[] = [
+    {
+      key: "vlcid",
+      header: "VLC Id",
+      sort: (r) => vlccCode(r.vlccid),
+      cell: (r) => vlccCode(r.vlccid),
+    },
     {
       key: "village",
       header: "Village",
@@ -400,7 +418,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
       key: "fid",
       header: "Farmer Id",
       sort: (r) => r.farmerId.padStart(8, "0"),
-      cell: (r) => r.farmerId,
+      cell: (r) => farmerCode(r.farmerId),
     },
     {
       key: "name",
@@ -514,7 +532,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
       key: "fid",
       header: "Farmer Id",
       sort: (r) => r.farmerId.padStart(8, "0"),
-      cell: (r) => r.farmerId,
+      cell: (r) => farmerCode(r.farmerId),
     },
     {
       key: "name",
@@ -579,10 +597,10 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     },
   ];
   const farmerwiseExport: ExportCol<FarmerwiseRow>[] = [
-    { header: "Farmer Id", value: (r) => r.farmerId },
+    { header: "Farmer Id", value: (r) => farmerCode(r.farmerId) },
     { header: "Farmer Name", value: (r) => r.name },
     { header: "Centre", value: (r) => vlccTitle(r.vlccid) },
-    { header: "VLC Id", value: (r) => r.vlccid },
+    { header: "VLC Id", value: (r) => vlccCode(r.vlccid) },
     { header: "Samples", value: (r) => r.samples },
     { header: "Liter", value: (r) => r.liter },
     { header: "Kg", value: (r) => r.kg },
@@ -593,6 +611,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
   ];
 
   const vlccExport: ExportCol<VlccRow>[] = [
+    { header: "VLC Id", value: (r) => vlccCode(r.vlccid) },
     { header: "Village", value: (r) => r.village },
     { header: "Date", value: (r) => r.date },
     { header: "Liter", value: (r) => r.liter },
@@ -606,7 +625,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     { header: "Amount", value: (r) => r.amount },
   ];
   const farmerExportAll: Array<ExportCol<FarmerRow> & { key: string }> = [
-    { key: "fid", header: "Farmer Id", value: (r) => r.farmerId },
+    { key: "fid", header: "Farmer Id", value: (r) => farmerCode(r.farmerId) },
     { key: "name", header: "Farmer Name", value: (r) => r.farmerName },
     { key: "centre", header: "Centre", value: (r) => vlccTitle(r.vlccid) },
     { key: "sample", header: "Sample No", value: (r) => r.sampleNo },
@@ -767,10 +786,9 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
           {view === "entry" && (
             <Field label={GLOBALLABELS.farmerName} className="lg:col-span-4">
               <Select value={farmer} onChange={(e) => setFarmer(e.target.value)}>
-                <option value="">{GLOBALLABELS.allFarmers}</option>
                 {farmers.rows.map((m) => (
                   <option key={m.farmerId} value={m.farmerId}>
-                    {m.name ? `${m.farmerId} | ${m.name}` : m.farmerId}
+                    {m.name ? `${farmerCode(m.farmerId)} | ${m.name}` : farmerCode(m.farmerId)}
                   </option>
                 ))}
               </Select>
@@ -802,7 +820,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
           </Field>
           <SubmitButton
             className={view === "entry" ? "sm:col-span-2 lg:col-span-12" : "sm:col-span-2 lg:col-span-6"}
-            disabled={!vlcc}
+            disabled={!vlcc || (view === "entry" && !farmer)}
             loading={active.fetching && active.rows.length === 0}
             onClick={search}
           />

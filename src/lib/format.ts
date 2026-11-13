@@ -50,3 +50,9 @@ export const daysBetween = (a: string, b: string) =>
       new Date(a + "T00:00:00").getTime()) /
       86400000,
   );
+
+/** Farmer id as SmartX shows it: numeric ids are padded to 4 digits ("1" -> "0001"); anything else is left as it is. */
+export const farmerCode = (id: string | number | null | undefined): string => {
+  const s = String(id ?? "").trim();
+  return /^\d+$/.test(s) && s.length < 4 ? s.padStart(4, "0") : s;
+};
