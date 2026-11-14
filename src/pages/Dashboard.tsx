@@ -16,6 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import {
+  CalendarDays,
   Droplets,
   FlaskConical,
   IndianRupee,
@@ -36,11 +37,10 @@ import { DataTable, type Column } from "../components/ui/DataTable";
 import { MilkTank } from "../components/MilkTank";
 import { KindChip, KindDot } from "../components/KindChip";
 import { ChartTip } from "../components/ChartTip";
-import { PageHeader } from "../components/ui/PageHeader";
 import { LoadingBlock, QueryBoundary } from "../components/Widget";
 import { MILK_META } from "../lib/milk";
 import type { MilkType } from "../types";
-import { fmtDate, fmtShort, nf, todayISO } from "../lib/format";
+import { addDays, fmtDate, fmtShort, nf, todayISO } from "../lib/format";
 import { KIND_META, type Kind } from "../services/utils/milk";
 import {
   buildTrend,
@@ -74,6 +74,14 @@ const errorOf = (q: QueryState<unknown>) =>
     ? (q.error?.message ?? "This data could not be loaded.")
     : undefined;
 
+type RangeKey = "1" | "10" | "20" | "30";
+const RANGE_OPTIONS: { value: RangeKey; label: string }[] = [
+  { value: "1", label: "Today" },
+  { value: "10", label: "10 days" },
+  { value: "20", label: "20 days" },
+  { value: "30", label: "30 days" },
+];
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
@@ -84,6 +92,10 @@ const Dashboard: React.FC = () => {
   const today = todayISO();
   const ids = getSession()?.vlccIds ?? [];
   const idKey = ids.join(",");
+  // Period picked at the top: 1 = today (or the latest day with milk), else the last N days up to today.
+  const rangeNum = Number(range);
+  const isRange = rangeNum > 1;
+  const rangeFrom = addDays(today, -(rangeNum - 1));
 
   const lineQ = useQuery<RawLinePoint>(`line:${idKey}`, (emit) =>
     fetchLineChart(ids, emit, 1),
@@ -141,7 +153,11 @@ const Dashboard: React.FC = () => {
       : null;
   const pending = day === null;
   const isToday = day === today;
-  const when = isToday || !day ? "today" : `on ${fmtShort(day)}`;
+  const when = isRange
+    ? `in last ${rangeNum} days`
+    : isToday || !day
+      ? "today"
+      : `on ${fmtShort(day)}`;
 
   const vlccPrev = useQuery<RawVlccRow>(
     day && day !== today ? `vlcc:${day}:${day}:Z:ALL:${idKey}` : null,
@@ -158,18 +174,38 @@ const Dashboard: React.FC = () => {
         emit,
       ),
   );
-  const vlccQ: QueryState<RawVlccRow> = pending
+  const vlccRangeQ = useQuery<RawVlccRow>(
+    isRange ? `vlcc:${rangeFrom}:${today}:Z:ALL:${idKey}` : null,
+    (emit) =>
+      fetchVlccCollection(
+        {
+          from: rangeFrom,
+          to: today,
+          shift: "Z",
+          milk: "ALL",
+          vlccIds: ids,
+          priority: 0,
+        },
+        emit,
+      ),
+  );
+  const vlccDayQ: QueryState<RawVlccRow> = pending
     ? { ...vlccToday, status: "loading", rows: [] }
     : day === today
       ? vlccToday
       : vlccPrev;
+  const vlccQ: QueryState<RawVlccRow> = isRange ? vlccRangeQ : vlccDayQ;
   const farmerQ = useQuery<RawFarmerRow>(
-    day ? `farmer:${day}:${day}:Z:ALL:${idKey}` : null,
+    isRange
+      ? `farmer:${rangeFrom}:${today}:Z:ALL:${idKey}`
+      : day
+        ? `farmer:${day}:${day}:Z:ALL:${idKey}`
+        : null,
     (emit) =>
       fetchFarmerCollection(
         {
-          from: day!,
-          to: day!,
+          from: isRange ? rangeFrom : day!,
+          to: isRange ? today : day!,
           shift: "Z",
           milk: "ALL",
           vlccIds: ids,
@@ -219,7 +255,8 @@ const Dashboard: React.FC = () => {
       Math.max(1, last14.length);
     return Math.round(avg / 50) * 50;
   }, [trend30]);
-  const fill = target ? Math.min(100, (t.liter / target) * 100) : 0;
+  const usual = target * (isRange ? rangeNum : 1);
+  const fill = usual ? Math.min(100, (t.liter / usual) * 100) : 0;
 
   // This dairy collects cow, buffalo and mix milk only (no goat).
   const kinds: Kind[] = ["cow", "buffalo", "mix"];
@@ -330,31 +367,43 @@ const Dashboard: React.FC = () => {
     },
   ];
 
-  const subtitle =
-    !day || vlccLoading
-      ? `${fmtDate(today)} · Loading the latest collection…`
-      : isToday
-        ? `${fmtDate(today)} · ${t.count} samples tested so far today across ${t.vlcCount} centres.`
-        : `${fmtDate(today)} · No milk collected yet today. Showing the latest day with collection, ${fmtDate(day)}: ${t.count} samples across ${t.vlcCount} centres.`;
+  // Day + date shown above the greeting (e.g. "Friday, 13 November 2026")
+  const now = new Date();
+  const dayDate = `${now.toLocaleDateString("en-IN", { weekday: "long" })}, ${now.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`;
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={`${greet}, ${user?.name.split(" ")[0] ?? "there"}`}
-        subtitle={subtitle}
-        actions={
-          <Button
-            variant="outline"
-            icon={<RefreshCw size={16} />}
-            onClick={() => {
-              refetchAll();
-              toast("Refreshing all widgets");
-            }}
-          >
-            Refresh data
-          </Button>
-        }
-      />
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm text-mute">
+            <CalendarDays size={15} aria-hidden />
+            {dayDate}
+          </p>
+          <h1 className="mt-1 font-display text-2xl font-extrabold leading-tight sm:text-3xl lg:text-[2rem]">
+            {`${greet}, ${user?.name.split(" ")[0] ?? "there"}`}
+          </h1>
+        </div>
+        <div className="flex max-w-full flex-wrap items-center gap-2">
+          <>
+            <Segmented
+              value={range}
+              onChange={setRange}
+              className="max-w-full overflow-x-auto"
+              options={RANGE_OPTIONS}
+            />
+            <Button
+              variant="outline"
+              icon={<RefreshCw size={16} />}
+              onClick={() => {
+                refetchAll();
+                toast("Refreshing all widgets");
+              }}
+            >
+              Refresh data
+            </Button>
+          </>
+        </div>
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.6fr)]">
         <Card className="overflow-hidden">
@@ -362,7 +411,9 @@ const Dashboard: React.FC = () => {
             title={`Milk received ${when}`}
             subtitle={
               target
-                ? `Against a usual day of ${nf(target)} L`
+                ? isRange
+                  ? `Against ${nf(usual)} L usual for ${rangeNum} days`
+                  : `Against a usual day of ${nf(target)} L`
                 : "Usual day not available yet"
             }
             action={
@@ -690,7 +741,11 @@ const Dashboard: React.FC = () => {
         <Card>
           <CardHeader
             title="Morning vs evening"
-            subtitle={`${isToday ? "Today" : fmtDate(day!)}, litres by milk type`}
+            subtitle={
+              isRange
+                ? `Last ${rangeNum} days, litres by milk type`
+                : `${isToday || !day ? "Today" : fmtDate(day)}, litres by milk type`
+            }
           />
           <QueryBoundary
             q={vlccQ}

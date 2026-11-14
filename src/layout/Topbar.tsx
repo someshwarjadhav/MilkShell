@@ -1,4 +1,4 @@
-import { SHIFT_EVENING, SHIFT_MORNING } from '../lib/global';
+import { currentShift, SHIFT_WINDOW } from '../lib/shift';
 import type * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -48,8 +48,13 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
       .slice(0, 6);
   }, [samples, thresholds]);
   const count = alerts.length;
-  const hour = new Date().getHours();
-  const shift = `${hour < 12 ? SHIFT_MORNING : SHIFT_EVENING} shift`;
+  // Morning 2 AM - 4 PM, Evening 4 PM - 2 AM; re-checked every 30 s so the badge flips on its own.
+  const [shiftName, setShiftName] = useState(() => currentShift());
+  useEffect(() => {
+    const id = window.setInterval(() => setShiftName(currentShift()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const shift = `${shiftName} shift`;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-line bg-bg/80 px-4 backdrop-blur-xl sm:px-6">
@@ -59,7 +64,7 @@ export const Topbar: React.FC<Props> = ({ onMenu, onSearch }) => {
         <kbd className="ml-auto hidden rounded-md bg-soft px-1.5 py-0.5 text-[11px] font-semibold sm:block">Ctrl K</kbd>
       </button>
       <div className="ml-auto flex items-center gap-2">
-        <Badge tone="brand" dot className="hidden md:inline-flex">{shift} · live</Badge>
+        <span title={`${shiftName} shift: ${SHIFT_WINDOW[shiftName]}`} className="hidden md:inline-flex"><Badge tone="brand" dot>{shift} · live</Badge></span>
         <button onClick={toggle} aria-label="Switch theme" className="grid h-10 w-10 place-items-center rounded-xl border border-line bg-panel text-mute hover:text-ink">
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>

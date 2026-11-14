@@ -312,6 +312,7 @@ const ROUTES: Array<{ to: string; aliases: string[] }> = [
   { to: "/reports/variance", aliases: ["variancereport", "variance"] },
   { to: "/reports/cda", aliases: ["cdareport", "collectioncda"] },
   { to: "/administrator/bill-freeze", aliases: ["billfreeze", "billunfreeze", "unfreeze"] },
+  { to: "/administrator/dpu-sync-async", aliases: ["dpusyncasync", "membersyncasync", "dpusync"] },
   { to: "/account/payment-voucher", aliases: ["paymentvoucher"] },
   { to: "/account/receipt-voucher", aliases: ["receiptvoucher"] },
   { to: "/settings", aliases: ["settings"] },

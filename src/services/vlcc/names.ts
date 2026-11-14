@@ -31,6 +31,16 @@ export const vlccLabel = (id: string, fallbackName = ''): string => {
   return n ? `${n} | ${code}` : code;
 };
 
+/** the custom station id of a VLC ("0001" - the number shown next to its name in every dropdown); the id itself when it has none */
+export const vlccCode = (id: string): string => (id && getSession()?.stationByVlcc?.[id]) || id;
+
+/** "Name | custom station id" text for tables / Excel / PDF (same text as the dropdowns) */
+export const vlccLabel = (id: string, fallbackName = ''): string => {
+  const n = vlccName(id) || fallbackName.trim();
+  const code = vlccCode(id);
+  return n ? `${n} | ${code}` : code;
+};
+
 export const vlccOption = (id: string): string => {
   const n = vlccName(id);
   const code = getSession()?.stationByVlcc?.[id] || id;

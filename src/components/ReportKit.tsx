@@ -217,7 +217,7 @@ export const ReportBar: React.FC<{
             onClick={() => onExport(k)}
             disabled={disabled}
           >
-            {LABEL[k]}
+            {labels?.[k] ?? LABEL[k]}
           </Button>
         </motion.div>
       ))}
