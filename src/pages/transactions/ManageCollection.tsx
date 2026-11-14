@@ -16,11 +16,11 @@ import {
 import { ErrorBlock } from "../../components/Widget";
 import { exportExcel, type ExportCol } from "../../lib/export";
 import { useToast } from "../../context/ToastContext";
-import { todayISO } from "../../lib/format";
+import { farmerCode, todayISO } from "../../lib/format";
 import { DEFAULT_PAGE_SIZE, GLOBALSSHIFT } from "../../lib/global";
 import { useCenters } from "../../hooks/useSessionData";
 import { getSession } from "../../services/session";
-import { vlccOption } from "../../services/vlcc/names";
+import { vlccCode, vlccOption } from "../../services/vlcc/names";
 import {
   deleteEntry,
   forgetCachedLists,
@@ -110,7 +110,7 @@ const TEXT_COLS: Array<{
 }> = [
   { key: "date", header: "Date", get: (r) => val(r, "trdate", "date") },
   { key: "shift", header: "Shift", get: (r) => val(r, "shift") },
-  { key: "fid", header: "Farmer Id", get: (r) => val(r, "farmerid") },
+  { key: "fid", header: "Farmer Id", get: (r) => farmerCode(val(r, "farmerid")) },
   { key: "fname", header: "Name", get: (r) => val(r, "farmername", "name") },
   { key: "liter", header: "Liter", align: "right", get: (r) => val(r, "qty") },
   { key: "kg", header: "Kg", align: "right", get: (r) => val(r, "kg") },
@@ -118,7 +118,7 @@ const TEXT_COLS: Array<{
   { key: "snf", header: "Snf", align: "right", get: (r) => val(r, "snf") },
   { key: "clr", header: "Clr", align: "right", get: (r) => val(r, "clr") },
   { key: "milk", header: "Milk Type", get: (r) => val(r, "milktype") },
-  { key: "station", header: "Station Id", get: (r) => val(r, "vlccid") },
+  { key: "station", header: "Station Id", get: (r) => vlccCode(val(r, "vlccid")) },
   {
     key: "rate",
     header: "Rate",
@@ -669,7 +669,7 @@ const ManageCollection: React.FC = () => {
             </dd>
             <dt className="text-mute">Farmer Id</dt>
             <dd className="font-semibold">
-              {val(toDelete, "farmerid") || "—"}
+              {farmerCode(val(toDelete, "farmerid")) || "—"}
             </dd>
             <dt className="text-mute">Liter</dt>
             <dd className="font-semibold">{val(toDelete, "qty") || "—"}</dd>

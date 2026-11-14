@@ -46,7 +46,7 @@ interface Props {
 const bigIcon = (icon: ReactNode) => (isValidElement(icon) ? cloneElement(icon as ReactElement<{ size?: number; strokeWidth?: number }>, { size: 24, strokeWidth: 2 }) : icon);
 
 export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix = '', suffix = '', icon, delta, spark, hint, loading, error, onRetry, idle, compact }) => {
-  const v = useCountUp(value);
+  const v = useCountUp(idle ? 0 : value);
   const up = (delta ?? 0) >= 0;
   const tone = 'text-brand';
   return (
@@ -57,9 +57,7 @@ export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix =
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-mute">{label}</p>
           <div className="mt-1.5 flex min-h-9 items-end">
-            {idle ? (
-              <p className="font-display text-3xl font-extrabold leading-none text-mute/50">—</p>
-            ) : loading ? <Skeleton className="h-8 w-32" /> : error ? (
+            {loading && !idle ? <Skeleton className="h-8 w-32" /> : error && !idle ? (
               <p className="text-sm text-mute">{error} {onRetry && <button onClick={onRetry} className="font-semibold text-brand underline">Retry</button>}</p>
             ) : (
               <div className="flex min-w-0 items-end gap-2">
@@ -72,7 +70,7 @@ export const StatCard: React.FC<Props> = ({ label, value, decimals = 0, prefix =
               </div>
             )}
           </div>
-          {(hint || idle) && <p className="mt-1.5 min-h-4 truncate text-xs text-mute">{idle ? 'Press Submit to load' : hint}</p>}
+          {hint && !idle && <p className="mt-1.5 min-h-4 truncate text-xs text-mute">{hint}</p>}
         </div>
         <span className={cn('grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-current/10 ring-1 ring-current/15', tone)}>
           <span className={tone}>{bigIcon(icon)}</span>

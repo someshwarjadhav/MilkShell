@@ -11,6 +11,12 @@ export default defineConfig({
       secure: false,
       rewrite: (path) => path.replace(/^\/api/, ''),
     },
+    '/ekoapi': {
+      target: 'http://apix.shivinfotech.co.in',
+      changeOrigin: true,
+      secure: false,
+      rewrite: (path) => path.replace(/^\/ekoapi/, ''),
+    },
     '/stipl': {
       target: 'https://stipldrive.ddns.net',
       changeOrigin: true,

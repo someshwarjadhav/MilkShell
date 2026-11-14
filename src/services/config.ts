@@ -6,6 +6,9 @@ export const STIPL_BASE = (import.meta.env.VITE_STIPL_BASE_URL || 'https://stipl
 
 export const REPORT_CONFIG_URL = import.meta.env.VITE_REPORT_CONFIG_URL || 'https://stipldrive.ddns.net/home/userReportConfig';
 
+/** Menu API (start of the url). The user id is added as ?userid=... */
+export const MENU_URL = import.meta.env.VITE_MENU_URL || 'https://dpu.shivinfotech.co.in/api/Login/getmenu';
+
 export const environment = {
   staticIP: STIPL_BASE,
 };
@@ -14,7 +17,7 @@ export const environment = {
 export const REQUEST_TIMEOUT_MS = 90_000;
 
 
-export const MAX_PARALLEL_REQUESTS = 6;
+export const MAX_PARALLEL_REQUESTS = 12;
 
 export const FRESH_FOR_MS = 5 * 60_000;
 
@@ -37,3 +40,15 @@ export const DEV_EMAIL = import.meta.env.DEV ? import.meta.env.VITE_DEV_EMAIL ||
 export const DEV_PASSWORD = import.meta.env.DEV ? import.meta.env.VITE_DEV_PASSWORD || '' : '';
 
 export const PORTAL_URL = (import.meta.env.VITE_PORTAL_URL || 'https://smartx.shivinfotech.co.in/prodigy/#').replace(/\/+$/, '');
+
+
+export const SHOW_CUSTOMER_ID = (import.meta.env.VITE_SHOW_CUSTOMER_ID ?? 'true').toString().toLowerCase() !== 'false';
+
+/**
+ * After a report has loaded, the other centres of the same plant are loaded quietly in the background (low priority, one centre
+ * at a time, stopped as soon as the person clicks Submit again). Changing the VLC name and pressing Submit then answers from the saved copy.
+ * Set to false to turn the background loading off.
+ */
+export const WARM_OTHER_CENTRES = true;
+/** most centres the background loading will go through for one report */
+export const MAX_WARM_CENTRES = 40;

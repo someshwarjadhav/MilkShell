@@ -1,4 +1,4 @@
-import { gatewayGet } from "../http/client";
+import { dpuGet } from "../http/dpu";
 import { ApiError } from "../http/errors";
 import { isObj, rowsFrom, type Obj } from "../utils/loose";
 
@@ -9,8 +9,8 @@ export const SUMMARY_TYPES: Array<{
   label: string;
   path: string;
 }> = [
-  { id: "farmer", label: "Farmer", path: "/home/MilkBillPayCashma" },
-  { id: "vlc", label: "VLC", path: "/home/MilkBillPaySummVLCC" },
+  { id: "farmer", label: "Farmer", path: "/Login/MilkBillPayCashMA" },
+  { id: "vlc", label: "VLC", path: "/Login/MilkBillPaySummVLCC" },
 ];
 
 export interface SummaryQuery {
@@ -26,7 +26,8 @@ export async function getCashSummary(q: SummaryQuery): Promise<Obj[]> {
     `id=0&fromdate=${encodeURIComponent(q.fromdate)}` +
     `&todate=${encodeURIComponent(q.todate)}` +
     `&stationid=${encodeURIComponent(q.stationid)}`;
-  const json = await gatewayGet(`${path}?${qs}`, 1);
+  // DPU API: https://dpu.shivinfotech.co.in/api/Login/<endpoint>?id=0&fromdate=…&todate=…&stationid=…
+  const json = await dpuGet(`${path}?${qs}`, 1);
 
   if (isObj(json)) {
     const ok = json.Success ?? json.success;

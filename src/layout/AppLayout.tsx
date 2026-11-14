@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { Suspense, useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
@@ -64,7 +64,7 @@ const AppLayout: React.FC = () => {
             </motion.div>
           </Suspense>
         </main>
-        <footer className="px-6 pb-8 pt-2 text-center text-xs text-mute">{dairyName} · Dhara Dairy</footer>
+        <footer className="px-6 pb-8 pt-2 text-center text-xs text-mute">{dairyName} · <Link to="/contact" className="font-semibold text-brand hover:underline">Contact support</Link></footer>
       </div>
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
     </div>

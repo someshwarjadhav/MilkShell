@@ -257,6 +257,7 @@ const VlcMaster: React.FC = () => {
     setForm({
       villageId: rec.villageId,
       villageName: rec.villageName,
+      customerId: (rec as { customerId?: string }).customerId ?? "",
       type: rec.type || VLC_TYPES[0],
       active: rec.active,
       agentName: rec.agentName,

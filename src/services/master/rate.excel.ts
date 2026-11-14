@@ -1,4 +1,5 @@
 import { ApiError } from "../http/errors";
+import { excelFileName } from "../../lib/fileName";
 import type { RateGrid, RateStatusRow } from "./rate.api";
 
 const loadXlsx = () => import("xlsx");
@@ -19,11 +20,54 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export async function readRateFile(file: File): Promise<RateFile> {
   const XLSX = await loadXlsx();
+
+  if (file.name.startsWith("~$"))
+    throw new ApiError(
+      "This is Excel's temporary lock file (~$...), not your rate file. Close Excel and choose the real .xlsx file.",
+      "parse",
+    );
+
+  let buf: ArrayBuffer;
+  try {
+    buf = await file.arrayBuffer();
+  } catch (e) {
+    console.error("[rate] the browser could not read the file", file.name, e);
+    throw new ApiError(
+      "The browser could not open this file. Close it in Excel, save it, then choose it again (or copy it to the Desktop first).",
+      "parse",
+    );
+  }
+  if (buf.byteLength < 200)
+    throw new ApiError(
+      `This file is only ${buf.byteLength} bytes, so it is empty or damaged. Choose the real .xlsx file.`,
+      "parse",
+    );
+
+  const start = new TextDecoder().decode(new Uint8Array(buf, 0, Math.min(64, buf.byteLength))).trimStart().toLowerCase();
+  if (start.startsWith("<!doctype html") || start.startsWith("<html"))
+    throw new ApiError(
+      "This file is a web page saved with an .xlsx name, not a real Excel file. Download a proper rate file (Export Rate File) and choose that.",
+      "parse",
+    );
+
   let wb: import("xlsx").WorkBook;
   try {
-    wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
-  } catch {
-    throw new ApiError("This file could not be read. Choose an .xlsx file in the sample format.", "parse");
+    wb = XLSX.read(buf, { type: "array" });
+  } catch (first) {
+    try {
+      let bin = "";
+      const u8 = new Uint8Array(buf);
+      for (let i = 0; i < u8.length; i += 0x8000)
+        bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+      wb = XLSX.read(btoa(bin), { type: "base64" });
+    } catch {
+      console.error("[rate] could not parse the file", file.name, file.size, first);
+      const why = first instanceof Error ? first.message : "";
+      throw new ApiError(
+        `This file could not be read${why ? ` (${why})` : ""}. Choose an .xlsx file in the sample format.`,
+        "parse",
+      );
+    }
   }
   const ws = wb.Sheets[wb.SheetNames[0]];
   if (!ws) throw new ApiError("The file has no sheet.", "parse");
@@ -70,7 +114,7 @@ export async function downloadGrid(grid: RateGrid, name: string) {
   const ws = XLSX.utils.aoa_to_sheet(gridAoa(grid));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-  XLSX.writeFile(wb, `${name}.xlsx`, { compression: true });
+  XLSX.writeFile(wb, excelFileName(name), { compression: true });
 }
 
 const csvCell = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
@@ -109,5 +153,5 @@ export async function exportRateStatus(rows: RateStatusRow[], name: string) {
   ws["!cols"] = [14, 28, 16, 16, 14, 16, 16, 16, 12].map((wch) => ({ wch }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Rate Status");
-  XLSX.writeFile(wb, `${name}.xlsx`, { compression: true });
+  XLSX.writeFile(wb, excelFileName(name), { compression: true });
 }

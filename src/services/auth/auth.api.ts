@@ -1,4 +1,9 @@
-import { decryptPayload, encryptPayload } from "../../lib/crypto";
+import {
+  decryptPayload,
+  encryptPayload,
+  hasEncryptionKey,
+} from "../../lib/crypto";
+import { BASE_URL as CONFIG_BASE_URL } from "../config";
 import {
   resolveStaticLogin,
   staticLoginActive,
@@ -19,11 +24,14 @@ export interface LoginProfile {
   mccName?: string;
   userId?: string;
   centerStationId?: string;
+ 
+  stationByVlcc?: Record<string, string>;
 }
 
 type Obj = Record<string, unknown>;
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
+
+const BASE_URL = CONFIG_BASE_URL || "https://smartx.shivinfotech.co.in";
 const LOGIN_PATH = import.meta.env.VITE_LOGIN_PATH || "/home/userlogin";
 const TIMEOUT_MS = 20_000;
 
@@ -92,6 +100,19 @@ function pickIds(rows: Obj[], names: string[]): string[] {
         if (part && !out.includes(part)) out.push(part);
       }
     }
+  }
+  return out;
+}
+
+function pickStationByVlcc(rows: Obj[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const row of rows) {
+    const ids = pickIds([row], ["sessionid", "vlccid", "vlccids", "vlccode", "vlcid"]);
+    const codes = pickIds([row], ["customstationid"]);
+    ids.forEach((id, i) => {
+      const code = codes[i];
+      if (code && code !== id) out[id] = code;
+    });
   }
   return out;
 }
@@ -261,6 +282,7 @@ export function mapLoginResponse(
         "usercode",
       ])[0] ?? pickIds(records.slice(0, 1), ["id"])[0],
     centerStationId: pickStationId(records),
+    stationByVlcc: pickStationByVlcc(records),
   };
 }
 
@@ -352,15 +374,25 @@ export async function loginApi(
   username: string,
   password: string,
 ): Promise<LoginResult> {
-  if (staticLoginActive()) {
-    const found = await resolveStaticLogin(username, password);
-    if (found.kind === "denied") {
-      throw new ApiError("Incorrect username or password.");
-    }
-    if (found.kind === "match") {
-      const profile = mapLoginResponse(found.record, username);
-      return { profile, record: sanitizeLoginRecord(found.record) };
-    }
+ 
+  const found = await resolveStaticLogin(username, password);
+  if (found.kind === "match") {
+    const profile = mapLoginResponse(found.record, username);
+    return { profile, record: sanitizeLoginRecord(found.record) };
+  }
+  if (found.kind === "denied" && staticLoginActive()) {
+    throw new ApiError("Incorrect username or password.");
+  }
+
+  if (!hasEncryptionKey()) {
+    console.error(
+      "[api] VITE_ENCRYPTION_KEY is missing. Add it to .env.local (next to package.json) and restart `npm run dev`.",
+    );
+    throw new ApiError(
+      import.meta.env.DEV
+        ? "VITE_ENCRYPTION_KEY is missing in .env.local. Add it and restart `npm run dev`."
+        : "Sign-in is not configured correctly. Please contact support.",
+    );
   }
 
   let payload: string;
@@ -383,18 +415,6 @@ export async function loginApi(
     decoded = json;
   }
 
-  if (import.meta.env.DEV) {
-    const rec = isObj(decoded) ? decoded : {};
-    const data = Object.keys(rec).find((k) => k.toLowerCase() === "data");
-    const first =
-      data && Array.isArray(rec[data]) ? (rec[data] as unknown[])[0] : rec;
-    console.log(
-      "[login] response keys:",
-      Object.keys(rec),
-      "| user record keys:",
-      isObj(first) ? Object.keys(first) : first,
-    );
-  }
 
   if (!ok) {
     const message = isObj(decoded)

@@ -1,7 +1,7 @@
 
 import { addDays } from '../../lib/format';
 import { isoFromTrdate } from '../utils/date';
-import type { FarmerRow } from '../mappers/farmer.mapper';
+import type { FarmerRow } from '../mappers/farmer.mapper.ts';
 import type { Kind } from '../utils/milk';
 import { kindOf } from '../utils/milk';
 import type { RawLoose } from '../types/raw';
@@ -22,6 +22,8 @@ export function pickLoose(r: RawLoose, names: string[]): string {
 export interface MasterFarmer {
   key: string;
   farmerId: string;
+  /** Farmer number the portal sends as FarmerMasterCode (falls back to farmerId). */
+  masterCode?: string;
   vlccid: string;
   name: string;
   village: string;
@@ -43,6 +45,7 @@ export function mapMaster(rows: RawLoose[]): MasterFarmer[] {
     return {
       key: `${vlccid}:${farmerId}:${i}`,
       farmerId,
+      masterCode: pickLoose(r, ['farmermastercode', 'farmercode', 'farmer', 'farmerno', 'code']) || farmerId,
       vlccid,
       name: pickLoose(r, ['farmername', 'name', 'farmer_name', 'fname']),
       village: pickLoose(r, ['dcsname', 'villagename', 'village', 'villageagentaddress', 'address']),
