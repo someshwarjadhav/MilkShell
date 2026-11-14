@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { LockOpen, RotateCcw, Snowflake } from "lucide-react";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -57,7 +57,7 @@ const toRow = (raw: Obj, vlc: string, i: number): FreezeRow => {
 const message = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : fallback;
 
-/** Administrator > Bill Unfreeze: the frozen 10-day bill periods of a VLC, with an Unfreeze button per period. */
+
 const BillFreeze: React.FC = () => {
   const toast = useToast();
   const firstCentre = useFirstCentre();
@@ -90,16 +90,8 @@ const BillFreeze: React.FC = () => {
     }
   }, []);
 
-  // the first centre is shown straight away, like the portal
-  useEffect(() => {
-    if (!applied && firstCentre) {
-      setApplied(firstCentre);
-      void load(firstCentre);
-    }
-  }, [applied, firstCentre, load]);
-
   const show = () => {
-    if (!vlcId) return;
+    if (!vlcId || loading) return;
     setApplied(vlcId);
     void load(vlcId);
   };
@@ -163,8 +155,13 @@ const BillFreeze: React.FC = () => {
                 size="sm"
                 icon={<RotateCcw size={14} />}
                 onClick={() => {
+                  stamp.current++;
                   setVlc(firstCentre);
                   setNeedle("");
+                  setApplied("");
+                  setRows([]);
+                  setError(null);
+                  setLoading(false);
                 }}
               >
                 Reset
@@ -178,44 +175,46 @@ const BillFreeze: React.FC = () => {
         </Card>
       </Reveal>
 
-      {applied && (
-        <Reveal delay={0.1}>
-          <Card>
-            <ReportBar
-              count={visible.length}
-              hideCount={loading || !!error}
-              disabled={loading || !!error || visible.length === 0}
-              kinds={["xls"]}
-              onExport={() => exportExcel(`bill-unfreeze-${applied}`, exportCols, visible)}
-              left={
-                <div className="w-56 max-w-full">
-                  <Input placeholder="Search" value={needle} onChange={(e) => setNeedle(e.target.value)} />
-                </div>
-              }
-            />
-            {loading ? (
-              <MilkLoader label="Loading frozen bills…" />
-            ) : error ? (
-              <ErrorBlock message={error} onRetry={() => void load(applied)} />
-            ) : visible.length === 0 ? (
-              <p className="px-6 py-10 text-center text-sm text-mute">
-                {rows.length === 0
-                  ? "No frozen bill for this VLC."
-                  : "Nothing matches your search."}
-              </p>
-            ) : (
-              <DataTable
-                columns={columns}
-                rows={visible}
-                rowKey={(r) => r.key}
-                pageSize={DEFAULT_PAGE_SIZE}
-                pageSizes={[10, 25, 50, 100, 250]}
-                sizeLabel="Result per page"
-              />
-            )}
-          </Card>
-        </Reveal>
-      )}
+      <Reveal delay={0.1}>
+        <Card>
+          <ReportBar
+            count={visible.length}
+            hideCount={!applied || loading || !!error}
+            disabled={!applied || loading || !!error || visible.length === 0}
+            kinds={["xls"]}
+            onExport={() => exportExcel(`bill-unfreeze-${applied}`, exportCols, visible)}
+            left={
+              <div className="w-56 max-w-full">
+                <Input placeholder="Search" value={needle} onChange={(e) => setNeedle(e.target.value)} />
+              </div>
+            }
+          />
+         
+          <DataTable
+            columns={columns}
+            rows={applied && !loading && !error ? visible : []}
+            rowKey={(r) => r.key}
+            pageSize={DEFAULT_PAGE_SIZE}
+            pageSizes={[10, 25, 50, 100, 250]}
+            sizeLabel="Result per page"
+            empty={
+              !applied ? (
+                <p className="px-6 py-10 text-center text-sm text-mute">
+                  Select a VLC and press Show to see its frozen bills.
+                </p>
+              ) : loading ? (
+                <MilkLoader label="Loading frozen bills…" />
+              ) : error ? (
+                <ErrorBlock message={error} onRetry={() => void load(applied)} />
+              ) : (
+                <p className="px-6 py-10 text-center text-sm text-mute">
+                  {rows.length === 0 ? "No frozen bill for this VLC." : "Nothing matches your search."}
+                </p>
+              )
+            }
+          />
+        </Card>
+      </Reveal>
 
       <Modal
         open={!!confirm}

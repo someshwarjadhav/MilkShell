@@ -1,6 +1,6 @@
 import type * as React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw, Search } from "lucide-react";
+import { Moon, RotateCcw, Search, Sun } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import { Card, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -11,14 +11,27 @@ import { StatCard } from "../../components/ui/StatCard";
 import { KindChip } from "../../components/KindChip";
 import { QueryBoundary } from "../../components/Widget";
 import { MilkLoader } from "../../components/MilkLoader";
-import { farmerCode, nf, todayISO } from "../../lib/format";
+import { farmerCode, fmtDMY, fmtDateLong, nf, todayISO } from "../../lib/format";
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from "../../lib/export";
+import type { ExportTable } from "../../lib/exporters";
+import { ExportBar, type ExportAction } from "../../components/ui/ExportBar";
+import { reportActions } from "../../components/ui/reportActions";
+import {
+  COLUMN_ALIASES,
+  EXPORT_COLS,
+  KIND_TEXT,
+  NEW_ORDER,
+  OLD_ORDER,
+  sheetTable,
+  toEntries,
+  type ExportCol as EntryExportCol,
+  type FarmerEntry,
+} from "./farmerCollection.export";
 import { ReportBar, ReportDataBadge, ReportPage } from "../../components/ReportKit";
 import { GLOBALLABELS, GLOBALSMILK, GLOBALSSHIFT, DEFAULT_PAGE_SIZE, DEFAULT_MILK, DEFAULT_SHIFT, SHIFT_MORNING } from "../../lib/global";
 import {
   farmerTotals,
   mapFarmers,
-  type FarmerRow,
 } from "../../services/mappers/farmer.mapper";
 import {
   mapVlcc,
@@ -29,7 +42,7 @@ import {
   fetchFarmerCollection,
 } from "../../services/farmer/farmer.api";
 import { fetchVlccCollection } from "../../services/vlcc/vlcc.api";
-import { vlccCode, vlccOption, vlccTitle } from "../../services/vlcc/names";
+import { stationCodeOf, vlccCode, vlccOption, vlccTitle } from "../../services/vlcc/names";
 import type {
   MilkCode,
   RawFarmerRow,
@@ -38,13 +51,14 @@ import type {
 } from "../../services/types/raw";
 import { useQuery } from "../../hooks/useQuery";
 import { useFarmerMaster, useFarmersOf } from "../../hooks/useSmartxData";
-import { ALL_CENTRES, useCentreIds, useFirstCentre } from "../../hooks/useCentres";
-import { CentreField, PlantMccField, SubmitButton } from "../../components/ReportFilters";
+import { ALL_CENTRES, useCentreIds, useFirstCentre, usePlantScope } from "../../hooks/useCentres";
+import { CentreField, ScopedPlantField, SubmitButton } from "../../components/ReportFilters";
 import { useReportColumns } from "../../hooks/useSessionData";
 import { Droplets, FlaskConical, IndianRupee, Users } from "lucide-react";
 
 export type View = "vlcc" | "farmer" | "entry";
 interface Applied {
+  plant: string;
   farmer: string;
   from: string;
   to: string;
@@ -69,26 +83,6 @@ interface FarmerwiseRow {
 }
 const sameFarmerId = (a: string, b: string) => a === b || (a.replace(/^0+/, "") !== "" && a.replace(/^0+/, "") === b.replace(/^0+/, ""));
 
-const FARMER_COL_NAMES: Record<string, string[]> = {
-  fid: ["farmerid", "farmercode", "farmerno"],
-  name: ["farmername", "name"],
-  centre: ["centre", "center", "vlc", "vlccid", "vlccname", "centrevlc"],
-  sample: ["sampleno", "sample", "samplenumber"],
-  time: ["time", "sampletime"],
-  milk: ["milktype", "milk"],
-  liter: ["liter", "litre", "qty", "quantity"],
-  kg: ["kg", "weight"],
-  fat: ["fat"],
-  snf: ["snf"],
-  clr: ["clr"],
-  water: ["water"],
-  rate: ["rate", "rtpl"],
-  amt: ["amount", "amt", "totalamount"],
-  village: ["village", "villagename", "villageagentaddress"],
-  date: ["trdate", "date"],
-  shift: ["shift"],
-};
-
 const PAGE_TEXT: Record<View, { title: string; subtitle: string }> = {
   vlcc: { title: "Vlcc Collection", subtitle: "Milk collected per VLC centre for the chosen dates, shift and milk type." },
   farmer: { title: "Farmer Collection", subtitle: "Every farmer sample collected at the selected centre." },
@@ -99,8 +93,14 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
   const toast = useToast();
   const today = todayISO();
 
-  const firstCentre = useFirstCentre();
-  const allIds = useCentreIds();
+  const globalFirst = useFirstCentre();
+  const globalIds = useCentreIds();
+ 
+  const scope = usePlantScope();
+  const [view, setView] = useState<View>(only ?? "vlcc");
+  const scoped = view !== "vlcc";
+  const firstCentre = scoped ? (scope.centreOptions[0]?.id ?? "") : globalFirst;
+  const allIds = scoped ? scope.centreIds : globalIds;
 
   const farmerAccess = useReportColumns("farmercollection");
 
@@ -111,8 +111,8 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [q, setQ] = useState("");
-  const [view, setView] = useState<View>(only ?? "vlcc");
   const [applied, setApplied] = useState<Applied>({
+    plant: "",
     farmer: "",
     from: today,
     to: today,
@@ -150,7 +150,9 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
   const search = () => {
     const picked = vlcc === ALL_CENTRES ? allIds : [vlcc];
     if (!vlcc || !picked.length) return;
+    if (view !== "vlcc") console.info(`[collection] ${view}: plant=${scope.plant} vlc=${vlcc} -> fetching ${picked.length} centre(s)`, picked);
     setApplied({
+      plant: scope.plant,
       farmer,
       from,
       to,
@@ -176,6 +178,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     setTo(today);
     setQ("");
     setApplied({
+      plant: "",
       farmer: "",
       from: today,
       to: today,
@@ -210,7 +213,7 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
       ),
     [master.rows],
   );
-  // Farmerwise collection: one farmer is always selected (the first of the centre), there is no "All farmers" row
+
   useEffect(() => {
     if (view !== "entry") return;
     if (!farmers.rows.length) {
@@ -233,10 +236,14 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
             !needle ||
             r.farmerName.toLowerCase().includes(needle) ||
             r.farmerId.includes(needle) ||
-            farmerCode(r.farmerId).includes(needle),
+            farmerCode(r.farmerId).includes(needle) ||
+            stationCodeOf(r.vlccid, r.stationCode).toLowerCase().includes(needle),
         ),
     [farmerQ.rows, needle, masterNames, view, applied.farmer],
   );
+
+
+  const entries = useMemo(() => (view === "farmer" ? toEntries(farmerRows) : []), [view, farmerRows]);
 
   const farmerwiseAll = useMemo<FarmerwiseRow[]>(() => {
     const by = new Map<string, FarmerwiseRow & { fw: number; sw: number }>();
@@ -413,119 +420,43 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     },
   ];
 
-  const farmerColsAll: Column<FarmerRow>[] = [
-    {
-      key: "fid",
-      header: "Farmer Id",
-      sort: (r) => r.farmerId.padStart(8, "0"),
-      cell: (r) => farmerCode(r.farmerId),
-    },
-    {
-      key: "name",
-      header: "Farmer Name",
-      sort: (r) => r.farmerName,
-      cell: (r) => <span className="font-semibold">{r.farmerName}</span>,
-    },
-    {
-      key: "centre",
-      header: "Centre (VLC)",
-      sort: (r) => vlccOption(r.vlccid),
-      cell: (r) => vlccOption(r.vlccid),
-    },
-    { key: "date", header: "Date", sort: (r) => r.date, cell: (r) => r.date },
+ 
+  const farmerColsAll: Column<FarmerEntry>[] = [
+    { key: "date", header: "Date", sort: (r) => r.date, cell: (r) => <span className="whitespace-nowrap">{fmtDateLong(r.date)}</span> },
     {
       key: "shift",
       header: "Shift",
-      cell: (r) =>
-        r.shift ? (
-          <Badge tone={r.shift === SHIFT_MORNING ? "warn" : "brand"}>
-            {r.shift}
-          </Badge>
-        ) : (
-          ""
-        ),
+      sort: (r) => r.shift,
+      cell: (r) => (
+        <Badge tone={r.shift === "Morning" ? "warn" : "brand"}>
+          {r.shift === "Morning" ? <Sun size={12} aria-hidden /> : <Moon size={12} aria-hidden />}
+          {r.shift}
+        </Badge>
+      ),
     },
-    {
-      key: "sample",
-      header: "Sample No",
-      sort: (r) => Number(r.sampleNo) || 0,
-      cell: (r) => r.sampleNo,
-    },
+    { key: "farmerId", header: "Farmer Id", sort: (r) => r.farmerId.padStart(8, "0"), cell: (r) => r.farmerId },
+    { key: "name", header: "Name", sort: (r) => r.farmer, cell: (r) => <span className="font-semibold">{r.farmer}</span> },
+    { key: "sample", header: "Sample No", sort: (r) => Number(r.sampleNo) || 0, cell: (r) => r.sampleNo },
+    { key: "litres", header: "Liter", align: "right", sort: (r) => r.litres, cell: (r) => <span className="font-semibold">{nf(r.litres, 2)}</span> },
+    { key: "kg", header: "Kg", align: "right", sort: (r) => r.kg, cell: (r) => nf(r.kg, 2) },
+    { key: "fat", header: "Fat", align: "right", sort: (r) => r.fat, cell: (r) => nf(r.fat, 2) },
+    { key: "snf", header: "Snf", align: "right", sort: (r) => r.snf, cell: (r) => nf(r.snf, 2) },
+    { key: "clr", header: "Clr", align: "right", sort: (r) => r.clr, cell: (r) => nf(r.clr, 2) },
+    { key: "water", header: "Water", align: "right", sort: (r) => r.water, cell: (r) => nf(r.water, 2) },
+    { key: "kind", header: "Milk Type", cell: (r) => <KindChip kind={r.kind} label={KIND_TEXT[r.kind]} /> },
     { key: "time", header: "Time", cell: (r) => r.time },
+    { key: "rate", header: "Rate", align: "right", sort: (r) => r.rate, cell: (r) => `₹${nf(r.rate, 2)}` },
+    { key: "amount", header: "Amount", align: "right", sort: (r) => r.amount, cell: (r) => <span className="font-bold">₹{nf(r.amount, 2)}</span> },
     {
-      key: "milk",
-      header: "Milk Type",
-      cell: (r) => <KindChip kind={r.milk} label={r.milkLabel} />,
+      key: "station",
+      header: "Station Id",
+      sort: (r) => r.stationCode,
+      cell: (r) => <span className="rounded-md bg-soft px-2 py-0.5 text-xs font-semibold">{r.stationCode}</span>,
     },
-    {
-      key: "liter",
-      header: "Liter",
-      align: "right",
-      sort: (r) => r.liter,
-      cell: (r) => r.liter.toFixed(2),
-    },
-    {
-      key: "kg",
-      header: "Kg",
-      align: "right",
-      sort: (r) => r.kg,
-      cell: (r) => r.kg.toFixed(2),
-    },
-    {
-      key: "fat",
-      header: "Fat",
-      align: "right",
-      sort: (r) => r.fat,
-      cell: (r) => r.fat.toFixed(1),
-    },
-    {
-      key: "snf",
-      header: "SNF",
-      align: "right",
-      sort: (r) => r.snf,
-      cell: (r) => r.snf.toFixed(1),
-    },
-    {
-      key: "clr",
-      header: "CLR",
-      align: "right",
-      sort: (r) => r.clr,
-      cell: (r) => r.clr.toFixed(1),
-    },
-    {
-      key: "water",
-      header: "Water",
-      align: "right",
-      sort: (r) => r.water,
-      cell: (r) => r.water.toFixed(2),
-    },
-    {
-      key: "rate",
-      header: "Rate",
-      align: "right",
-      sort: (r) => r.rate,
-      cell: (r) => r.rate.toFixed(2),
-    },
-    {
-      key: "amt",
-      header: "Amount",
-      align: "right",
-      sort: (r) => r.amount,
-      cell: (r) => <span className="font-bold">{nf(r.amount, 2)}</span>,
-    },
-    {
-      key: "village",
-      header: "Village",
-      sort: (r) => r.village,
-      cell: (r) => r.village,
-    },
+    { key: "centre", header: "Station Name", sort: (r) => r.centre, cell: (r) => r.centre },
   ];
 
-  const farmerCols = farmerAccess.arrange(
-    farmerColsAll,
-    (c) => c.key,
-    FARMER_COL_NAMES,
-  );
+  const farmerCols = farmerAccess.arrange(farmerColsAll, (c) => c.key, COLUMN_ALIASES);
 
   const farmerwiseCols: Column<FarmerwiseRow>[] = [
     {
@@ -624,32 +555,6 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     { header: "Rate", value: (r) => r.rate },
     { header: "Amount", value: (r) => r.amount },
   ];
-  const farmerExportAll: Array<ExportCol<FarmerRow> & { key: string }> = [
-    { key: "fid", header: "Farmer Id", value: (r) => farmerCode(r.farmerId) },
-    { key: "name", header: "Farmer Name", value: (r) => r.farmerName },
-    { key: "centre", header: "Centre", value: (r) => vlccTitle(r.vlccid) },
-    { key: "sample", header: "Sample No", value: (r) => r.sampleNo },
-    { key: "date", header: "Date", value: (r) => r.date },
-    { key: "shift", header: "Shift", value: (r) => r.shift ?? "" },
-    { key: "time", header: "Time", value: (r) => r.time },
-    { key: "milk", header: "Milk Type", value: (r) => r.milkLabel },
-    { key: "liter", header: "Liter", value: (r) => r.liter },
-    { key: "kg", header: "Kg", value: (r) => r.kg },
-    { key: "fat", header: "Fat", value: (r) => r.fat },
-    { key: "snf", header: "SNF", value: (r) => r.snf },
-    { key: "clr", header: "CLR", value: (r) => r.clr },
-    { key: "water", header: "Water", value: (r) => r.water },
-    { key: "rate", header: "Rate", value: (r) => r.rate },
-    { key: "amt", header: "Amount", value: (r) => r.amount },
-    { key: "village", header: "Village", value: (r) => r.village },
-  ];
-
-  const farmerExport = farmerAccess.arrange(
-    farmerExportAll,
-    (c) => c.key,
-    FARMER_COL_NAMES,
-  );
-
   const name = `${view === "vlcc" ? "vlc-collection" : view === "farmer" ? "farmer-collection" : "farmerwise-collection"}-${applied.from}-to-${applied.to}`;
   const run = (kind: "csv" | "xls" | "pdf") => {
     const meta: Array<[string, string]> = [
@@ -669,7 +574,6 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     if (kind === "pdf") {
       const options = { subtitle: `${applied.from} to ${applied.to}`, meta, summary, note };
       if (view === "vlcc") exportPDF(name, vlccExport, vlccRows, options);
-      else if (view === "farmer") exportPDF(name, farmerExport, farmerRows, options);
       else exportPDF(name, farmerwiseExport, farmerwise, options);
       toast("Print dialog opened — choose Save as PDF to download");
       return;
@@ -677,13 +581,57 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
     if (view === "vlcc") {
       if (kind === "csv") exportCSV(name, vlccExport, vlccRows);
       else exportExcel(name, vlccExport, vlccRows);
-    } else if (view === "farmer") {
-      if (kind === "csv") exportCSV(name, farmerExport, farmerRows);
-      else exportExcel(name, farmerExport, farmerRows);
     } else if (kind === "csv") exportCSV(name, farmerwiseExport, farmerwise);
     else exportExcel(name, farmerwiseExport, farmerwise);
     toast(`${kind.toUpperCase()} file downloaded`);
   };
+
+ 
+  const plantName = scope.plantOptions.find((o) => o.id === applied.plant)?.label ?? GLOBALLABELS.allCentres;
+  const centreName = applied.vlcc === ALL_CENTRES ? GLOBALLABELS.allCentres : vlccOption(applied.vlcc);
+  const milkName = GLOBALSMILK.milkOptions.find((m) => m.Id === applied.milk)?.Name ?? applied.milk;
+  const shiftLabel = GLOBALSSHIFT.shiftOptions.find((x) => x.Id === applied.shift)?.Name ?? applied.shift;
+  
+  const fileScope = applied.vlcc === ALL_CENTRES || !applied.vlcc ? "All" : vlccCode(applied.vlcc);
+
+  
+  const buildTable = (): ExportTable => {
+    const cols = farmerCols
+      .map((c) => EXPORT_COLS.find((e) => e.key === c.key))
+      .filter((e): e is EntryExportCol => !!e);
+    const li = cols.findIndex((c) => c.key === "litres");
+    const ai = cols.findIndex((c) => c.key === "amount");
+    return {
+      filename: `farmer-collection-${applied.from}-${applied.to}`,
+      title: "Farmer collection",
+      subtitle: `${plantName}  |  ${centreName}  |  ${shiftLabel}  |  ${milkName}  |  ${fmtDMY(applied.from)} to ${fmtDMY(applied.to)}`,
+      columns: cols.map((c) => ({
+        header: c.header,
+        ...(c.type ? { type: c.type } : {}),
+        ...(c.total === "sum"
+          ? { total: "sum" as const }
+          : c.total === "wavg" && li >= 0
+            ? { total: { wavg: li } }
+            : c.total === "ratio" && li >= 0 && ai >= 0
+              ? { total: { ratio: [ai, li] as [number, number] } }
+              : {}),
+      })),
+      rows: entries.map((r) => cols.map((c) => c.value(r))),
+      totals: cols.map((c, i) => (i === 0 ? "Total" : c.key === "name" ? `${entries.length} entries` : "")),
+    };
+  };
+
+  
+  const farmerActions: ExportAction[] = reportActions({
+    build: buildTable,
+    count: entries.length,
+    unit: "entries",
+    toast,
+    stiplExcel: {
+      old: () => sheetTable(OLD_ORDER, entries, "farmercollection", "num2", false, true),
+      new: () => sheetTable(NEW_ORDER, entries, `${fileScope}-New-${applied.from}-${applied.to}`, "num2", false),
+    },
+  });
 
   const err = active.status === "error";
   const statError = err ? active.error?.message : undefined;
@@ -773,8 +721,19 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
           }
         />
         <div className="grid gap-x-4 gap-y-3 px-5 pb-5 pt-3 sm:px-6 sm:pb-6 sm:grid-cols-2 lg:grid-cols-12">
-          {view !== "vlcc" && <PlantMccField className={view === "entry" ? "lg:col-span-4" : "lg:col-span-3"} />}
+          {view !== "vlcc" && (
+            <ScopedPlantField
+              className={view === "entry" ? "lg:col-span-4" : "lg:col-span-3"}
+              options={scope.plantOptions}
+              value={scope.plant}
+              onChange={(id) => {
+                scope.setPlant(id);
+                setFarmer("");
+              }}
+            />
+          )}
           <CentreField
+            centres={scoped ? scope.centreOptions : undefined}
             className={view === "vlcc" ? "lg:col-span-6" : view === "entry" ? "lg:col-span-4" : "lg:col-span-3"}
             value={vlcc}
             allValue={view === "entry" ? undefined : ALL_CENTRES}
@@ -835,6 +794,11 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
           disabled={loading || err || sum.count === 0}
           kinds={["xls", "csv", "pdf"]}
           onExport={run}
+          actions={
+            view === "farmer" ? (
+              <ExportBar actions={farmerActions} disabled={loading || err || entries.length === 0} />
+            ) : undefined
+          }
           left={
             <>
               {!only && (
@@ -868,7 +832,11 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
             q={active}
             skeleton={<MilkLoader label={loaderLabel} />}
             emptyTitle="No record for these filters"
-            emptyHint="The portal says there is no collection for this date, shift and milk type."
+            emptyHint={
+              applied.milk === "Z" && applied.shift === "Z"
+                ? "The portal says there is no collection for these dates."
+                : "The portal says there is no collection for this date, shift and milk type. Try Milk Type: Both and Shift: Both."
+            }
           >
             {view === "vlcc" ? (
               <DataTable
@@ -882,9 +850,9 @@ const Collections: React.FC<{ only?: View }> = ({ only }) => {
             ) : view === "farmer" ? (
               <DataTable
                 columns={farmerCols}
-                rows={farmerRows}
-                rowKey={(r) => r.key}
-                pageSize={DEFAULT_PAGE_SIZE}
+                rows={entries}
+                rowKey={(r) => r.id}
+                pageSize={100}
                 pageSizes={[10, 25, 50, 100, 250]}
                 sizeLabel="Result per page"
               />

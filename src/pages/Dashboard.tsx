@@ -87,7 +87,7 @@ const Dashboard: React.FC = () => {
   const toast = useToast();
   const cc = useChartColors();
   // like SmartX: Today first, then the last 10 / 20 / 30 days
-  const [range, setRange] = useState<RangeKey>("1");
+  const [range, setRange] = useState<"1" | "10" | "20" | "30">("1");
   const [center, setCenter] = useState<string>("ALL");
   const today = todayISO();
   const ids = getSession()?.vlccIds ?? [];
@@ -290,13 +290,13 @@ const Dashboard: React.FC = () => {
     const known = getSession()?.vlccNames ?? {};
     ids.forEach((id) =>
       byId.set(id, {
-        name: vlccName(id) || known[id] || `VLC ${id}`,
+        name: vlccName(id) || known[id] || `VLC ${vlccCode(id)}`,
         liter: 0,
       }),
     );
     for (const r of vlccRows) {
       const c = byId.get(r.vlccid) ?? {
-        name: vlccName(r.vlccid) || known[r.vlccid] || `VLC ${r.vlccid}`,
+        name: vlccName(r.vlccid) || known[r.vlccid] || `VLC ${vlccCode(r.vlccid)}`,
         liter: 0,
       };
       if (r.village) c.name = r.village;
@@ -551,7 +551,12 @@ const Dashboard: React.FC = () => {
               <Segmented
                 value={range}
                 onChange={setRange}
-                options={RANGE_OPTIONS}
+                options={[
+                  { value: "1", label: "Today" },
+                  { value: "10", label: "10 days" },
+                  { value: "20", label: "20 days" },
+                  { value: "30", label: "30 days" },
+                ]}
               />
             </div>
           }

@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes, ReactElement, ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "../../lib/cn";
 
-type Variant = "primary" | "soft" | "ghost" | "outline" | "danger";
+type Variant = "primary" | "soft" | "ghost" | "outline" | "danger" | "success";
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: "sm" | "md" | "lg";
@@ -20,6 +20,7 @@ const V: Record<Variant, string> = {
   outline:
     "border border-line text-ink hover:border-brand hover:text-brand bg-panel",
   danger: "bg-danger/12 text-danger hover:bg-danger/20",
+  success: "bg-ok/12 text-ok hover:bg-ok/20 border border-ok/25",
 };
 const ICON_PX = { sm: 15, md: 16, lg: 18 } as const;
 const S = {

@@ -141,8 +141,9 @@ export function rowsOfReply(reply: unknown): RawLoose[] {
   throw new ApiError(`DPU FarmerCollection reply has no row list (${shape}).`, 'parse');
 }
 
+/** "Both" milk (code Z) is asked like "ALL": Cow, Buffalo and Mix one by one (the DPU has no milk type Z), the same as SmartX does. */
 const dpuMilkCodes = (m: CollectionParams['milk']): string[] =>
-  m !== 'ALL' ? [m] : ALL_MILK_CODE ? [ALL_MILK_CODE] : FARMER_MILK_CODES;
+  m !== 'ALL' && m !== 'Z' ? [m] : ALL_MILK_CODE ? [ALL_MILK_CODE] : FARMER_MILK_CODES;
 
 async function dpuCall(body: Record<string, string>, priority: Priority = 1, signal?: AbortSignal, timeoutMs?: number): Promise<unknown> {
   const text = await gatewayText(
