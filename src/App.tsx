@@ -53,6 +53,15 @@ const MobileAppSettings = lazy(
 const DpuSettings = lazy(() => import("./pages/settings/DpuSettings"));
 const EkoMilkSettings = lazy(() => import("./pages/settings/EkoMilkSettings"));
 const UserAccess = lazy(() => import("./pages/administrator/UserAccess"));
+const BillFreeze = lazy(() => import("./pages/administrator/BillFreeze"));
+const DpuSyncAsync = lazy(() => import("./pages/administrator/DpuSyncAsync"));
+const DeductionEntry = lazy(() => import("./pages/transactions/DeductionEntry"));
+const SaleEntry = lazy(() => import("./pages/transactions/SaleEntry"));
+const EkoCorrection = lazy(() => import("./pages/reports/EkoCorrection"));
+const PaymentVoucher = lazy(() => import("./pages/account/PaymentVoucher"));
+const ReceiptVoucher = lazy(() => import("./pages/account/ReceiptVoucher"));
+const VlcMilkBill = lazy(() => import("./pages/billing/VlcMilkBill"));
+const Profile = lazy(() => import("./pages/Profile"));
 const FormPlaceholder = lazy(() => import("./pages/FormPlaceholder"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -266,6 +275,15 @@ const App: React.FC = () => {
               />
               <Route path="settings" element={<Settings />} />
               <Route path="administrator/user-access" element={<UserAccess />} />
+              <Route path="administrator/bill-freeze" element={<BillFreeze />} />
+              <Route path="administrator/dpu-sync-async" element={<DpuSyncAsync />} />
+              <Route path="transactions/deduction-entry" element={<DeductionEntry />} />
+              <Route path="transactions/sale-entry" element={<SaleEntry />} />
+              <Route path="reports/eko-correction" element={<EkoCorrection />} />
+              <Route path="account/payment-voucher" element={<PaymentVoucher />} />
+              <Route path="account/receipt-voucher" element={<ReceiptVoucher />} />
+              <Route path="billing/vlc-milk-bill" element={<VlcMilkBill />} />
+              <Route path="profile" element={<Profile />} />
               <Route path="portal/*" element={<FormPlaceholder />} />
               <Route path="*" element={<NotFound />} />
             </Route>

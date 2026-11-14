@@ -11,6 +11,8 @@ export interface FarmerInput {
   account: string;
   aadhaar: string;
   active: boolean;
+  /** farmercow column: cow / buff */
+  cow?: string;
 }
 
 export type FarmerErrors = Partial<Record<keyof FarmerInput, string>>;
@@ -91,7 +93,7 @@ export const hasErrors = (e: FarmerErrors) => Object.keys(e).length > 0;
 
 export const EXCEL_COLUMNS = [
   'farmerid', 'farmername', 'nameinbank', 'farmeraddress', 'farmercontact', 'farmerbank',
-  'bankifsccode', 'farmerbankac', 'farmerstatus', 'villageid', 'farmeraadhaar',
+  'bankifsccode', 'farmerbankac', 'farmerstatus', 'villageid', 'farmeraadhaar', 'farmercow',
 ] as const;
 export type ExcelColumn = (typeof EXCEL_COLUMNS)[number];
 
@@ -108,6 +110,7 @@ const HEADER_ALIASES: Record<ExcelColumn, string[]> = {
   farmerstatus: ['farmerstatus', 'status', 'active', 'isactive'],
   villageid: ['villageid', 'vlccid', 'vlcid', 'centerid', 'centreid'],
   farmeraadhaar: ['farmeraadhaar', 'aadhaar', 'aadhaarno', 'aadharno', 'aadhar'],
+  farmercow: ['farmercow', 'cow', 'milktype', 'cowbuff'],
 };
 
 const norm = (k: unknown) => String(k ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -179,6 +182,7 @@ export function parseImportRows(raw: Record<string, unknown>[], centres: CentreR
       ifsc: cellText(get('bankifsccode')).toUpperCase(),
       account: cellText(get('farmerbankac')),
       aadhaar: cellText(get('farmeraadhaar')),
+      cow: cellText(get('farmercow')),
       active,
     };
     const e = validateFarmer(f);

@@ -57,7 +57,12 @@ export const NAV_MODULES: NavModule[] = [
     icon: UserCog,
     children: [
       form("Center Access", "/administrator/center-access", "center-access"),
-      form("Bill Unfreeze", "/administrator/bill-freeze", "bill-freeze"),
+      form(
+        "Bill Unfreeze",
+        "/administrator/bill-freeze",
+        "bill-freeze",
+        "/administrator/bill-freeze",
+      ),
       form(
         "System Administrator",
         "/administrator/system-administrator",
@@ -78,6 +83,7 @@ export const NAV_MODULES: NavModule[] = [
         "Member Sync Async",
         "/administrator/dpu-sync-async",
         "dpu-sync-async",
+        "/administrator/dpu-sync-async",
       ),
       form(
         "Rate Sync Async",
@@ -96,8 +102,18 @@ export const NAV_MODULES: NavModule[] = [
     url: "/account",
     icon: Landmark,
     children: [
-      form("Receipt Voucher", "/account/receipt-voucher", "receipt-voucher"),
-      form("Payment Voucher", "/account/payment-voucher", "payment-voucher"),
+      form(
+        "Receipt Voucher",
+        "/account/receipt-voucher",
+        "receipt-voucher",
+        "/account/receipt-voucher",
+      ),
+      form(
+        "Payment Voucher",
+        "/account/payment-voucher",
+        "payment-voucher",
+        "/account/payment-voucher",
+      ),
     ],
   },
   {
@@ -158,7 +174,12 @@ export const NAV_MODULES: NavModule[] = [
       form("Dispatch Report", "/base/dispatch-report", "dispatch-report"),
       form("Milk Sale Report", "/base/milk-sale-report", "milk-sale-report"),
       form("Collection CA", "/base/collection-ca", "collection-ca"),
-      form("Collection CDA", "/base/collection-cda", "collection-cda"),
+      form(
+        "Collection CDA",
+        "/base/collection-cda",
+        "collection-cda",
+        "/reports/cda",
+      ),
       form(
         "Cleaning Report",
         "/base/cleaning-report",
@@ -171,7 +192,12 @@ export const NAV_MODULES: NavModule[] = [
         "eko-calibration",
         "/reports/eko-calibration",
       ),
-      form("Eko Correction", "/base/eko-correction", "eko-correction"),
+      form(
+        "Eko Correction",
+        "/base/eko-correction",
+        "eko-correction",
+        "/reports/eko-correction",
+      ),
       form("RMRD", "/base/rmrd", "rmrd"),
       form("Deduction Report", "/base/deduction-report", "deduction-report"),
       form("Store Stock", "/base/store-stock", "store-stock"),
@@ -273,11 +299,13 @@ export const NAV_MODULES: NavModule[] = [
         "Cattle Feed Sale",
         "/Transactions/cattlefeed-sale",
         "cattlefeed-sale",
+        "/transactions/sale-entry",
       ),
       form(
         "Sale Entry",
         "/Transactions/cattlefeed-sale-single-code",
         "cattlefeed-sale-single-code",
+        "/transactions/sale-entry",
       ),
       form(
         "Production Output",
@@ -288,6 +316,7 @@ export const NAV_MODULES: NavModule[] = [
         "Deduction Entry",
         "/Transactions/deduction-entry-single-code",
         "deduction-entry-single-code",
+        "/transactions/deduction-entry",
       ),
       form("SMS", "/Transactions/sms", "sms"),
     ],
@@ -363,7 +392,12 @@ export const NAV_MODULES: NavModule[] = [
         "payment-summary-single-code",
         "/billing/bank-payment-summary",
       ),
-      form("VLC Milk Bill", "/billing/vlc-milk-bill", "vlc-milk-bill"),
+      form(
+        "VLC Milk Bill",
+        "/billing/vlc-milk-bill",
+        "vlc-milk-bill",
+        "/billing/vlc-milk-bill",
+      ),
     ],
   },
   {
@@ -395,7 +429,7 @@ export const NAV_MODULES: NavModule[] = [
     name: "Profile",
     url: "/profile",
     icon: User,
-    children: [form("Profile", "/profile/profile", "profile")],
+    children: [form("Profile", "/profile/profile", "profile", "/profile")],
   },
   {
     name: "Support",

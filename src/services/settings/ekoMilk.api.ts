@@ -232,10 +232,6 @@ export async function getQualityPair(
   const json = await request(
     `${STATIC}/home/collectionbulkquality?stationid=${encodeURIComponent(stationId)}&shift=${encodeURIComponent(shift)}`,
   );
-  debugFirst("collectionbulkquality", [
-    ...listOf(json, VLC_ARRAY),
-    ...listOf(json, DOC_ARRAY),
-  ]);
   return {
     vlc: qualityFrom(listOf(json, VLC_ARRAY)),
     doc: qualityFrom(listOf(json, DOC_ARRAY)),
@@ -262,10 +258,6 @@ function appliedOf(r: Obj): [string, string] {
   ];
 }
 
-const debugFirst = (name: string, rows: Obj[]) => {
-  if (import.meta.env.DEV && rows[0])
-    console.info(`[eko] ${name} - first record keys:`, rows[0]);
-};
 
 export interface CorrectionRow {
   id: string;
@@ -298,7 +290,6 @@ export async function getEkoCorrections(
       `${HOST}/home/GetEkoCorrectionRecords?stationid=${encodeURIComponent(stationId)}`,
     ),
   );
-  debugFirst("GetEkoCorrectionRecords", rows);
   return rows.map((r) => {
     const [ad, at] = appliedOf(r);
     return {
@@ -339,8 +330,6 @@ export async function saveEkoCorrection(c: CorrectionInput): Promise<void> {
     snfmc: n0(c.diff.mixSnf),
     isactive: 1,
   };
-  if (import.meta.env.DEV)
-    console.info("[eko] settingscorrection (before encryption):", data);
   assertOk(
     await postSealed(`${HOST}/home/settingscorrection`, data),
     "The portal did not save the Eko calibration.",
@@ -413,7 +402,6 @@ export async function getControlSamples(
       `${HOST}/home/GetCorrectorRecords?stationid=${encodeURIComponent(stationId)}`,
     ),
   );
-  debugFirst("GetCorrectorRecords", rows);
   return rows.map((r) => {
     const [ad, at] = appliedOf(r);
     return {
@@ -463,8 +451,6 @@ export async function saveControlSample(c: ControlSampleInput): Promise<void> {
     mixsnf: nOrBlank(c.mix.snf),
     mixclr: nOrBlank(c.mix.clr),
   };
-  if (import.meta.env.DEV)
-    console.info("[eko] correctorsample (before encryption):", data);
   assertOk(
     await postSealed(`${HOST}/home/correctorsample`, data),
     "The portal did not save the control sample.",

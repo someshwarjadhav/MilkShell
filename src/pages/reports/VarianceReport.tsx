@@ -23,7 +23,7 @@ import { fetchFarmerCollection } from '../../services/farmer/farmer.api';
 import { mapVlcc } from '../../services/mappers/vlcc.mapper';
 import { mapFarmers } from '../../services/mappers/farmer.mapper';
 import { variance, varianceTotals, type SideTotals, type VarianceRow } from '../../services/mappers/report.mapper';
-import { vlccTitle } from '../../services/vlcc/names';
+import { vlccCode, vlccTitle } from '../../services/vlcc/names';
 import type { RawFarmerRow, RawVlccRow } from '../../services/types/raw';
 
 
@@ -71,7 +71,7 @@ const VarianceReport: React.FC = () => {
 
   const shiftText = (r: VarianceRow) => r.shift ?? '';
   const cols: GCol<VarianceRow>[] = [
-    { key: 'id', header: 'VLCC Id', cell: (r) => r.vlccid },
+    { key: 'id', header: 'VLCC Id', cell: (r) => vlccCode(r.vlccid) },
     { key: 'village', header: 'Village Name', cell: (r) => <span className="font-semibold">{vlccTitle(r.vlccid, r.village)}</span> },
     { key: 'date', header: 'Date', cell: (r) => r.date },
     { key: 'shift', header: 'Shift', cell: (r) => (r.shift ? <Badge tone={r.shift === SHIFT_MORNING ? 'warn' : 'brand'}>{r.shift}</Badge> : '') },
@@ -96,7 +96,7 @@ const VarianceReport: React.FC = () => {
   ];
 
   const exportCols: ExportCol<VarianceRow>[] = [
-    { header: 'VLCC Id', value: (r) => r.vlccid },
+    { header: 'VLCC Id', value: (r) => vlccCode(r.vlccid) },
     { header: 'Village Name', value: (r) => vlccTitle(r.vlccid, r.village) },
     { header: 'Date', value: (r) => r.date },
     { header: 'Shift', value: shiftText },

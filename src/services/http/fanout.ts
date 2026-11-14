@@ -38,23 +38,48 @@ export const needSession = () => {
   return s;
 };
 
-export async function fanOut<T>(waveList: Array<Array<Job<T>>>, emit: Emit<T> | undefined, dedupe: boolean): Promise<QueryData<T>> {
+/** First answer is shown at once; the following ones are batched so the table is not redrawn for every small reply. */
+const EMIT_EVERY_MS = 350;
+
+export async function fanOut<T>(waveList: Array<Array<Job<T>>>, emit: Emit<T> | undefined, dedupe: boolean, signal?: AbortSignal): Promise<QueryData<T>> {
   const rows: T[] = [];
   const seen = new Map<string, number>();
+  let index = 0;
   let failed = 0;
   let done = 0;
   let firstError: unknown;
-  let index = 0;
   const total = waveList.reduce((n, w) => n + w.length, 0);
+
+  if (total <= 1) dedupe = false;
+  let lastEmit = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const push = () => {
+    timer = undefined;
+    lastEmit = Date.now();
+    emit?.({ rows: [...rows], failed, total, done });
+  };
+  const progress = () => {
+    if (!emit || signal?.aborted) return;
+    if (done >= total) {
+      // the last answer: the final state is sent by the caller, nothing more to batch
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      return;
+    }
+    const wait = EMIT_EVERY_MS - (Date.now() - lastEmit);
+    if (lastEmit === 0 || wait <= 0) push();
+    else if (!timer) timer = setTimeout(push, wait);
+  };
   for (const wave of waveList) {
     await Promise.all(
       wave.map(async (job) => {
         const me = index++;
         try {
+          if (signal?.aborted) throw new ApiError('Cancelled.', 'cancelled');
           const got = await job();
           for (const r of got) {
             if (dedupe) {
-              
+              // the same record answered by two different requests is kept once (identical rows inside one reply stay)
               const sig = JSON.stringify(r);
               const owner = seen.get(sig);
               if (owner !== undefined && owner !== me) continue;
@@ -67,10 +92,11 @@ export async function fanOut<T>(waveList: Array<Array<Job<T>>>, emit: Emit<T> | 
           firstError ??= e;
         }
         done++;
-        emit?.({ rows: [...rows], failed, total, done });
+        progress();
       }),
     );
   }
+  if (timer) clearTimeout(timer);
   if (failed === total && firstError) throw firstError;
   return { rows, failed, total, done };
 }

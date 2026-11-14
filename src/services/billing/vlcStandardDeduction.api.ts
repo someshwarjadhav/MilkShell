@@ -1,16 +1,22 @@
-import { gatewayGet, gatewayText } from "../http/client";
+import { dpuGet } from "../http/dpu";
+import { DPU } from "../http/dpuEndpoints";
+import {
+  dpuSaveShapes,
+  isNoRecord,
+  stationKeys,
+  unwrapObj,
+} from "../http/dpuHelpers";
 import { ApiError } from "../http/errors";
 import { isObj, norm } from "../utils/loose";
-import { checkReply } from "../master/farmerMaster.api";
 import type {
   CategoryOption,
   CnData,
   CnFarmer,
   CnRow,
-} from "./standardDeduction.api";
+} from "./standardDeduction.api.ts";
 
-export const VLC_LIST_PATH = "/dairy/dairy/FarmerMasterVlccDed";
-export const VLC_SAVE_PATH = "/dairy/dairy/villagemastercnentry";
+export const VLC_LIST_PATH = DPU.farmerMasterVlccDed;
+export const VLC_SAVE_PATH = DPU.villageMasterCNEntry;
 
 export const VLC_CATEGORIES: CategoryOption[] = [
   { id: "incentive", label: "Incentive", flag: "CM" },
@@ -49,9 +55,18 @@ export async function getVlcs(
     `id=${vlcIds.map(encodeURIComponent).join(",")}` +
     `&flag=${encodeURIComponent(flag)}` +
     `&effectivedate=${encodeURIComponent(effectiveDate)}`;
-  const json = await gatewayGet(`${VLC_LIST_PATH}?${qs}`, 0);
-  if (!isObj(json))
+  const reply = await dpuGet(`${VLC_LIST_PATH}?${qs}`, 0);
+  const json = unwrapObj(reply, ["AgentList", "CommisionList"]);
+  if (!json) {
+    if (
+      isNoRecord(reply) ||
+      (isObj(reply) &&
+        (reply.Success ?? reply.success) !== false &&
+        !Object.keys(reply).length)
+    )
+      return { farmers: [], saved: [] };
     throw new ApiError("The server reply has an unexpected shape.", "parse");
+  }
 
   const farmers: CnFarmer[] = listAt(json, "AgentList")
     .map((r) => ({ farmerId: field(r, ["villageid"]), farmerName: nameOf(r) }))
@@ -68,7 +83,12 @@ export async function getVlcs(
     .filter((r) => r.farmerId);
 
   const have = new Set(saved.map((s) => s.farmerId));
-  return { farmers: farmers.filter((f) => !have.has(f.farmerId)), saved };
+  const left = farmers.filter((f) => !have.has(f.farmerId));
+  console.log(
+    `[VLC Standard Deduction] LIST loaded -> ${left.length} not yet set (left table), ${saved.length} already saved (right table)`,
+    { query: qs, saved },
+  );
+  return { farmers: left, saved };
 }
 
 export interface VlcSave {
@@ -78,27 +98,61 @@ export interface VlcSave {
   rows: CnRow[];
 }
 
-export const toVlcPayload = (s: VlcSave) => ({
+const num = (v: string) => (v === "" ? 0 : Number(v));
+
+const head = (s: VlcSave) => ({
   StationId: s.stationId,
   Flag: s.flag,
   EffectiveDate: s.effectiveDate,
+});
+
+export const toVlcPayload = (s: VlcSave) => ({
+  ...head(s),
+  Details: s.rows.map((r) => ({
+    farmerid: r.farmerId,
+    farmername: r.farmerName,
+    Cow: num(r.cow),
+    Buff: num(r.buff),
+    Mix: num(r.mix),
+    Type: s.flag,
+  })),
+});
+
+const toVillagePayload = (s: VlcSave) => ({
+  ...head(s),
+  Details: s.rows.map((r) => ({
+    villageid: r.farmerId,
+    villagename: r.farmerName,
+    Cow: num(r.cow),
+    Buff: num(r.buff),
+    Mix: num(r.mix),
+    Type: s.flag,
+  })),
+});
+
+const toVlcPascalPayload = (s: VlcSave) => ({
+  ...head(s),
   Details: s.rows.map((r) => ({
     FarmerId: r.farmerId,
     FarmerName: r.farmerName,
-    Cow: r.cow === "" ? 0 : Number(r.cow),
-    Buff: r.buff === "" ? 0 : Number(r.buff),
-    Mix: r.mix === "" ? 0 : Number(r.mix),
+    Cow: num(r.cow),
+    Buff: num(r.buff),
+    Mix: num(r.mix),
     Type: s.flag,
   })),
 });
 
 export async function saveVlcCommission(s: VlcSave): Promise<string> {
-  const body = new FormData();
-  body.append("data", JSON.stringify(toVlcPayload(s)));
-  const reply = await gatewayText(VLC_SAVE_PATH, { method: "POST", body });
-  return checkReply(
-    reply,
-    "The VLC standard deduction could not be saved.",
-    true,
+  console.group(
+    `[VLC Standard Deduction] SUBMIT  station ${s.stationId}, flag ${s.flag}, date ${s.effectiveDate}, ${s.rows.length} row(s)`,
   );
+  console.table(s.rows);
+  console.groupEnd();
+  const message = await dpuSaveShapes("VillageMasterCNEntry", VLC_SAVE_PATH, [
+    toVlcPayload(s),
+    { ...toVlcPayload(s), ...stationKeys(s.stationId) },
+    toVillagePayload(s),
+    toVlcPascalPayload(s),
+  ]);
+  return message || "Saved";
 }

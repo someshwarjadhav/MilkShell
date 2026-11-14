@@ -1,4 +1,5 @@
 import type { VlcRecord } from "./vlcMaster.api";
+import { excelFileName } from "../../lib/fileName";
 
 const loadXlsx = () => import("xlsx");
 
@@ -26,7 +27,7 @@ export async function exportVlcMaster(
       r.contact,
       r.active ? "Active" : "Inactive",
       r.pcbNo,
-      r.ekoPass,
+      r.ekoPass || "0",
     ]),
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -44,5 +45,5 @@ export async function exportVlcMaster(
     }
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "VillageMaster");
-  XLSX.writeFile(wb, `${name}.xlsx`, { compression: true });
+  XLSX.writeFile(wb, excelFileName(name), { compression: true });
 }

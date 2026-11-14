@@ -17,7 +17,7 @@ import { ErrorBlock, Notice } from '../components/Widget';
 import { MilkLoader } from '../components/MilkLoader';
 import { useToast } from '../context/ToastContext';
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from '../lib/export';
-import { addDays, fmtDate, fmtShort, inr, nf, todayISO } from '../lib/format';
+import { addDays, farmerCode, fmtDate, fmtShort, inr, nf, todayISO } from '../lib/format';
 import { DEFAULT_MILK, DEFAULT_PAGE_SIZE, DEFAULT_SHIFT, GLOBALLABELS, GLOBALSMILK, GLOBALSSHIFT } from '../lib/global';
 import { useFirstCentre } from '../hooks/useCentres';
 import { CentreField, PlantMccField, SubmitButton } from '../components/ReportFilters';
@@ -77,13 +77,13 @@ const Farmers: React.FC = () => {
     return book
       .filter((f) => !applied || f.vlccid === applied.vlcc)
       .filter((f) => show === 'all' || (show === 'poured' ? f.period > 0 : show === 'nomilk' ? f.period === 0 && f.active !== false : f.active === false))
-      .filter((f) => !s || f.name.toLowerCase().includes(s) || f.farmerId.includes(s) || f.village.toLowerCase().includes(s) || f.phone.includes(s));
+      .filter((f) => !s || f.name.toLowerCase().includes(s) || f.farmerId.includes(s) || farmerCode(f.farmerId).includes(s) || f.village.toLowerCase().includes(s) || f.phone.includes(s));
   }, [book, q, show, applied]);
 
   const rangeLabel = applied ? `${fmtShort(applied.from)} – ${fmtShort(applied.to)}` : '';
 
   const cols: Column<BookFarmer>[] = [
-    { key: 'id', header: 'ID', sort: (f) => f.farmerId.padStart(8, '0'), cell: (f) => f.farmerId },
+    { key: 'id', header: 'ID', sort: (f) => f.farmerId.padStart(8, '0'), cell: (f) => farmerCode(f.farmerId) },
     { key: 'name', header: 'Farmer', sort: (f) => f.name, cell: (f) => <div><p className="font-semibold">{f.name}</p><p className="text-xs text-mute">{f.village || '—'}</p></div> },
     { key: 'vlcc', header: 'Centre (VLC)', sort: (f) => vlccOption(f.vlccid), cell: (f) => (f.vlccid ? vlccOption(f.vlccid) : '—') },
     { key: 'milk', header: 'Milk types', cell: (f) => <div className="flex gap-1">{f.milks.length ? f.milks.map((m) => <KindChip key={m} kind={m} compact />) : '—'}</div> },
@@ -114,7 +114,7 @@ const Farmers: React.FC = () => {
   const ready = applied !== null && !loading && !failed;
 
   const exportCols: ExportCol<BookFarmer>[] = [
-    { header: 'Farmer Id', value: (f) => f.farmerId }, { header: 'Farmer', value: (f) => f.name }, { header: 'Village', value: (f) => f.village },
+    { header: 'Farmer Id', value: (f) => farmerCode(f.farmerId) }, { header: 'Farmer', value: (f) => f.name }, { header: 'Village', value: (f) => f.village },
     { header: 'Centre', value: (f) => (f.vlccid ? vlccOption(f.vlccid) : '') }, { header: 'Milk types', value: (f) => f.milks.map((m) => KIND_META[m].label).join(', ') },
     { header: 'Last 7 days of range (L)', value: (f) => f.week }, { header: 'Litres (range)', value: (f) => f.period }, { header: 'Avg Fat', value: (f) => f.avgFat }, { header: 'Avg SNF', value: (f) => f.avgSnf }, { header: 'Amount', value: (f) => f.amount },
   ];
@@ -168,7 +168,7 @@ const Farmers: React.FC = () => {
               : <DataTable columns={cols} rows={rows} rowKey={(f) => f.key} pageSize={DEFAULT_PAGE_SIZE} pageSizes={[10, 25, 50, 100, 250]} sizeLabel="Result per page" onRowClick={(f) => setOpenKey(f.key)} empty={<p className="px-6 py-10 text-center text-sm text-mute">No farmers found for these filters.</p>} />}
       </Card>
 
-      <Drawer open={!!open} onClose={close} title={open?.name ?? ''} subtitle={open ? `Farmer ${open.farmerId} · ${vlccOption(open.vlccid)}${open.village ? ` · ${open.village}` : ''}` : ''}>
+      <Drawer open={!!open} onClose={close} title={open?.name ?? ''} subtitle={open ? `Farmer ${farmerCode(open.farmerId)} · ${vlccOption(open.vlccid)}${open.village ? ` · ${open.village}` : ''}` : ''}>
         {open && detail && (
           <div className="space-y-6">
             <div className="grid grid-cols-3 gap-3">

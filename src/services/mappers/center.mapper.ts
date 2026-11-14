@@ -1,4 +1,4 @@
-import type { VlccRow } from './vlcc.mapper';
+import type { VlccRow } from './vlcc.mapper.ts';
 
 export interface Center {
   id: string;

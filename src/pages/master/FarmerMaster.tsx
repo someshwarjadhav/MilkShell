@@ -23,7 +23,7 @@ import { useCenters } from "../../hooks/useSessionData";
 import { getSession } from "../../services/session";
 import { vlccName, vlccOption } from "../../services/vlcc/names";
 import { ApiError } from "../../services/http/errors";
-import { nf } from "../../lib/format";
+import { farmerCode, nf } from "../../lib/format";
 import { DEFAULT_PAGE_SIZE } from "../../lib/global";
 import {
   getData,
@@ -384,7 +384,7 @@ const FarmerMaster: React.FC = () => {
       key: "id",
       header: "Farmer Id",
       sort: (r) => Number(r.farmerId) || 0,
-      cell: (r) => r.farmerId,
+      cell: (r) => farmerCode(r.farmerId),
     },
     {
       key: "name",

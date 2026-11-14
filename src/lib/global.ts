@@ -139,3 +139,6 @@ export class Pagination<T = unknown> {
     return Array.from(Array(endPage + 1 - startPage).keys()).map((i) => startPage + i);
   }
 }
+
+/** Same as the STIPL portal: Result per page 100 / 200 / 300 (used by the SmartX service layer). */
+export const PAGE_SIZE_OPTIONS: number[] = [100, 200, 300];

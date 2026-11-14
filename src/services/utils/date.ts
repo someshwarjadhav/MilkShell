@@ -2,7 +2,6 @@ import { DATE_FORMAT } from '../config';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-
 export function apiDate(isoDate: string): string {
   const [y, m, d] = isoDate.split('-');
   switch (DATE_FORMAT) {
@@ -17,4 +16,17 @@ export function isoFromTrdate(t: string): string | null {
   const m = /^(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})$/.exec(String(t).trim());
   const mi = m ? MON.findIndex((x) => x.toLowerCase() === m[2].toLowerCase()) : -1;
   return m && mi >= 0 ? `${m[3]}-${String(mi + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}` : null;
+}
+
+
+export function eachDay(fromIso: string, toIso: string): string[] {
+  const out: string[] = [];
+  const d = new Date(`${fromIso}T00:00:00Z`);
+  const end = new Date(`${toIso}T00:00:00Z`);
+  if (Number.isNaN(d.getTime()) || Number.isNaN(end.getTime())) return [fromIso];
+  while (d <= end && out.length < 366) {
+    out.push(d.toISOString().slice(0, 10));
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return out;
 }

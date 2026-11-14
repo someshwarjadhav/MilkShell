@@ -21,7 +21,7 @@ import { useQuery } from '../../hooks/useQuery';
 import { fetchVlccCollection } from '../../services/vlcc/vlcc.api';
 import { mapVlcc } from '../../services/mappers/vlcc.mapper';
 import { vlcStatus, type StatusRow } from '../../services/mappers/report.mapper';
-import { vlccTitle } from '../../services/vlcc/names';
+import { vlccCode, vlccTitle } from '../../services/vlcc/names';
 import type { MilkCode, RawVlccRow, ShiftCode } from '../../services/types/raw';
 
 type Show = 'all' | 'active' | 'inactive';
@@ -33,7 +33,7 @@ const StatusCard: React.FC<{ r: StatusRow; index: number }> = ({ r, index }) => 
     <motion.div layout initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: Math.min(index, 12) * 0.04, type: 'spring', damping: 22 }} whileHover={{ y: -4 }}>
       <Card className={cn('h-full p-4 text-center transition-colors', r.active ? 'hover:border-ok/60' : 'hover:border-danger/50')}>
         <p className="truncate font-display text-sm font-extrabold uppercase tracking-tight" title={vlccTitle(r.vlccid, r.village)}>{vlccTitle(r.vlccid, r.village)}</p>
-        <p className="mt-0.5 text-xs font-semibold text-mute tnum">{r.vlccid}</p>
+        <p className="mt-0.5 text-xs font-semibold text-mute tnum">{vlccCode(r.vlccid)}</p>
 
         <div className="relative mx-auto my-4 grid h-14 w-14 place-items-center">
           {r.active ? (
@@ -93,7 +93,7 @@ const VlcStatus: React.FC = () => {
   const activeCount = all.filter((r) => r.active).length;
   const shown = all
     .filter((r) => show === 'all' || (show === 'active') === r.active)
-    .filter((r) => !needle.trim() || `${vlccTitle(r.vlccid, r.village)} ${r.vlccid}`.toLowerCase().includes(needle.trim().toLowerCase()));
+    .filter((r) => !needle.trim() || `${vlccTitle(r.vlccid, r.village)} ${r.vlccid} ${vlccCode(r.vlccid)}`.toLowerCase().includes(needle.trim().toLowerCase()));
   const totalLit = all.reduce((a, r) => a + r.liter, 0);
   const avgFat = totalLit ? all.reduce((a, r) => a + r.liter * r.fat, 0) / totalLit : 0;
   const shownActive = shown.filter((r) => r.active).length;
@@ -103,7 +103,7 @@ const VlcStatus: React.FC = () => {
   const err = q.status === 'error';
   const statError = err ? q.error?.message : undefined;
   const exportCols: ExportCol<StatusRow>[] = [
-    { header: 'VLC Id', value: (r) => r.vlccid },
+    { header: 'VLC Id', value: (r) => vlccCode(r.vlccid) },
     { header: 'Centre', value: (r) => vlccTitle(r.vlccid, r.village) },
     { header: 'Status', value: (r) => r.active ? 'Active' : 'Inactive' },
     { header: 'Litres', value: (r) => r.liter.toFixed(2) },

@@ -35,9 +35,6 @@ export function setSession(s: { vlccIds?: string[]; vlccNames?: Record<string, s
   }
   const fromLogin = !!s.vlccIds?.length;
   const vlccIds = fromLogin ? s.vlccIds! : splitIds(ENV_VLCC_IDS);
-  if (import.meta.env.DEV) {
-    console.info('[smartx] VLC ids:', vlccIds, fromLogin ? '(from login)' : vlccIds.length ? '(from VITE_VLCC_IDS in .env.local)' : '(NONE: not in login response, VITE_VLCC_IDS empty or the dev server was not restarted)', '| station:', s.stationId || ENV_STATION_ID || '-', '| mcc used:', ENV_MCC_ID || vlccIds[0]?.slice(0, 3) || s.mccId || '-', s.mccId && s.mccId !== (ENV_MCC_ID || vlccIds[0]?.slice(0, 3)) ? `(login record says ${s.mccId}: ignored)` : '');
-  }
   current = {
     vlccIds,
     vlccNames: { ...VILLAGE_NAMES, ...(s.vlccNames ?? {}) },
@@ -69,4 +66,18 @@ export function stationFor(ids: string[]): string {
   if (!s) return '';
   const own = [...new Set(ids.map((id) => s.stationByVlcc[id]).filter(Boolean))];
   return own.length ? own.join(',') : s.stationId;
+}
+
+
+export function patchSessionVlcc(v: { villageId: string; name?: string; customId?: string }) {
+  const s = current;
+  if (!s || !v.villageId) return;
+  if (!s.vlccIds.includes(v.villageId)) s.vlccIds = [...s.vlccIds, v.villageId];
+  if (v.name) s.vlccNames = { ...s.vlccNames, [v.villageId]: v.name };
+  if (v.customId) s.stationByVlcc = { ...s.stationByVlcc, [v.villageId]: v.customId };
+  Object.assign(GLOBALS, {
+    customsessionid: s.vlccIds.join(','),
+    sessionid: s.vlccIds[0] ?? null,
+    id: s.vlccIds[0] ?? null,
+  });
 }

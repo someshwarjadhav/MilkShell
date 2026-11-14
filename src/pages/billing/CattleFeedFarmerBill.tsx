@@ -13,7 +13,7 @@ import { ErrorBlock } from "../../components/Widget";
 import { useToast } from "../../context/ToastContext";
 import { useCentreOptions } from "../../hooks/useCentres";
 import { DEFAULT_PAGE_SIZE, GLOBALLABELS } from "../../lib/global";
-import { todayISO } from "../../lib/format";
+import { farmerCode, todayISO } from "../../lib/format";
 import { cn } from "../../lib/cn";
 import { exportCSV, exportExcel, exportPDF, type ExportCol } from "../../lib/export";
 import { getFarmerBills, type CfBill } from "../../services/billing/cattleFeed.api";
@@ -51,7 +51,7 @@ const COLS: Array<ExportCol<FlatRow>> = [
 ];
 
 const flatten = (bills: CfBill[]): FlatRow[] =>
-  bills.flatMap((b) => b.lines.map((l) => ({ farmer: `${b.farmerId} ${b.farmerName}`.trim(), ...l })));
+  bills.flatMap((b) => b.lines.map((l) => ({ farmer: `${farmerCode(b.farmerId)} ${b.farmerName}`.trim(), ...l })));
 
 const CattleFeedFarmerBill: React.FC = () => {
   const toast = useToast();
@@ -173,7 +173,7 @@ const CattleFeedFarmerBill: React.FC = () => {
                   <h3 className="pt-4 text-center text-sm font-bold">FARMER BILL</h3>
                   <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-4 py-3 text-sm">
                     <p>
-                      <span className="font-bold">Farmer:</span> {b.farmerId} {b.farmerName}
+                      <span className="font-bold">Farmer:</span> {farmerCode(b.farmerId)} {b.farmerName}
                     </p>
                     <p>
                       <span className="font-bold">Date:</span> <span className="tnum">{range}</span>
