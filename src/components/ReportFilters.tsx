@@ -5,7 +5,7 @@ import { Field, Select } from './ui/Fields';
 import { Button } from './ui/Button';
 import { cn } from '../lib/cn';
 import { GLOBALLABELS } from '../lib/global';
-import { setSelectedMcc, useCentreOptions, useMccOptions, useSelectedMcc } from '../hooks/useCentres';
+import { setSelectedMcc, useCentreOptions, useMccOptions, useSelectedMcc, type CentreOption, type MccOption } from '../hooks/useCentres';
 
 export const PlantMccField: React.FC<{ className?: string }> = ({ className }) => {
   const options = useMccOptions();
@@ -21,14 +21,33 @@ export const PlantMccField: React.FC<{ className?: string }> = ({ className }) =
   );
 };
 
+/** Plant / MCC dropdown driven by the page's own scope (usePlantScope): "All" plus every route */
+export const ScopedPlantField: React.FC<{
+  className?: string;
+  options: MccOption[];
+  value: string;
+  onChange: (id: string) => void;
+}> = ({ className, options, value, onChange }) => (
+  <Field label={GLOBALLABELS.plantMcc} className={className}>
+    <Select value={value} onChange={(e) => onChange(e.target.value)}>
+      {options.map((o) => (
+        <option key={o.id} value={o.id}>{o.label}</option>
+      ))}
+    </Select>
+  </Field>
+);
+
 export const CentreField: React.FC<{
   value: string;
   onChange: (id: string) => void;
   label?: string;
   className?: string;
   allValue?: string;
-}> = ({ value, onChange, label = GLOBALLABELS.vlcName, className, allValue }) => {
-  const options = useCentreOptions();
+  /** centres to list instead of the global MCC's (a page with its own plant scope) */
+  centres?: CentreOption[];
+}> = ({ value, onChange, label = GLOBALLABELS.vlcName, className, allValue, centres }) => {
+  const globalOptions = useCentreOptions();
+  const options = centres ?? globalOptions;
   const known = options.some((o) => o.id === value) || (allValue !== undefined && value === allValue);
 
   useEffect(() => {

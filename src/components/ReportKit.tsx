@@ -198,7 +198,9 @@ export const ReportBar: React.FC<{
   onExport: (k: ExportKind) => void;
   left?: ReactNode;
   source?: ReactNode;
-}> = ({ count, hideCount, disabled, kinds, onExport, left, source }) => (
+  /** custom export buttons (e.g. Old / New Excel, PDF, Print, CSV): shown instead of the `kinds` buttons */
+  actions?: ReactNode;
+}> = ({ count, hideCount, disabled, kinds, onExport, left, source, actions }) => (
   <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6">
     <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
       {left}
@@ -206,7 +208,7 @@ export const ReportBar: React.FC<{
       {source}
     </div>
     <div className="flex flex-wrap gap-2">
-      {kinds.map((k) => (
+      {actions ?? kinds.map((k) => (
         <motion.div key={k} whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
           <Button
             size="sm"

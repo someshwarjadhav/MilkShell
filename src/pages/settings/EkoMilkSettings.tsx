@@ -2,13 +2,17 @@ import type * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CheckCheck,
+  ClipboardCheck,
+  Download,
   Eye,
   EyeOff,
   FlaskConical,
+  Info,
   Loader2,
   Minus,
   Plus,
   RefreshCw,
+  RotateCcw,
   SlidersHorizontal,
   X,
 } from "lucide-react";
@@ -16,13 +20,16 @@ import { Card, CardHeader } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Pager } from "../../components/ui/Pager";
+import { TableTopBar } from "../../components/ui/ResultPerPage";
+import { DEFAULT_PAGE_SIZE } from "../../lib/global";
 import { Field, Input, Select } from "../../components/ui/Fields";
 import { ErrorBlock } from "../../components/Widget";
+import { MilkLoader } from "../../components/MilkLoader";
 import { CardTitle, ReportPage, Reveal } from "../../components/ReportKit";
 import { useToast } from "../../context/ToastContext";
 import { useCenters } from "../../hooks/useSessionData";
 import { getSession } from "../../services/session";
-import { vlccOption } from "../../services/vlcc/names";
+import { vlccCode, vlccOption } from "../../services/vlcc/names";
 import { ApiError } from "../../services/http/errors";
 import { todayISO } from "../../lib/format";
 import { DEFAULT_SHIFT, GLOBALSSHIFT } from "../../lib/global";
@@ -88,6 +95,9 @@ const PassInput: React.FC<{
     <div className="relative">
       <Input
         type={show ? "text" : "password"}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         value={value}
         readOnly={readOnly}
         disabled={disabled}
@@ -165,7 +175,7 @@ const RecordsTable: React.FC<{
   emptyText: string;
 }> = ({ rows, kind, busyId, onCancel, loading, emptyText }) => {
   const [page, setPage] = useState(1);
-  const [size, setSize] = useState(5);
+  const [size, setSize] = useState(DEFAULT_PAGE_SIZE);
   useEffect(() => {
     setPage(1);
   }, [rows]);
@@ -209,6 +219,17 @@ const RecordsTable: React.FC<{
 
   return (
     <div className="overflow-hidden rounded-xl border border-line">
+      {rows.length > 0 && (
+        <TableTopBar
+          total={rows.length}
+          page={page}
+          size={size}
+          onSize={(n) => {
+            setSize(n);
+            setPage(1);
+          }}
+        />
+      )}
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -263,7 +284,7 @@ const RecordsTable: React.FC<{
                     <td className={`${cell} whitespace-nowrap`}>
                       {r.entryDate}
                     </td>
-                    <td className={cell}>{r.stationId}</td>
+                    <td className={cell}>{vlccCode(r.stationId)}</td>
                     {six(r).map((v, i) => (
                       <td key={i} className={`${cell} ${TINTS[i]}`}>
                         {v}
@@ -303,7 +324,7 @@ const RecordsTable: React.FC<{
                   <td
                     className={`${cell} ${ln.label ? "font-bold italic" : ""}`}
                   >
-                    {ln.label ?? r.stationId}
+                    {ln.label ?? vlccCode(r.stationId)}
                   </td>
                   {ln.values.map((v, i) => (
                     <td key={i} className={`${cell} ${TINTS[i]}`}>
@@ -338,12 +359,15 @@ const RecordsTable: React.FC<{
             })}
             {slice.length === 0 && (
               <tr>
-                <td
-                  colSpan={12}
-                  className={`${cell} py-8 text-center text-mute`}
-                >
-                  {loading ? "Loading records…" : emptyText}
-                </td>
+                {loading ? (
+                  <td colSpan={12} className="p-0">
+                    <MilkLoader label="Loading records…" />
+                  </td>
+                ) : (
+                  <td colSpan={12} className={`${cell} py-8 text-center text-mute`}>
+                    {emptyText}
+                  </td>
+                )}
               </tr>
             )}
           </tbody>
@@ -377,7 +401,7 @@ const RecordsTable: React.FC<{
                     </span>
                   </p>
                   <p className="text-mute">
-                    {r.entryDate} · Station {r.stationId}
+                    {r.entryDate} · Station {vlccCode(r.stationId)}
                   </p>
                   {(r.appliedDate || r.appliedTime) && (
                     <p className="text-mute">
@@ -417,51 +441,216 @@ const RecordsTable: React.FC<{
             </div>
           );
         })}
-        {slice.length === 0 && (
-          <p className="py-6 text-center text-mute">
-            {loading ? "Loading records…" : emptyText}
-          </p>
-        )}
+        {slice.length === 0 &&
+          (loading ? (
+            <MilkLoader label="Loading records…" />
+          ) : (
+            <p className="py-6 text-center text-mute">{emptyText}</p>
+          ))}
       </div>
       <Pager
         total={rows.length}
         page={page}
         size={size}
         onPage={setPage}
-        onSize={(n) => {
-          setSize(n);
-          setPage(1);
-        }}
       />
     </div>
   );
 };
 
+type Tab = "calibration" | "tools" | "history";
+type Adj = Record<keyof Quality6, number>;
+
+const STEP = 0.02;
+const zeroAdj = (): Adj => ({
+  cowFat: 0,
+  cowSnf: 0,
+  buffFat: 0,
+  buffSnf: 0,
+  mixFat: 0,
+  mixSnf: 0,
+});
+const r2 = (n: number) => Math.round(n * 100) / 100;
+const clampAdj = (n: number) => r2(n);
+const num = (v: string) => {
+  const n = Number(v);
+  return v === "" || Number.isNaN(n) ? 0 : n;
+};
+const signedText = (n: number) => (n > 0 ? `+${n.toFixed(2)}` : n.toFixed(2));
+
+const MILKS: Array<{
+  key: "cow" | "buff" | "mix";
+  label: string;
+  dot: string;
+  fat: keyof Quality6;
+  snf: keyof Quality6;
+}> = [
+  { key: "cow", label: "Cow", dot: "bg-cow", fat: "cowFat", snf: "cowSnf" },
+  {
+    key: "buff",
+    label: "Buffalo",
+    dot: "bg-buffalo",
+    fat: "buffFat",
+    snf: "buffSnf",
+  },
+  { key: "mix", label: "Mixed", dot: "bg-goat", fat: "mixFat", snf: "mixSnf" },
+];
+const FIELD_LABEL: Record<keyof Quality6, string> = {
+  cowFat: "Cow FAT",
+  cowSnf: "Cow SNF",
+  buffFat: "Buffalo FAT",
+  buffSnf: "Buffalo SNF",
+  mixFat: "Mixed FAT",
+  mixSnf: "Mixed SNF",
+};
+
+/** Number box that lets the user type freely (e.g. "-", "-0.") and commits on every valid keystroke. */
+const NumBox: React.FC<{
+  value: number;
+  onCommit: (n: number) => void;
+  disabled?: boolean;
+  signed?: boolean;
+  highlight?: boolean;
+  label: string;
+}> = ({ value, onCommit, disabled, signed, highlight, label }) => {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? (signed ? signedText(value) : value.toFixed(2));
+  return (
+    <input
+      aria-label={label}
+      inputMode="decimal"
+      disabled={disabled}
+      value={shown}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => {
+        const t = e.target.value.replace(/[^\d.+-]/g, "");
+        setDraft(t);
+        const n = Number(t);
+        if (t !== "" && t !== "-" && t !== "+" && !Number.isNaN(n)) onCommit(n);
+      }}
+      onBlur={() => setDraft(null)}
+      className={`tnum h-9 w-full min-w-0 rounded-lg border bg-panel px-2 text-center text-sm font-semibold outline-none transition-colors focus:border-brand disabled:opacity-50 ${
+        highlight ? "border-brand text-brand" : "border-line"
+      }`}
+    />
+  );
+};
+
+const StepBtn: React.FC<{
+  onClick: () => void;
+  disabled?: boolean;
+  label: string;
+  children: React.ReactNode;
+}> = ({ onClick, disabled, label, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    aria-label={label}
+    className="grid h-9 w-8 shrink-0 place-items-center rounded-lg border border-line bg-soft text-ink transition-colors hover:border-brand hover:text-brand disabled:opacity-50"
+  >
+    {children}
+  </button>
+);
+
+const MilkCard: React.FC<{
+  m: (typeof MILKS)[number];
+  device: Quality6;
+  doc: Quality6;
+  adj: Adj;
+  enabled: boolean;
+  onAdj: (k: keyof Quality6, n: number) => void;
+}> = ({ m, device, doc, adj, enabled, onAdj }) => (
+  <div className="min-w-0 rounded-2xl border border-line bg-panel p-4 shadow-card">
+    <div className="mb-3 flex items-center gap-2">
+      <span className={`h-3 w-3 rounded-full ${m.dot}`} />
+      <h4 className="font-display text-sm font-semibold">{m.label}</h4>
+    </div>
+    <div className="grid grid-cols-[3.2rem_minmax(0,1fr)_minmax(0,8.5rem)_minmax(0,1fr)] items-center gap-x-2 gap-y-3 text-sm">
+      {["Param", "Device", "Adjust", "New"].map((h) => (
+        <span
+          key={h}
+          className={`text-[11px] font-bold uppercase tracking-wide text-mute ${h === "Adjust" ? "text-center" : ""}`}
+        >
+          {h}
+        </span>
+      ))}
+      {(
+        [
+          ["FAT", m.fat],
+          ["SNF", m.snf],
+        ] as const
+      ).map(([name, k]) => {
+        const dev = num(device[k]);
+        const a = adj[k];
+        const changed = a !== 0;
+        return (
+          <div key={k} className="contents">
+            <div>
+              <p className="font-bold">{name}</p>
+              <p className="tnum text-[10px] text-mute">
+                DOC {doc[k] || "0.00"}
+              </p>
+            </div>
+            <span className="tnum font-semibold text-mute">
+              {dev.toFixed(2)}
+            </span>
+            <div className="flex items-center gap-1">
+              <StepBtn
+                label={`Decrease ${FIELD_LABEL[k]}`}
+                disabled={!enabled}
+                onClick={() => onAdj(k, clampAdj(a - STEP))}
+              >
+                <Minus size={14} />
+              </StepBtn>
+              <NumBox
+                label={`${FIELD_LABEL[k]} adjust`}
+                signed
+                value={a}
+                disabled={!enabled}
+                highlight={changed}
+                onCommit={(n) => onAdj(k, clampAdj(n))}
+              />
+              <StepBtn
+                label={`Increase ${FIELD_LABEL[k]}`}
+                disabled={!enabled}
+                onClick={() => onAdj(k, clampAdj(a + STEP))}
+              >
+                <Plus size={14} />
+              </StepBtn>
+            </div>
+            <NumBox
+              label={`${FIELD_LABEL[k]} new value`}
+              value={r2(dev + a)}
+              disabled={!enabled}
+              highlight={changed}
+              onCommit={(n) => onAdj(k, clampAdj(n - dev))}
+            />
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
 const CalibrationCard: React.FC<{ ids: string[] }> = ({ ids }) => {
   const toast = useToast();
   const [center, setCenter] = useState("");
   const [shift, setShift] = useState<string>(DEFAULT_SHIFT);
-  
-  const [vlc, setVlc] = useState<Quality6>(emptyQuality);
+  const [tab, setTab] = useState<Tab>("calibration");
+
+  const [device, setDevice] = useState<Quality6>(emptyQuality);
   const [doc, setDoc] = useState<Quality6>(emptyQuality);
-  
-  const [diff, setDiff] = useState<Quality6>(emptyQuality);
-  const [neg, setNeg] = useState<Record<keyof Quality6, boolean>>({
-    cowFat: false,
-    cowSnf: false,
-    buffFat: false,
-    buffSnf: false,
-    mixFat: false,
-    mixSnf: false,
-  });
+  const [adj, setAdj] = useState<Adj>(zeroAdj);
   const [cred, setCred] = useState(emptyCredentials);
   const [passApply, setPassApply] = useState(false);
   const [rows, setRows] = useState<CorrectionRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showing, setShowing] = useState(false);
+  const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [review, setReview] = useState(false);
 
   const loadRecords = useCallback(async (c: string) => {
     if (!c) {
@@ -491,21 +680,34 @@ const CalibrationCard: React.FC<{ ids: string[] }> = ({ ids }) => {
   }, []);
 
   const resetEntry = () => {
-    setDiff(emptyQuality());
-    setNeg({
-      cowFat: false,
-      cowSnf: false,
-      buffFat: false,
-      buffSnf: false,
-      mixFat: false,
-      mixSnf: false,
-    });
+    setAdj(zeroAdj());
     setPassApply(false);
+  };
+
+  // Same as the original "Show" button: values are only read when asked for.
+  const show = async () => {
+    if (!center) {
+      toast("Select a center first", "warn");
+      return;
+    }
+    setReading(true);
+    setError(null);
+    try {
+      const q = await getQualityPair(center, shift);
+      setDevice(q.vlc);
+      setDoc(q.doc);
+    } catch (e) {
+      setDevice(emptyQuality());
+      setDoc(emptyQuality());
+      setError(message(e, "The milk quality could not be loaded."));
+    } finally {
+      setReading(false);
+    }
   };
 
   useEffect(() => {
     setError(null);
-    setVlc(emptyQuality());
+    setDevice(emptyQuality());
     setDoc(emptyQuality());
     resetEntry();
     void loadRecords(center);
@@ -513,73 +715,65 @@ const CalibrationCard: React.FC<{ ids: string[] }> = ({ ids }) => {
   }, [center, loadRecords, loadCredentials]);
 
   useEffect(() => {
-    setVlc(emptyQuality());
+    setDevice(emptyQuality());
     setDoc(emptyQuality());
   }, [shift]);
 
-  const show = async () => {
-    if (!center) {
-      toast("Select a center first", "warn");
-      return;
-    }
-    setShowing(true);
-    setError(null);
-    try {
-      const q = await getQualityPair(center, shift);
-      setVlc(q.vlc);
-      setDoc(q.doc);
-    } catch (e) {
-      setVlc(emptyQuality());
-      setDoc(emptyQuality());
-      setError(message(e, "The milk quality could not be loaded."));
-    } finally {
-      setShowing(false);
-    }
-  };
-
-  const setDiffField = (k: keyof Quality6, v: string) =>
-    setDiff((d) => ({ ...d, [k]: decimal(v) }));
+  const setOne = (k: keyof Quality6, n: number) =>
+    setAdj((a) => ({ ...a, [k]: n }));
   const regen = () =>
     setCred((c) => ({
       ...c,
       newPass: String(Math.floor(100000 + Math.random() * 900000)),
     }));
 
-  
+  const changes = useMemo(
+    () =>
+      QUALITY_FIELDS.filter(([k]) => adj[k] !== 0).map(([k]) => {
+        const on = num(device[k]);
+        return { k, label: FIELD_LABEL[k], on, next: r2(on + adj[k]), by: adj[k] };
+      }),
+    [adj, device],
+  );
+  const passOk = !passApply || /^\d{6}$/.test(cred.newPass);
+  const pending = changes.length + (passApply ? 1 : 0);
+
   const signed = (): Quality6 => {
     const out = emptyQuality();
     QUALITY_FIELDS.forEach(([k]) => {
-      const n = Number(diff[k]);
-      out[k] =
-        diff[k] === "" || Number.isNaN(n)
-          ? ""
-          : n === 0
-            ? "0.00"
-            : `${neg[k] ? "-" : ""}${n.toFixed(2)}`;
+      out[k] = adj[k] === 0 ? "" : adj[k].toFixed(2);
     });
     return out;
   };
 
-  const diffReady = QUALITY_FIELDS.some(([k]) => diff[k] !== "");
-  const passOk = !passApply || /^\d{6}$/.test(cred.newPass);
+  const discard = () => {
+    resetEntry();
+    void loadCredentials(center);
+  };
 
-  const submit = async () => {
+  const openReview = () => {
     if (!center || saving) return;
-    if (!diffReady) {
+    if (changes.length === 0) {
       toast("Enter the quality difference first", "warn");
       return;
     }
     if (!passOk) {
       toast("New password must be 6 digits", "warn");
+      setTab("tools");
       return;
     }
+    setReview(true);
+  };
+
+  const apply = async () => {
+    if (!center || saving) return;
     setSaving(true);
     try {
       await saveEkoCorrection({
         stationId: center,
         entryDate: todayISO(),
         shift,
-        vlc,
+        vlc: device,
         doc,
         diff: signed(),
       });
@@ -588,7 +782,7 @@ const CalibrationCard: React.FC<{ ids: string[] }> = ({ ids }) => {
       setSaving(false);
       return;
     }
-   
+
     try {
       await updateEkoPassword(cred, passApply);
       toast("Eko calibration saved successfully!");
@@ -598,6 +792,7 @@ const CalibrationCard: React.FC<{ ids: string[] }> = ({ ids }) => {
         "warn",
       );
     }
+    setReview(false);
     resetEntry();
     await Promise.all([loadRecords(center), loadCredentials(center)]);
     setSaving(false);
@@ -620,8 +815,12 @@ const CalibrationCard: React.FC<{ ids: string[] }> = ({ ids }) => {
     }
   };
 
-  
-  const grid = "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6";
+  const pendingRecords = rows.filter((r) => /pending/i.test(r.status)).length;
+  const tabs: Array<[Tab, string, React.ReactNode]> = [
+    ["calibration", "Calibration", null],
+    ["tools", "Tools", null],
+    ["history", "History", rows.length > 0 ? rows.length : null],
+  ];
 
   return (
     <Card>
@@ -646,11 +845,12 @@ const CalibrationCard: React.FC<{ ids: string[] }> = ({ ids }) => {
           </Field>
           <Button
             className="w-full sm:col-span-2 lg:col-span-1 lg:w-auto"
-            loading={showing}
+            icon={<Download size={16} />}
+            loading={reading}
             disabled={!center}
             onClick={show}
           >
-            Show
+            Read calibration
           </Button>
         </div>
         {error && (
@@ -665,136 +865,244 @@ const CalibrationCard: React.FC<{ ids: string[] }> = ({ ids }) => {
           />
         )}
 
-        <SectionLabel>Quality Of Milk as per VLC(today)</SectionLabel>
-        <div className={grid}>
-          {QUALITY_FIELDS.map(([k, label]) => (
-            <Field key={k} label={label}>
-              <Input readOnly tabIndex={-1} value={vlc[k]} placeholder="0" />
-            </Field>
-          ))}
-        </div>
-
-        <SectionLabel>Quality Of Milk Received On DOC</SectionLabel>
-        <div className={grid}>
-          {QUALITY_FIELDS.map(([k, label]) => (
-            <Field key={k} label={label}>
-              <Input readOnly tabIndex={-1} value={doc[k]} placeholder="0" />
-            </Field>
-          ))}
-        </div>
-
-        <SectionLabel>Quality Difference Of Milk</SectionLabel>
-        <div className={grid}>
-          {QUALITY_FIELDS.map(([k, label]) => (
-            <div key={k} className="min-w-0">
-              <div className="mb-1.5 flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-semibold">{label}</span>
-                <button
-                  type="button"
-                  disabled={!center}
-                  onClick={() => setNeg((n) => ({ ...n, [k]: !n[k] }))}
-                  aria-label={`Switch ${label} sign`}
-                  title={
-                    neg[k]
-                      ? "Negative - click for positive"
-                      : "Positive - click for negative"
-                  }
-                  className={`grid h-6 w-8 shrink-0 place-items-center rounded-md text-white transition-colors disabled:opacity-50 ${neg[k] ? "bg-danger" : "bg-ok"}`}
-                >
-                  {neg[k] ? <Minus size={14} /> : <Plus size={14} />}
-                </button>
-              </div>
-              <Input
-                inputMode="decimal"
-                disabled={!center}
-                value={diff[k]}
-                placeholder="0.00"
-                onChange={(e) => setDiffField(k, e.target.value)}
-              />
-            </div>
-          ))}
-        </div>
-
-        <SectionLabel>Eko Milk Credentials</SectionLabel>
-        <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Contact">
-            <Input readOnly value={cred.contact} />
-          </Field>
-          <Field label="PCB SerialNo">
-            <Input readOnly value={cred.pcbSerial} />
-          </Field>
-          <Field label="Current Password">
-            <PassInput readOnly value={cred.currentPass} />
-          </Field>
-          <div className="flex items-end gap-2">
-            <div className="min-w-0 flex-1">
-              <Field label="New Password">
-                <PassInput
-                  value={cred.newPass}
-                  disabled={!center}
-                  onChange={(v) =>
-                    setCred((c) => ({
-                      ...c,
-                      newPass: v.replace(/\D/g, "").slice(0, 6),
-                    }))
-                  }
-                />
-              </Field>
-            </div>
+        <div
+          role="tablist"
+          className="flex gap-1 overflow-x-auto border-b border-line"
+        >
+          {tabs.map(([id, label, badge]) => (
             <button
+              key={id}
               type="button"
-              onClick={regen}
-              disabled={!center}
-              aria-label="Generate new password"
-              title="Generate new password"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-brand transition-colors hover:bg-brand/10 disabled:opacity-50"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                tab === id
+                  ? "border-brand text-brand"
+                  : "border-transparent text-mute hover:text-ink"
+              }`}
             >
-              <RefreshCw size={18} />
+              {label}
+              {badge !== null && (
+                <span className="rounded-full bg-brand/10 px-1.5 text-[11px] font-bold text-brand">
+                  {badge}
+                </span>
+              )}
             </button>
-          </div>
+          ))}
         </div>
-        <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm font-semibold">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-line accent-brand"
-            checked={passApply}
-            disabled={!center}
-            onChange={(e) => setPassApply(e.target.checked)}
-          />
-          Password Apply
-        </label>
-        {passApply && !passOk && (
-          <p className="text-sm font-semibold text-danger">
-            New password must be 6 digits
-          </p>
+
+        {tab === "calibration" && (
+          <div className="space-y-4">
+            <p className="flex items-start gap-2 rounded-xl bg-brand/10 px-3 py-2.5 text-sm text-brand">
+              <Info size={16} className="mt-0.5 shrink-0" />
+              <span>
+                {center
+                  ? "Press Read calibration to load the device values. Change Adjust (−/+) or type the New value, then press Review & apply."
+                  : "Select a center to read its calibration."}
+              </span>
+            </p>
+            <div
+              className={`grid gap-4 lg:grid-cols-3 ${reading ? "pointer-events-none opacity-60" : ""}`}
+              aria-busy={reading}
+            >
+              {MILKS.map((m) => (
+                <MilkCard
+                  key={m.key}
+                  m={m}
+                  device={device}
+                  doc={doc}
+                  adj={adj}
+                  enabled={!!center}
+                  onAdj={setOne}
+                />
+              ))}
+            </div>
+          </div>
         )}
 
-        <Button
-          className="w-full"
-          loading={saving}
-          disabled={!center || !diffReady || !passOk}
-          onClick={submit}
+        {tab === "tools" && (
+          <div className="space-y-4">
+            <SectionLabel>Eko Milk Credentials</SectionLabel>
+            <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Field label="Contact">
+                <Input readOnly value={cred.contact} />
+              </Field>
+              <Field label="PCB SerialNo">
+                <Input readOnly value={cred.pcbSerial} />
+              </Field>
+              <Field label="Current Password">
+                <PassInput readOnly value={cred.currentPass} />
+              </Field>
+              <div className="flex items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <Field label="New Password">
+                    <PassInput
+                      value={cred.newPass}
+                      disabled={!center}
+                      onChange={(v) =>
+                        setCred((c) => ({
+                          ...c,
+                          newPass: v.replace(/\D/g, "").slice(0, 6),
+                        }))
+                      }
+                    />
+                  </Field>
+                </div>
+                <button
+                  type="button"
+                  onClick={regen}
+                  disabled={!center}
+                  aria-label="Generate new password"
+                  title="Generate new password"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-brand transition-colors hover:bg-brand/10 disabled:opacity-50"
+                >
+                  <RefreshCw size={18} />
+                </button>
+              </div>
+            </div>
+            <label className="flex w-fit cursor-pointer items-center gap-2.5 text-sm font-semibold">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-line accent-brand"
+                checked={passApply}
+                disabled={!center}
+                onChange={(e) => setPassApply(e.target.checked)}
+              />
+              Password Apply
+            </label>
+            {passApply && !passOk && (
+              <p className="text-sm font-semibold text-danger">
+                New password must be 6 digits
+              </p>
+            )}
+            <p className="text-sm text-mute">
+              The password is applied together with the calibration when you
+              press Review &amp; apply.
+            </p>
+          </div>
+        )}
+
+        {tab === "history" && (
+          <>
+            {pendingRecords > 0 && (
+              <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                {pendingRecords} record{pendingRecords > 1 ? "s" : ""} waiting
+                to be applied on the device.
+              </p>
+            )}
+            <RecordsTable
+              kind="eko"
+              rows={rows}
+              busyId={busyId}
+              onCancel={setConfirmRow}
+              loading={loading}
+              emptyText={
+                center
+                  ? "No calibration records yet."
+                  : "Select a center to see its records."
+              }
+            />
+          </>
+        )}
+
+        {pending > 0 && (
+          <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand/40 bg-panel px-4 py-3 shadow-pop">
+            <p className="text-sm font-semibold">
+              {pending} change{pending > 1 ? "s" : ""} pending
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<RotateCcw size={15} />}
+                onClick={discard}
+              >
+                Discard
+              </Button>
+              <Button
+                size="sm"
+                icon={<ClipboardCheck size={15} />}
+                disabled={!center}
+                onClick={openReview}
+              >
+                Review &amp; apply
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <Modal
+          open={review}
+          onClose={saving ? () => undefined : () => setReview(false)}
+          title={`Apply ${pending} change${pending > 1 ? "s" : ""} to ${vlccOption(center)}?`}
+          width="max-w-lg"
+          footer={
+            <>
+              <Button
+                variant="ghost"
+                disabled={saving}
+                onClick={() => setReview(false)}
+              >
+                Cancel
+              </Button>
+              <Button loading={saving} onClick={() => void apply()}>
+                Apply {pending} change{pending > 1 ? "s" : ""}
+              </Button>
+            </>
+          }
         >
-          Submit
-        </Button>
+          <div className="space-y-4">
+            {changes.length > 0 && (
+              <div className="overflow-x-auto rounded-xl border border-line">
+                <table className="w-full text-sm">
+                  <thead className="bg-soft text-left text-[11px] uppercase tracking-wide text-mute">
+                    <tr>
+                      <th className="px-3 py-2">Parameter</th>
+                      <th className="px-3 py-2 text-right">On device</th>
+                      <th className="px-3 py-2 text-right">New</th>
+                      <th className="px-3 py-2 text-right">Change</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {changes.map((c) => (
+                      <tr key={c.k} className="border-t border-line">
+                        <td className="px-3 py-2 font-semibold">{c.label}</td>
+                        <td className="tnum px-3 py-2 text-right text-mute">
+                          {c.on.toFixed(2)}
+                        </td>
+                        <td className="tnum px-3 py-2 text-right font-bold">
+                          {c.next.toFixed(2)}
+                        </td>
+                        <td
+                          className={`tnum px-3 py-2 text-right font-bold ${c.by < 0 ? "text-danger" : "text-ok"}`}
+                        >
+                          {signedText(c.by)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {passApply && (
+              <p className="rounded-xl border border-line px-3 py-2 text-sm">
+                Eko menu password will be changed to{" "}
+                <b className="tnum">{cred.newPass}</b>.
+              </p>
+            )}
+            <p className="rounded-xl bg-ok/10 px-3 py-2 text-sm text-ok">
+              Every apply is stored in History, where a record that is still
+              pending can be rejected.
+            </p>
+          </div>
+        </Modal>
 
         <ConfirmReject
           row={confirmRow}
           busy={busyId !== null}
           onYes={reject}
           onNo={() => setConfirmRow(null)}
-        />
-        <RecordsTable
-          kind="eko"
-          rows={rows}
-          busyId={busyId}
-          onCancel={setConfirmRow}
-          loading={loading}
-          emptyText={
-            center
-              ? "No calibration records yet."
-              : "Select a center to see its records."
-          }
         />
       </div>
     </Card>

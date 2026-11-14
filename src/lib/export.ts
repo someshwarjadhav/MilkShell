@@ -42,6 +42,13 @@ export interface ExcelOptions {
   exactFileName?: boolean;
   /** worksheet name (default "Sheet1") */
   sheetName?: string;
+  /**
+   * Per-column Total row override (index = column). Columns without an entry keep the automatic rule by heading.
+   *   'sum' = =SUM, { wavg: i } = average weighted by column i, { diff: [a, b] } = Total of column b minus Total of column a, null = no total
+   */
+  totals?: Array<'sum' | { wavg: number } | { diff: [number, number] } | null | undefined>;
+  /** fixed text for cells of the Total row (index = column), e.g. { 1: 'All selected VLCs' } */
+  totalText?: Record<number, string>;
 }
 
 type XlsxApi = typeof import('xlsx');
@@ -132,9 +139,12 @@ export async function exportExcel<T>(name: string, cols: ExportCol<T>[], rows: T
   const numericCol = (i: number) => shapes[i]!.kind === 'dec' || shapes[i]!.kind === 'int';
   const qty = lower.findIndex((h, i) => ['liter', 'liters', 'litre', 'litres', 'qty', 'total liter'].includes(h) && numericCol(i));
   const amount = lower.findIndex((h, i) => ['amount', 'total amount', 'milk amount'].includes(h) && numericCol(i));
-  type Total = 'sum' | { wavg: number } | { ratio: [number, number] } | undefined;
+  type Total = 'sum' | { wavg: number } | { ratio: [number, number] } | { diff: [number, number] } | undefined;
   const totalKind = (i: number): Total => {
     if (!numericCol(i) || n === 0) return undefined;
+    const forced = options.totals?.[i];
+    if (forced === null) return undefined;
+    if (forced) return forced;
     const h = lower[i]!;
     if (SUM_HEADERS.includes(h)) return 'sum';
     if (AVG_HEADERS.includes(h) && qty >= 0 && i !== qty) return { wavg: qty };
@@ -150,6 +160,7 @@ export async function exportExcel<T>(name: string, cols: ExportCol<T>[], rows: T
     const k = kinds[i];
     if (!k) return '';
     if (k === 'sum') return r2(sumOf(i));
+    if ('diff' in k) return 0; // filled in below, once the totals of its two columns are known
     if ('wavg' in k) {
       const w = sumOf(k.wavg);
       const v = colNum(i);
@@ -159,7 +170,11 @@ export async function exportExcel<T>(name: string, cols: ExportCol<T>[], rows: T
     const d = sumOf(k.ratio[1]);
     return d ? r2(sumOf(k.ratio[0]) / d) : 0;
   });
+  kinds.forEach((k, i) => {
+    if (k && typeof k === 'object' && 'diff' in k) totals[i] = r2(Number(totals[k.diff[1]]) - Number(totals[k.diff[0]]));
+  });
   if (hasTotals && totals[0] === '') totals[0] = 'Total';
+  if (hasTotals && options.totalText) for (const [i, t] of Object.entries(options.totalText)) totals[Number(i)] = t;
 
   const aoa: Array<Array<string | number>> = [cols.map((c) => c.header), ...body];
   if (hasTotals) aoa.push(totals);
@@ -205,6 +220,7 @@ export async function exportExcel<T>(name: string, cols: ExportCol<T>[], rows: T
       if (!k) return;
       let f: string;
       if (k === 'sum') f = `SUM(${rng(ci)})`;
+      else if ('diff' in k) f = `${L(k.diff[1])}${totalRow + 1}-${L(k.diff[0])}${totalRow + 1}`;
       else if ('wavg' in k) f = `IFERROR(SUMPRODUCT(${rng(k.wavg)},${rng(ci)})/SUM(${rng(k.wavg)}),0)`;
       else f = `IFERROR(SUM(${rng(k.ratio[0])})/SUM(${rng(k.ratio[1])}),0)`;
       const s = shapes[ci]!;

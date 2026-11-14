@@ -253,13 +253,13 @@ const Dashboard: React.FC = () => {
     const known = getSession()?.vlccNames ?? {};
     ids.forEach((id) =>
       byId.set(id, {
-        name: vlccName(id) || known[id] || `VLC ${id}`,
+        name: vlccName(id) || known[id] || `VLC ${vlccCode(id)}`,
         liter: 0,
       }),
     );
     for (const r of vlccRows) {
       const c = byId.get(r.vlccid) ?? {
-        name: vlccName(r.vlccid) || known[r.vlccid] || `VLC ${r.vlccid}`,
+        name: vlccName(r.vlccid) || known[r.vlccid] || `VLC ${vlccCode(r.vlccid)}`,
         liter: 0,
       };
       if (r.village) c.name = r.village;

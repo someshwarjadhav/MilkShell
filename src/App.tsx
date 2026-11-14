@@ -35,6 +35,7 @@ const UnionwiseCollection = lazy(
 );
 const VlcStatus = lazy(() => import("./pages/reports/VlcStatus"));
 const VarianceReport = lazy(() => import("./pages/reports/VarianceReport"));
+const CdaReport = lazy(() => import("./pages/reports/CdaReport"));
 const CleaningReport = lazy(() => import("./pages/reports/CleaningReport"));
 const EkoCalibration = lazy(() => import("./pages/reports/EkoCalibration"));
 const VlcMilkEntry = lazy(() => import("./pages/transactions/VlcMilkEntry"));
@@ -150,6 +151,7 @@ const App: React.FC = () => {
                   <Collections only="vlcc" />
                 }
               />
+              <Route path="reports/cda" element={<CdaReport />} />
               <Route
                 path="reports/cleaning"
                 element={

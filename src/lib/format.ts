@@ -56,3 +56,36 @@ export const farmerCode = (id: string | number | null | undefined): string => {
   const s = String(id ?? "").trim();
   return /^\d+$/.test(s) && s.length < 4 ? s.padStart(4, "0") : s;
 };
+
+/* ---- Farmer Collection (STIPL portal formats) ---- */
+const MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-11-03" -> "03-11-2026" */
+export const fmtDMY = (iso: string): string => {
+  const [y, m, d] = iso.split("-");
+  return y && m && d ? `${d}-${m}-${y}` : iso;
+};
+
+/** "2026-11-03" -> "03 Nov 2026" (the date format of the STIPL portal tables and Excel sheets) */
+export const fmtDateLong = (iso: string): string => {
+  const [y, m, d] = iso.split("-");
+  const mon = MON3[Number(m) - 1];
+  return y && m && d && mon ? `${d} ${mon} ${y}` : iso;
+};
+
+/** "2026-11-03" -> "03.11.2026" (Collection Date column of the Excel export) */
+export const fmtDateDots = (iso: string): string => {
+  const [y, m, d] = iso.split("-");
+  return y && m && d ? `${d}.${m}.${y}` : iso;
+};
+
+/** "09:30 AM" / "7:05 pm" / "13:20" -> "09:30:00" / "19:05:00" / "13:20:00" (Collection Time column of the Excel export) */
+export const time24 = (t: string): string => {
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i.exec(String(t ?? "").trim());
+  if (!m) return String(t ?? "");
+  let h = Number(m[1]);
+  const ap = m[4]?.toUpperCase();
+  if (ap === "PM" && h < 12) h += 12;
+  if (ap === "AM" && h === 12) h = 0;
+  return `${String(h).padStart(2, "0")}:${m[2]}:${m[3] ?? "00"}`;
+};

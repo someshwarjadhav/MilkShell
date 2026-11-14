@@ -10,10 +10,19 @@ export function rememberVlccName(id: string, name: string) {
 
 export const vlccName = (id: string): string => learnt.get(id) || getSession()?.vlccNames?.[id] || VILLAGE_NAMES[id] || '';
 
-export const vlccTitle = (id: string, fallbackName = ''): string => vlccName(id) || fallbackName.trim() || `VLC ${id}`;
 
 /** the custom station id of a VLC ("0001" - the number shown next to its name in every dropdown); the id itself when it has none */
 export const vlccCode = (id: string): string => (id && getSession()?.stationByVlcc?.[id]) || id;
+
+/**
+ * Station Id for tables / exports: the CUSTOM station id of the centre first (session.stationByVlcc, e.g. "0001"),
+ * then the station code the report row itself carries, and the raw backend id only when nothing else is known.
+ */
+export const stationCodeOf = (id: string, rowCode = ''): string =>
+  (id && getSession()?.stationByVlcc?.[id]) || rowCode.trim() || id;
+
+/** centre name, else the name the row has, else "VLC <custom station id>" (never the raw backend id) */
+export const vlccTitle = (id: string, fallbackName = ''): string => vlccName(id) || fallbackName.trim() || `VLC ${vlccCode(id)}`;
 
 /** "Name | custom station id" text for tables / Excel / PDF (same text as the dropdowns) */
 export const vlccLabel = (id: string, fallbackName = ''): string => {
