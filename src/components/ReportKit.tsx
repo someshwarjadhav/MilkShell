@@ -198,9 +198,11 @@ export const ReportBar: React.FC<{
   onExport: (k: ExportKind) => void;
   left?: ReactNode;
   source?: ReactNode;
-  /** custom export buttons (e.g. Old / New Excel, PDF, Print, CSV): shown instead of the `kinds` buttons */
+  
   actions?: ReactNode;
-}> = ({ count, hideCount, disabled, kinds, onExport, left, source, actions }) => (
+
+  labels?: Partial<Record<ExportKind, string>>;
+}> = ({ count, hideCount, disabled, kinds, onExport, left, source, actions, labels }) => (
   <div className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-6">
     <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
       {left}
